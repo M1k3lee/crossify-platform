@@ -53,6 +53,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// API health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', service: 'crossify-backend', timestamp: new Date().toISOString() });
+});
+
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
