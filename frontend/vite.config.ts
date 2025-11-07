@@ -15,7 +15,7 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_BASE || 'http://localhost:3001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        // Don't rewrite - backend expects /api prefix
       },
     },
   },
