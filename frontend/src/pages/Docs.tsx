@@ -1,4 +1,4 @@
-import { Book, Code, Zap, Globe, Lock, ArrowRight, ExternalLink, FileText, Layers, Network, Coins } from 'lucide-react';
+import { Book, Code, Zap, Lock, ArrowRight, ExternalLink, FileText, Layers, Network, Coins } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import QuantumBackground from '../components/QuantumBackground';

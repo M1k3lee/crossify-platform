@@ -434,8 +434,9 @@ export async function deployTokenOnEVM(
     
     // Use the gas estimate we got (or default if estimation failed)
     // Increase gas limit by 20% to account for variations
+    let adjustedGasLimit: bigint | undefined;
     if (gasEstimate) {
-      const adjustedGasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
+      adjustedGasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
       txOptions.gasLimit = adjustedGasLimit;
       console.log(`⛽ Adjusted gas limit: ${adjustedGasLimit.toString()} (20% buffer added)`);
     }
@@ -460,7 +461,9 @@ export async function deployTokenOnEVM(
     try {
       receipt = await createTx.wait();
       console.log(`✅ Transaction confirmed! Block: ${receipt.blockNumber}`);
-      console.log(`⛽ Gas used: ${receipt.gasUsed.toString()} / ${adjustedGasLimit.toString()}`);
+      if (adjustedGasLimit) {
+        console.log(`⛽ Gas used: ${receipt.gasUsed.toString()} / ${adjustedGasLimit.toString()}`);
+      }
     } catch (waitError: any) {
       console.error(`❌ Transaction failed while waiting for confirmation:`, waitError);
       
@@ -470,11 +473,13 @@ export async function deployTokenOnEVM(
         if (txReceipt && txReceipt.status === 0) {
           // Transaction was mined but reverted
           console.error(`❌ Transaction reverted in block ${txReceipt.blockNumber}`);
-          console.error(`⛽ Gas used: ${txReceipt.gasUsed.toString()} / ${txReceipt.gasUsed === adjustedGasLimit ? 'LIMIT HIT!' : adjustedGasLimit.toString()}`);
-          
-          // Check if we hit the gas limit
-          if (BigInt(txReceipt.gasUsed.toString()) >= adjustedGasLimit * BigInt(95) / BigInt(100)) {
-            throw new Error(`Transaction reverted due to insufficient gas. Gas used: ${txReceipt.gasUsed.toString()}, Limit: ${adjustedGasLimit.toString()}. The contract deployment may be too complex or the gas limit needs to be increased.`);
+          if (adjustedGasLimit) {
+            console.error(`⛽ Gas used: ${txReceipt.gasUsed.toString()} / ${txReceipt.gasUsed === adjustedGasLimit ? 'LIMIT HIT!' : adjustedGasLimit.toString()}`);
+            
+            // Check if we hit the gas limit
+            if (BigInt(txReceipt.gasUsed.toString()) >= adjustedGasLimit * BigInt(95) / BigInt(100)) {
+              throw new Error(`Transaction reverted due to insufficient gas. Gas used: ${txReceipt.gasUsed.toString()}, Limit: ${adjustedGasLimit.toString()}. The contract deployment may be too complex or the gas limit needs to be increased.`);
+            }
           }
           
           // Try to decode the revert reason using call simulation

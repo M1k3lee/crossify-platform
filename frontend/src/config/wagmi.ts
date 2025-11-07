@@ -16,9 +16,5 @@ export const config = getDefaultConfig({
   projectId: projectId || '0000000000000000000000000000000000000000',
   chains: [sepolia, baseSepolia, bscTestnet],
   ssr: false,
-  // Prioritize MetaMask injected provider
-  appInfo: {
-    appName: 'Crossify.io',
-  },
 });
 

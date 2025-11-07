@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp } from 'lucide-react';
 
 interface Chain {
   name: string;
@@ -12,13 +11,13 @@ interface Chain {
 }
 
 interface LiquidityFlowProps {
-  totalLiquidity: number;
+  totalLiquidity?: number;
   chains: Chain[];
   tokenName: string;
   tokenSymbol: string;
 }
 
-export default function LiquidityFlow({ totalLiquidity, chains }: LiquidityFlowProps) {
+export default function LiquidityFlow({ chains }: LiquidityFlowProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 });

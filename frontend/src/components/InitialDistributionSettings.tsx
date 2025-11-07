@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import AdvancedSettings from './AdvancedSettings';
-import { Users, Gift, UserPlus, X, Plus } from 'lucide-react';
+import { Users, Gift, X, Plus } from 'lucide-react';
 
 export interface DistributionRecipient {
   address: string;

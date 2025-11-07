@@ -8,7 +8,7 @@ import AdvancedTokenSettingsComponent, { AdvancedTokenSettings } from '../compon
 import InitialDistributionSettingsComponent, { InitialDistributionSettings } from '../components/InitialDistributionSettings';
 import FeeBreakdown from '../components/FeeBreakdown';
 import CrossChainToggle from '../components/CrossChainToggle';
-import { useAccount, useWalletClient } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import QuantumBackground from '../components/QuantumBackground';
 import { motion } from 'framer-motion';

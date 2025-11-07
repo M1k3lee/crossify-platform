@@ -1,6 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useAccount } from 'wagmi';
 import { Home, Coins, Rocket, LayoutDashboard, LogIn } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -15,7 +14,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const [appLaunched, setAppLaunched] = useState(() => {
     return localStorage.getItem('appLaunched') === 'true';
   });

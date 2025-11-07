@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { 
   Lock, TrendingUp, DollarSign, Coins, Activity, 
-  BarChart3, Users, LogOut, RefreshCw 
+  LogOut, RefreshCw 
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
