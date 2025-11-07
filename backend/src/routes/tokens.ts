@@ -536,6 +536,156 @@ router.get('/:id/global-supply', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/:id/price-history
+router.get('/:id/price-history', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { timeframe = '24h', chain } = req.query;
+    
+    // Calculate time range based on timeframe
+    const now = Date.now();
+    let startTime: number;
+    let interval: number; // in milliseconds
+    
+    switch (timeframe) {
+      case '1h':
+        startTime = now - 60 * 60 * 1000;
+        interval = 60 * 1000; // 1 minute intervals
+        break;
+      case '24h':
+        startTime = now - 24 * 60 * 60 * 1000;
+        interval = 60 * 60 * 1000; // 1 hour intervals
+        break;
+      case '7d':
+        startTime = now - 7 * 24 * 60 * 60 * 1000;
+        interval = 24 * 60 * 60 * 1000; // 1 day intervals
+        break;
+      case '30d':
+        startTime = now - 30 * 24 * 60 * 60 * 1000;
+        interval = 24 * 60 * 60 * 1000; // 1 day intervals
+        break;
+      default:
+        startTime = now - 24 * 60 * 60 * 1000;
+        interval = 60 * 60 * 1000;
+    }
+    
+    // Get transactions with price data
+    let query = `
+      SELECT 
+        type,
+        price,
+        amount,
+        created_at,
+        chain
+      FROM transactions
+      WHERE token_id = ? 
+        AND status = 'confirmed'
+        AND price IS NOT NULL
+        AND price > 0
+        AND datetime(created_at) >= datetime(?, 'unixepoch', 'localtime')
+    `;
+    const params: any[] = [id, Math.floor(startTime / 1000)];
+    
+    if (chain) {
+      query += ' AND chain = ?';
+      params.push(chain);
+    }
+    
+    query += ' ORDER BY created_at ASC';
+    
+    const transactions = await dbAll(query, params) as any[];
+    
+    // Group transactions by time interval and calculate OHLC
+    const buckets: Map<number, { open: number; high: number; low: number; close: number; volume: number }> = new Map();
+    
+    transactions.forEach(tx => {
+      const txTime = new Date(tx.created_at).getTime();
+      const bucketTime = Math.floor(txTime / interval) * interval;
+      
+      if (!buckets.has(bucketTime)) {
+        buckets.set(bucketTime, {
+          open: tx.price,
+          high: tx.price,
+          low: tx.price,
+          close: tx.price,
+          volume: parseFloat(tx.amount || '0'),
+        });
+      } else {
+        const bucket = buckets.get(bucketTime)!;
+        bucket.high = Math.max(bucket.high, tx.price);
+        bucket.low = Math.min(bucket.low, tx.price);
+        bucket.close = tx.price;
+        bucket.volume += parseFloat(tx.amount || '0');
+      }
+    });
+    
+    // Convert to array
+    const data: Array<{ time: number; open: number; high: number; low: number; close: number; volume: number }> = [];
+    const sortedBuckets = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
+    
+    // Fill gaps with previous close price
+    let lastClose = sortedBuckets[0]?.close || 0;
+    for (let time = startTime; time <= now; time += interval) {
+      const bucket = buckets.get(time);
+      if (bucket) {
+        data.push({
+          time,
+          open: bucket.open,
+          high: bucket.high,
+          low: bucket.low,
+          close: bucket.close,
+          volume: bucket.volume,
+        });
+        lastClose = bucket.close;
+      } else if (data.length > 0) {
+        // Fill gap with last close price
+        data.push({
+          time,
+          open: lastClose,
+          high: lastClose,
+          low: lastClose,
+          close: lastClose,
+          volume: 0,
+        });
+      }
+    }
+    
+    // If no transactions, return current price from deployments
+    if (data.length === 0) {
+      const deployments = await dbAll(
+        'SELECT * FROM token_deployments WHERE token_id = ?',
+        [id]
+      ) as any[];
+      
+      if (deployments.length > 0) {
+        const dep = deployments[0];
+        const price = dep.market_cap / (parseFloat(dep.current_supply || '1') * Math.pow(10, 18)) || 0.001;
+        
+        // Create flat line with current price
+        for (let time = startTime; time <= now; time += interval) {
+          data.push({
+            time,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+            volume: 0,
+          });
+        }
+      }
+    }
+    
+    res.json({
+      data,
+      timeframe,
+      interval,
+    });
+  } catch (error) {
+    console.error('Error fetching price history:', error);
+    res.status(500).json({ error: 'Failed to fetch price history' });
+  }
+});
+
 // GET /tokens/:id/price-sync - Must be before /:id route
 router.get('/:id/price-sync', async (req: Request, res: Response) => {
   try {

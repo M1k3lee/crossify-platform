@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
@@ -53,7 +53,7 @@ export default function BuyWidget({
 
         const ethersProvider = new ethers.BrowserProvider(provider);
         const code = await ethersProvider.getCode(curveAddress);
-        setIsValidAddress(code && code !== '0x');
+        setIsValidAddress(!!(code && code !== '0x'));
       } catch {
         setIsValidAddress(false);
       }

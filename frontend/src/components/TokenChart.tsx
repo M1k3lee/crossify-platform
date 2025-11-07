@@ -8,7 +8,10 @@ const API_BASE = '/api';
 
 interface ChartDataPoint {
   time: number;
-  price: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
   volume: number;
 }
 
@@ -21,59 +24,56 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
   const [timeframe, setTimeframe] = useState<'1h' | '24h' | '7d' | '30d' | 'all'>('24h');
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('line');
 
-  // Fetch price history
-  const { data: priceHistory } = useQuery({
+  // Fetch price history from API
+  const { data: priceHistoryData, isLoading } = useQuery({
     queryKey: ['price-history', tokenId, chain, timeframe],
     queryFn: async () => {
-      // Mock data for now - in production, fetch from API
-      const now = Date.now();
-      const interval = timeframe === '1h' ? 60000 : timeframe === '24h' ? 3600000 : timeframe === '7d' ? 86400000 : 86400000;
-      const points = timeframe === '1h' ? 60 : timeframe === '24h' ? 24 : timeframe === '7d' ? 7 : 30;
-      
-      const data: ChartDataPoint[] = [];
-      let basePrice = 0.001;
-      
-      for (let i = points; i >= 0; i--) {
-        const time = now - (i * interval);
-        // Simulate price movement
-        basePrice += (Math.random() - 0.5) * 0.0001;
-        basePrice = Math.max(0.0001, basePrice);
+      try {
+        const params = new URLSearchParams({ timeframe });
+        if (chain) params.append('chain', chain);
         
-        data.push({
-          time,
-          price: basePrice,
-          volume: Math.random() * 10000,
-        });
+        const response = await axios.get(`${API_BASE}/tokens/${tokenId}/price-history?${params}`);
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching price history:', error);
+        // Return empty data on error
+        return { data: [], timeframe, interval: 3600000 };
       }
-      
-      return data;
     },
     enabled: !!tokenId,
     refetchInterval: timeframe === '1h' ? 60000 : 300000, // Refresh every 1min for 1h, 5min for others
   });
 
+  const priceHistory: ChartDataPoint[] = priceHistoryData?.data || [];
+
   const chartData = useMemo(() => {
-    if (!priceHistory) return null;
+    if (!priceHistory || priceHistory.length === 0) return null;
     
     return {
-      prices: priceHistory.map(p => p.price),
+      prices: priceHistory.map(p => p.close),
+      opens: priceHistory.map(p => p.open),
+      highs: priceHistory.map(p => p.high),
+      lows: priceHistory.map(p => p.low),
+      closes: priceHistory.map(p => p.close),
       volumes: priceHistory.map(p => p.volume),
       times: priceHistory.map(p => p.time),
     };
   }, [priceHistory]);
 
-  if (!chartData || !priceHistory) {
+  if (isLoading || !chartData || priceHistory.length === 0) {
     return (
       <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">Loading chart data...</div>
+          <div className="text-gray-400">
+            {isLoading ? 'Loading chart data...' : 'No price data available yet'}
+          </div>
         </div>
       </div>
     );
   }
 
-  const currentPrice = priceHistory[priceHistory.length - 1]?.price || 0;
-  const previousPrice = priceHistory[0]?.price || 0;
+  const currentPrice = priceHistory[priceHistory.length - 1]?.close || 0;
+  const previousPrice = priceHistory[0]?.open || currentPrice;
   const priceChange = currentPrice - previousPrice;
   const priceChangePercent = previousPrice > 0 ? (priceChange / previousPrice) * 100 : 0;
   const totalVolume = priceHistory.reduce((sum, p) => sum + p.volume, 0);
@@ -86,22 +86,46 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
   const plotHeight = chartHeight - padding * 2;
 
   // Scale data
-  const maxPrice = Math.max(...chartData.prices);
-  const minPrice = Math.min(...chartData.prices);
+  const allPrices = [...chartData.highs, ...chartData.lows];
+  const maxPrice = Math.max(...allPrices);
+  const minPrice = Math.min(...allPrices);
   const priceRange = maxPrice - minPrice || 1;
   const maxVolume = Math.max(...chartData.volumes);
 
   // Generate path for line chart
-  const points = chartData.prices.map((price, index) => {
+  const linePoints = chartData.prices.map((price, index) => {
     const x = padding + (index / (chartData.prices.length - 1)) * plotWidth;
     const y = padding + plotHeight - ((price - minPrice) / priceRange) * plotHeight;
     return { x, y, price };
   });
 
-  const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const pathData = linePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
   // Generate area fill path
-  const areaPath = `${pathData} L ${points[points.length - 1].x} ${padding + plotHeight} L ${points[0].x} ${padding + plotHeight} Z`;
+  const areaPath = `${pathData} L ${linePoints[linePoints.length - 1].x} ${padding + plotHeight} L ${linePoints[0].x} ${padding + plotHeight} Z`;
+
+  // Generate candlestick data
+  const candlesticks = chartData.prices.map((close, index) => {
+    const x = padding + (index / (chartData.prices.length - 1)) * plotWidth;
+    const openY = padding + plotHeight - ((chartData.opens[index] - minPrice) / priceRange) * plotHeight;
+    const closeY = padding + plotHeight - ((close - minPrice) / priceRange) * plotHeight;
+    const highY = padding + plotHeight - ((chartData.highs[index] - minPrice) / priceRange) * plotHeight;
+    const lowY = padding + plotHeight - ((chartData.lows[index] - minPrice) / priceRange) * plotHeight;
+    const isUp = close >= chartData.opens[index];
+    
+    return {
+      x,
+      openY,
+      closeY,
+      highY,
+      lowY,
+      open: chartData.opens[index],
+      close,
+      high: chartData.highs[index],
+      low: chartData.lows[index],
+      isUp,
+    };
+  });
 
   return (
     <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
@@ -213,53 +237,78 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
             );
           })}
 
-          {/* Area fill */}
-          <path
-            d={areaPath}
-            fill="url(#gradient)"
-            opacity="0.3"
-          />
-          <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={priceChange >= 0 ? '#10B981' : '#EF4444'} stopOpacity="0.4" />
-              <stop offset="100%" stopColor={priceChange >= 0 ? '#10B981' : '#EF4444'} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          {/* Price line */}
-          <path
-            d={pathData}
-            fill="none"
-            stroke={priceChange >= 0 ? '#10B981' : '#EF4444'}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Data points */}
-          {points.map((point, index) => (
-            <g key={index}>
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r="3"
-                fill={priceChange >= 0 ? '#10B981' : '#EF4444'}
-                className="opacity-0 hover:opacity-100 transition-opacity"
+          {chartType === 'line' ? (
+            <>
+              {/* Area fill */}
+              <path
+                d={areaPath}
+                fill="url(#gradient)"
+                opacity="0.3"
               />
-            </g>
-          ))}
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor={priceChange >= 0 ? '#10B981' : '#EF4444'} stopOpacity="0.4" />
+                  <stop offset="100%" stopColor={priceChange >= 0 ? '#10B981' : '#EF4444'} stopOpacity="0" />
+                </linearGradient>
+              </defs>
 
-          {/* Crosshair (on hover) */}
-          <line
-            x1={padding}
-            y1={padding}
-            x2={padding + plotWidth}
-            y2={padding + plotHeight}
-            stroke="rgba(255,255,255,0.1)"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-            className="hidden"
-          />
+              {/* Price line */}
+              <path
+                d={pathData}
+                fill="none"
+                stroke={priceChange >= 0 ? '#10B981' : '#EF4444'}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Data points */}
+              {linePoints.map((point, index) => (
+                <circle
+                  key={index}
+                  cx={point.x}
+                  cy={point.y}
+                  r="3"
+                  fill={priceChange >= 0 ? '#10B981' : '#EF4444'}
+                  className="opacity-0 hover:opacity-100 transition-opacity"
+                />
+              ))}
+            </>
+          ) : (
+            <>
+              {/* Candlesticks */}
+              {candlesticks.map((candle, index) => {
+                const bodyTop = Math.min(candle.openY, candle.closeY);
+                const bodyBottom = Math.max(candle.openY, candle.closeY);
+                const bodyHeight = bodyBottom - bodyTop || 1;
+                const barWidth = plotWidth / candlesticks.length * 0.6;
+                
+                return (
+                  <g key={index}>
+                    {/* Wick */}
+                    <line
+                      x1={candle.x}
+                      y1={candle.highY}
+                      x2={candle.x}
+                      y2={candle.lowY}
+                      stroke={candle.isUp ? '#10B981' : '#EF4444'}
+                      strokeWidth="1"
+                    />
+                    {/* Body */}
+                    <rect
+                      x={candle.x - barWidth / 2}
+                      y={bodyTop}
+                      width={barWidth}
+                      height={bodyHeight}
+                      fill={candle.isUp ? '#10B981' : '#EF4444'}
+                      stroke={candle.isUp ? '#10B981' : '#EF4444'}
+                      strokeWidth="0.5"
+                    />
+                  </g>
+                );
+              })}
+            </>
+          )}
         </svg>
       </div>
 
@@ -287,8 +336,3 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
     </div>
   );
 }
-
-
-
-
-
