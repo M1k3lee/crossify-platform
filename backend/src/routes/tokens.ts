@@ -691,6 +691,93 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/:id/market-depth
+router.get('/:id/market-depth', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { chain } = req.query;
+    
+    // Get token and deployment info
+    const token = await dbGet('SELECT base_price, slope FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+    
+    let deploymentQuery = 'SELECT * FROM token_deployments WHERE token_id = ? AND status = ?';
+    const deploymentParams: any[] = [id, 'deployed'];
+    
+    if (chain) {
+      deploymentQuery += ' AND chain = ?';
+      deploymentParams.push(chain);
+    }
+    
+    const deployments = await dbAll(deploymentQuery, deploymentParams) as any[];
+    
+    if (deployments.length === 0) {
+      return res.status(404).json({ error: 'No deployments found' });
+    }
+    
+    // Calculate market depth for each deployment
+    const marketDepth = deployments.map(dep => {
+      const currentSupply = parseFloat(dep.current_supply || '0');
+      const basePrice = parseFloat(token.base_price || '0');
+      const slope = parseFloat(token.slope || '0');
+      
+      // Calculate current price
+      const currentPrice = basePrice + (slope * currentSupply);
+      
+      // Generate buy orders (what users would pay for different amounts)
+      const buyOrders: Array<{ price: number; amount: number; total: number }> = [];
+      const sellOrders: Array<{ price: number; amount: number; total: number }> = [];
+      
+      // Buy orders: simulate buying different amounts
+      for (let i = 1; i <= 20; i++) {
+        const amount = (currentSupply * 0.05 * i) / Math.pow(10, 18); // 5% increments
+        const priceForAmount = basePrice + (slope * (currentSupply + (amount * Math.pow(10, 18)) / 2));
+        const totalCost = priceForAmount * amount;
+        
+        buyOrders.push({
+          price: priceForAmount,
+          amount: amount,
+          total: totalCost,
+        });
+      }
+      
+      // Sell orders: simulate selling different amounts
+      // For selling, price decreases as supply decreases
+      const availableSupply = currentSupply;
+      for (let i = 1; i <= 20; i++) {
+        const amount = (availableSupply * 0.05 * i) / Math.pow(10, 18); // 5% of available
+        const priceAfterSell = basePrice + (slope * (currentSupply - (amount * Math.pow(10, 18))));
+        const totalReceived = priceAfterSell * amount;
+        
+        sellOrders.push({
+          price: priceAfterSell,
+          amount: amount,
+          total: totalReceived,
+        });
+      }
+      
+      return {
+        chain: dep.chain,
+        currentPrice,
+        currentSupply: currentSupply / Math.pow(10, 18),
+        basePrice,
+        slope,
+        buyOrders: buyOrders.sort((a, b) => b.price - a.price), // Highest price first
+        sellOrders: sellOrders.sort((a, b) => a.price - b.price), // Lowest price first
+      };
+    });
+    
+    res.json({
+      marketDepth: chain ? marketDepth[0] : marketDepth,
+    });
+  } catch (error) {
+    console.error('Error fetching market depth:', error);
+    res.status(500).json({ error: 'Failed to fetch market depth' });
+  }
+});
+
 // GET /tokens/:id/price-sync - Must be before /:id route
 router.get('/:id/price-sync', async (req: Request, res: Response) => {
   try {

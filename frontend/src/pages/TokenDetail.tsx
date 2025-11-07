@@ -12,6 +12,7 @@ import { useAccount } from 'wagmi';
 import AddLiquidityModal from '../components/AddLiquidityModal';
 import BuyWidget from '../components/BuyWidget';
 import TokenChart from '../components/TokenChart';
+import MarketDepthChart from '../components/MarketDepthChart';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
@@ -418,6 +419,58 @@ export default function TokenDetail() {
             })}
           </div>
         </div>
+
+        {/* Market Depth Chart */}
+        {status.deployments && status.deployments.length > 0 && !allGraduated && (
+          <div className="mb-6">
+            <MarketDepthChart 
+              tokenId={id || ''} 
+              chain={status.deployments[0].chain}
+            />
+          </div>
+        )}
+
+        {/* Cross-Chain Price Comparison */}
+        {status.deployments && status.deployments.length > 1 && priceSync && (
+          <div className="mb-6 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <h2 className="text-2xl font-bold text-white mb-4">Cross-Chain Price Comparison</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {status.deployments.map((dep: any) => {
+                const chainName = dep.chain.toLowerCase();
+                const price = priceSync.prices?.[chainName] || dep.marketCap / 1000000 || 0.001;
+                const chainColor = CHAIN_COLORS[chainName] || '#FFFFFF';
+                const variance = priceSync.variance || 0;
+                
+                return (
+                  <div
+                    key={dep.chain}
+                    className="bg-gray-700/30 rounded-lg p-4 border border-gray-700/50"
+                    style={{ borderLeftColor: chainColor, borderLeftWidth: '4px' }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-gray-400 capitalize">{dep.chain}</span>
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: chainColor }}
+                      />
+                    </div>
+                    <p className="text-2xl font-bold text-white mb-1">${price.toFixed(6)}</p>
+                    {variance > 0.5 && (
+                      <p className="text-xs text-yellow-400">Variance: {variance.toFixed(2)}%</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {priceSync.variance && priceSync.variance > 0.5 && (
+              <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
+                <p className="text-sm text-yellow-300">
+                  ⚠️ Price variance detected across chains. Cross-chain synchronization may be needed.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Transaction Feed */}
         <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
