@@ -115,11 +115,11 @@ async function syncPrices() {
     }
 
     // Check variance for each token across chains
-    const tokenIds = [...new Set(tokens.map(t => t.id))];
+    const tokenIds = [...new Set(tokens.map((t: { id: string; chain: string; token_address: string }) => t.id))];
     for (const tokenId of tokenIds) {
       const prices = await getAllPrices(tokenId);
-      if (Object.keys(prices).length >= 2) {
-        await checkPriceVariance(tokenId, prices);
+      if (prices && typeof prices === 'object' && Object.keys(prices).length >= 2) {
+        await checkPriceVariance(tokenId, prices as Record<string, number>);
       }
     }
   } catch (error) {
