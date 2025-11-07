@@ -122,7 +122,7 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
 
       // Enhanced center X symbol
       const symbolSize = width * 0.18;
-      const symbolGlow = context.createLinearGradient(
+      const symbolGlow = ctx.createLinearGradient(
         centerX - symbolSize, centerY - symbolSize,
         centerX + symbolSize, centerY + symbolSize
       );
@@ -130,11 +130,11 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
       symbolGlow.addColorStop(0.5, 'rgba(236, 72, 153, 0.9)');
       symbolGlow.addColorStop(1, 'rgba(59, 130, 246, 1)');
       
-      context.strokeStyle = symbolGlow;
-      context.lineWidth = 3;
-      context.lineCap = 'round';
-      context.shadowBlur = 8;
-      context.shadowColor = 'rgba(147, 197, 253, 0.8)';
+      ctx.strokeStyle = symbolGlow;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(147, 197, 253, 0.8)';
       
       const rotation = Math.sin(time * 0.5) * 0.05;
       const cos = Math.cos(rotation);
@@ -149,9 +149,9 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
       const rx2 = centerX + (x2 - centerX) * cos - (y2 - centerY) * sin;
       const ry2 = centerY + (x2 - centerX) * sin + (y2 - centerY) * cos;
       
-      context.beginPath();
-      context.moveTo(rx1, ry1);
-      context.lineTo(rx2, ry2);
+      ctx.beginPath();
+      ctx.moveTo(rx1, ry1);
+      ctx.lineTo(rx2, ry2);
       
       const x3 = centerX + symbolSize;
       const y3 = centerY - symbolSize;
@@ -162,11 +162,11 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
       const rx4 = centerX + (x4 - centerX) * cos - (y4 - centerY) * sin;
       const ry4 = centerY + (x4 - centerX) * sin + (y4 - centerY) * cos;
       
-      context.moveTo(rx3, ry3);
-      context.lineTo(rx4, ry4);
-      context.stroke();
-      
-      context.shadowBlur = 0;
+      ctx.moveTo(rx3, ry3);
+      ctx.lineTo(rx4, ry4);
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
 
       animationId = requestAnimationFrame(animate);
     }
