@@ -570,6 +570,9 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
     }
     
     // Get transactions with price data
+    // SQLite stores dates as ISO strings, so we compare directly
+    const startTimeISO = new Date(startTime).toISOString();
+    
     let query = `
       SELECT 
         type,
@@ -582,9 +585,9 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
         AND status = 'confirmed'
         AND price IS NOT NULL
         AND price > 0
-        AND datetime(created_at) >= datetime(?, 'unixepoch', 'localtime')
+        AND created_at >= ?
     `;
-    const params: any[] = [id, Math.floor(startTime / 1000)];
+    const params: any[] = [id, startTimeISO];
     
     if (chain) {
       query += ' AND chain = ?';
@@ -599,7 +602,9 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
     const buckets: Map<number, { open: number; high: number; low: number; close: number; volume: number }> = new Map();
     
     transactions.forEach(tx => {
-      const txTime = new Date(tx.created_at).getTime();
+      const txTime = typeof tx.created_at === 'string' 
+        ? new Date(tx.created_at).getTime() 
+        : tx.created_at;
       const bucketTime = Math.floor(txTime / interval) * interval;
       
       if (!buckets.has(bucketTime)) {
