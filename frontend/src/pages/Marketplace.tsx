@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Filter, TrendingUp, Network, Globe, Layers, Sparkles } from 'lucide-react';
+import { Search, Filter, TrendingUp, Network, Globe, Layers, Sparkles, Zap, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const API_BASE = '/api';
 
 export default function Marketplace() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -323,6 +325,28 @@ export default function Marketplace() {
                       </div>
                     )}
                   </Link>
+
+                  {/* Quick Buy Button */}
+                  <div className="mt-4 pt-4 border-t border-gray-700 flex gap-2">
+                    <Link
+                      to={`/token/${token.id}`}
+                      className="flex-1 px-4 py-2.5 bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg transition text-sm font-medium text-center"
+                    >
+                      View Details
+                    </Link>
+                    {deployments.some((dep: any) => !dep.isGraduated && dep.curveAddress) && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(`/token/${token.id}`);
+                        }}
+                        className="flex-1 px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-green-500/30"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Buy Now
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}

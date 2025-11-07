@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import AddLiquidityModal from '../components/AddLiquidityModal';
+import BuyWidget from '../components/BuyWidget';
 import TokenChart from '../components/TokenChart';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
@@ -285,9 +286,27 @@ export default function TokenDetail() {
           </div>
         </div>
 
-        {/* Price Chart */}
-        <div className="mb-6">
-          <TokenChart tokenId={id || ''} />
+        {/* Trading Section - Buy Widget + Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Buy Widget - Prominent */}
+          {status.deployments && status.deployments.length > 0 && !allGraduated && (
+            <BuyWidget
+              chain={status.deployments[0].chain}
+              curveAddress={status.deployments[0].curveAddress || ''}
+              tokenAddress={status.deployments[0].tokenAddress || ''}
+              tokenSymbol={status.token?.symbol || 'TOKEN'}
+              currentPrice={priceSync?.prices?.[status.deployments[0].chain.toLowerCase()] || status.deployments[0].marketCap / 1000000 || 0.001}
+              onSuccess={() => {
+                // Refresh data after successful trade
+                window.location.reload();
+              }}
+            />
+          )}
+          
+          {/* Price Chart */}
+          <div className={status.deployments && status.deployments.length > 0 && !allGraduated ? '' : 'lg:col-span-2'}>
+            <TokenChart tokenId={id || ''} />
+          </div>
         </div>
 
         {/* Chain Cards Grid */}
@@ -383,14 +402,14 @@ export default function TokenDetail() {
                           curveAddress: dep.curveAddress,
                           tokenAddress: dep.tokenAddress,
                         })}
-                        className="w-full mt-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition"
+                        className="w-full mt-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:opacity-90"
                         style={{
                           backgroundColor: `${chainColor}20`,
                           color: chainColor,
                           border: `1px solid ${chainColor}40`,
                         }}
                       >
-                        Add Liquidity
+                        Trade
                       </button>
                     )}
                   </div>
