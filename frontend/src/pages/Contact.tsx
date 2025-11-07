@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import QuantumBackground from '../components/QuantumBackground';
+import SEO from '../components/SEO';
+import { API_BASE } from '../config/api';
 
 interface FormData {
   name: string;
@@ -34,8 +36,9 @@ export default function Contact() {
     setIsSubmitting(true);
 
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '/api' : 'http://localhost:3001/api');
-      await axios.post(`${API_BASE}/contact`, formData);
+      const url = `${API_BASE}/contact`;
+      console.log('📧 Contact form submitting to:', url);
+      await axios.post(url, formData);
       toast.success('Message sent successfully! We\'ll get back to you soon.');
       setIsSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
@@ -67,8 +70,14 @@ export default function Contact() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-        <QuantumBackground />
+      <>
+        <SEO
+          title="Contact Us - Get in Touch | Crossify.io"
+          description="Have questions about Crossify? Contact our team for support, partnerships, or general inquiries. We're here to help you launch your token successfully."
+          url="https://crossify.io/contact"
+        />
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+          <QuantumBackground />
         <div className="relative z-10 max-w-2xl mx-auto px-6 py-20">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
