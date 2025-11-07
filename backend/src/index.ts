@@ -34,21 +34,39 @@ const allowedOrigins = [
   ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []),
 ];
 
+// Vercel preview deployments pattern
+const isVercelPreview = (origin: string): boolean => {
+  return /^https:\/\/.*\.vercel\.app$/.test(origin);
+};
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      console.warn(`⚠️ CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow all in development, but log warning
+    // Check exact match
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
     }
+    
+    // Allow all Vercel preview deployments
+    if (isVercelPreview(origin)) {
+      console.log(`✅ Allowing Vercel preview: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Allow in development
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Log warning but allow (for now - you can change this to reject in production)
+    console.warn(`⚠️ CORS: Unknown origin: ${origin}`);
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-creator-address'],
 }));
 app.use(morgan('combined'));
 app.use(express.json());
