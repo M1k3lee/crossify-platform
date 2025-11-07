@@ -1,6 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
 import { Home, Coins, Rocket, LayoutDashboard, LogIn } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
