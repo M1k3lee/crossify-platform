@@ -703,22 +703,64 @@ router.get('/:id/market-depth', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Token not found' });
     }
     
-    let deploymentQuery = 'SELECT * FROM token_deployments WHERE token_id = ? AND status = ?';
-    const deploymentParams: any[] = [id, 'deployed'];
+    // Get deployments - include pending ones but prefer deployed
+    let deploymentQuery = 'SELECT * FROM token_deployments WHERE token_id = ?';
+    const deploymentParams: any[] = [id];
     
     if (chain) {
       deploymentQuery += ' AND chain = ?';
       deploymentParams.push(chain);
     }
     
+    // Order by status: deployed first, then pending
+    deploymentQuery += ' ORDER BY CASE WHEN status = ? THEN 0 ELSE 1 END';
+    deploymentParams.push('deployed');
+    
     const deployments = await dbAll(deploymentQuery, deploymentParams) as any[];
     
+    // If no deployments at all, return empty data instead of 404
     if (deployments.length === 0) {
-      return res.status(404).json({ error: 'No deployments found' });
+      return res.json({
+        marketDepth: chain ? {
+          chain: chain as string,
+          currentPrice: 0,
+          currentSupply: 0,
+          basePrice: parseFloat(token.base_price || '0'),
+          slope: parseFloat(token.slope || '0'),
+          buyOrders: [],
+          sellOrders: [],
+        } : [],
+      });
     }
     
-    // Calculate market depth for each deployment
-    const marketDepth = deployments.map(dep => {
+    // Filter to only deployed ones for market depth calculation
+    const deployedDeployments = deployments.filter(d => d.status === 'deployed');
+    
+    // If no deployed deployments, return empty market depth
+    if (deployedDeployments.length === 0) {
+      return res.json({
+        marketDepth: chain ? {
+          chain: chain as string,
+          currentPrice: 0,
+          currentSupply: 0,
+          basePrice: parseFloat(token.base_price || '0'),
+          slope: parseFloat(token.slope || '0'),
+          buyOrders: [],
+          sellOrders: [],
+        } : deployments.map((dep: any) => ({
+          chain: dep.chain,
+          currentPrice: 0,
+          currentSupply: 0,
+          basePrice: parseFloat(token.base_price || '0'),
+          slope: parseFloat(token.slope || '0'),
+          buyOrders: [],
+          sellOrders: [],
+        })),
+      });
+    }
+    
+    // Calculate market depth for each deployment (only deployed ones)
+    const marketDepth = deployedDeployments.map(dep => {
       const currentSupply = parseFloat(dep.current_supply || '0');
       const basePrice = parseFloat(token.base_price || '0');
       const slope = parseFloat(token.slope || '0');

@@ -88,7 +88,7 @@ const CHAIN_CONFIGS = {
 
 // Testnet Factory Addresses (must be deployed first)
 const FACTORY_ADDRESSES: Record<string, string> = {
-  ethereum: import.meta.env.VITE_ETH_FACTORY || '',
+  ethereum: import.meta.env.VITE_ETH_FACTORY || import.meta.env.VITE_ETHEREUM_FACTORY || '',
   bsc: import.meta.env.VITE_BSC_FACTORY || '',
   base: import.meta.env.VITE_BASE_FACTORY || '',
 };
@@ -160,7 +160,8 @@ export async function deployTokenOnEVM(
 
   const factoryAddress = FACTORY_ADDRESSES[chain];
   if (!factoryAddress || factoryAddress === '') {
-    throw new Error(`Factory contract not deployed on ${chain}. Please deploy factory contracts first. Add VITE_${chain.toUpperCase()}_FACTORY to your .env file.`);
+    const envVarName = chain === 'ethereum' ? 'VITE_ETH_FACTORY or VITE_ETHEREUM_FACTORY' : `VITE_${chain.toUpperCase()}_FACTORY`;
+    throw new Error(`Factory contract not deployed on ${chain}. Please deploy factory contracts first. Add ${envVarName} to your Vercel environment variables.`);
   }
 
   console.log(`📋 Factory address: ${factoryAddress}`);
