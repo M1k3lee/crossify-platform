@@ -43,6 +43,12 @@ export default function AddLiquidityModal({
       return;
     }
 
+    // Validate addresses
+    if (!curveAddress || curveAddress === '0x0000000000000000000000000000000000000000' || !ethers.isAddress(curveAddress)) {
+      toast.error('Invalid bonding curve address. Please deploy the token first.');
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -59,15 +65,50 @@ export default function AddLiquidityModal({
         'function buy(uint256 tokenAmount) external payable',
         'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
         'function getCurrentPrice() external view returns (uint256)',
+        'function isGraduated() external view returns (bool)',
       ];
 
       const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
       
+      // Check if contract is deployed and get code
+      const code = await provider.getCode(curveAddress);
+      if (!code || code === '0x') {
+        throw new Error('Bonding curve contract is not deployed. Please deploy the token first.');
+      }
+
+      // Check if graduated
+      try {
+        const graduated = await curveContract.isGraduated();
+        if (graduated) {
+          throw new Error('Token has graduated to DEX. Please use a DEX to buy.');
+        }
+      } catch (err: any) {
+        // If isGraduated doesn't exist, that's okay - continue
+        console.warn('Could not check graduation status:', err.message);
+      }
+      
       // Convert amount to token units (assuming 18 decimals)
       const tokenAmount = ethers.parseUnits(amount, 18);
       
-      // Get price estimate
-      const priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
+      // Get price estimate with error handling
+      let priceEstimate;
+      try {
+        priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
+      } catch (err: any) {
+        console.error('Error getting price estimate:', err);
+        // Try using getCurrentPrice as fallback
+        try {
+          const currentPrice = await curveContract.getCurrentPrice();
+          priceEstimate = currentPrice * tokenAmount;
+        } catch (fallbackErr: any) {
+          throw new Error('Could not get price estimate. The contract may not be properly deployed.');
+        }
+      }
+      
+      if (!priceEstimate || priceEstimate === BigInt(0)) {
+        throw new Error('Invalid price estimate. Please try a different amount.');
+      }
+      
       const priceWithFee = priceEstimate * BigInt(110) / BigInt(100); // Add 10% buffer
       
       // Execute buy transaction
@@ -120,6 +161,17 @@ export default function AddLiquidityModal({
       return;
     }
 
+    // Validate addresses
+    if (!curveAddress || curveAddress === '0x0000000000000000000000000000000000000000' || !ethers.isAddress(curveAddress)) {
+      toast.error('Invalid bonding curve address. Please deploy the token first.');
+      return;
+    }
+
+    if (!tokenAddress || tokenAddress === '0x0000000000000000000000000000000000000000' || !ethers.isAddress(tokenAddress)) {
+      toast.error('Invalid token address. Please deploy the token first.');
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -141,10 +193,33 @@ export default function AddLiquidityModal({
       const bondingCurveABI = [
         'function sell(uint256 tokenAmount) external',
         'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
+        'function isGraduated() external view returns (bool)',
       ];
+
+      // Check if contracts are deployed
+      const curveCode = await provider.getCode(curveAddress);
+      if (!curveCode || curveCode === '0x') {
+        throw new Error('Bonding curve contract is not deployed. Please deploy the token first.');
+      }
+
+      const tokenCode = await provider.getCode(tokenAddress);
+      if (!tokenCode || tokenCode === '0x') {
+        throw new Error('Token contract is not deployed. Please deploy the token first.');
+      }
 
       const tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
       const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
+
+      // Check if graduated
+      try {
+        const graduated = await curveContract.isGraduated();
+        if (graduated) {
+          throw new Error('Token has graduated to DEX. Please use a DEX to sell.');
+        }
+      } catch (err: any) {
+        // If isGraduated doesn't exist, that's okay - continue
+        console.warn('Could not check graduation status:', err.message);
+      }
       
       const tokenAmount = ethers.parseUnits(amount, 18);
       
@@ -173,10 +248,16 @@ export default function AddLiquidityModal({
       
       const receipt = await tx.wait();
       
-      const priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
-      const ethReceived = ethers.formatEther(priceEstimate);
+      // Get price estimate (optional, for display)
+      let ethReceived = '0';
+      try {
+        const priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
+        ethReceived = ethers.formatEther(priceEstimate);
+      } catch (err) {
+        console.warn('Could not get price estimate for display:', err);
+      }
       
-      toast.success(`Successfully sold ${amount} ${tokenSymbol} for ${ethReceived} ETH!`, { id: 'sell-tx' });
+      toast.success(`Successfully sold ${amount} ${tokenSymbol}${ethReceived !== '0' ? ` for ${ethReceived} ETH` : ''}!`, { id: 'sell-tx' });
       
       setAmount('');
       onSuccess?.();
@@ -201,6 +282,11 @@ export default function AddLiquidityModal({
       setLoading(false);
     }
   };
+
+  // Validate addresses on mount/open
+  const isValidAddress = curveAddress && 
+    curveAddress !== '0x0000000000000000000000000000000000000000' && 
+    ethers.isAddress(curveAddress);
 
   if (!isOpen) return null;
 
@@ -233,6 +319,19 @@ export default function AddLiquidityModal({
               <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>
+
+          {/* Warning if contract not deployed */}
+          {!isValidAddress && (
+            <div className="mb-4 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-yellow-300 mb-1">Contract Not Deployed</p>
+                <p className="text-sm text-yellow-200/80">
+                  The bonding curve contract is not deployed yet. Please deploy the token first before adding liquidity.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex gap-2 mb-6 bg-gray-900/50 rounded-lg p-1">
@@ -309,7 +408,7 @@ export default function AddLiquidityModal({
 
             <button
               onClick={tab === 'buy' ? handleBuy : handleSell}
-              disabled={loading || !isConnected || !amount || parseFloat(amount) <= 0}
+              disabled={loading || !isConnected || !amount || parseFloat(amount) <= 0 || !isValidAddress}
               className="w-full py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
             >
               {loading ? (
