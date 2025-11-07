@@ -35,7 +35,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
 // GET /crosschain/status
 // Get status of all registered tokens
-router.get('/status', async (req: Request, res: Response) => {
+router.get('/status', async (_req: Request, res: Response) => {
   try {
     const relayer = getCrossChainRelayer();
     const status = relayer.getStatus();

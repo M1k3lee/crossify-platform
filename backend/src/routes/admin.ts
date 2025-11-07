@@ -27,23 +27,26 @@ const ADMIN_PASSWORD_HASH = getAdminPasswordHash();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware to verify admin authentication
-function verifyAdmin(req: Request, res: Response, next: Function) {
+function verifyAdmin(req: Request, res: Response, next: Function): void {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Get token from "Bearer TOKEN"
   
   if (!token) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    res.status(401).json({ error: 'Unauthorized: No token provided' });
+    return;
   }
   
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     if (decoded.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden: Invalid role' });
+      res.status(403).json({ error: 'Forbidden: Invalid role' });
+      return;
     }
     (req as any).user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    res.status(401).json({ error: 'Invalid or expired token' });
+    return;
   }
 }
 
@@ -93,9 +96,11 @@ router.post('/login', async (req: Request, res: Response) => {
     
     console.log('✅ Admin login successful');
     res.json({ success: true, token });
+    return;
   } catch (error) {
     console.error('Admin login error:', error);
     res.status(500).json({ error: 'Login failed', details: error instanceof Error ? error.message : 'Unknown error' });
+    return;
   }
 });
 

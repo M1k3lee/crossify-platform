@@ -49,17 +49,17 @@ app.use('/api/crosschain', crosschainRouter);
 app.use('/api/admin', adminRouter);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // API health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'crossify-backend', timestamp: new Date().toISOString() });
 });
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
@@ -92,7 +92,7 @@ async function start() {
     console.log('✅ Unified liquidity pool monitoring started');
 
     // Start cross-chain relayer service (for fee conversion)
-    const relayer = getCrossChainRelayer();
+    getCrossChainRelayer();
     console.log('✅ Cross-chain relayer service started');
 
     // Start server

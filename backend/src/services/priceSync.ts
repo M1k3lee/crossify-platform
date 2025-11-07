@@ -102,12 +102,12 @@ async function checkPriceVariance(tokenId: string, prices: Record<string, number
 async function syncPrices() {
   try {
     // Get all deployed tokens
-    const tokens = db.prepare(`
+    const tokens = await dbAll<{ id: string; chain: string; token_address: string }>(`
       SELECT DISTINCT t.id, td.chain, td.token_address
       FROM tokens t
       JOIN token_deployments td ON t.id = td.token_id
       WHERE td.status = 'deployed' AND td.token_address IS NOT NULL
-    `).all() as Array<{ id: string; chain: string; token_address: string }>;
+    `);
 
     for (const { id, chain, token_address } of tokens) {
       const price = await fetchPrice(id, chain, token_address);

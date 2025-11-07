@@ -4,7 +4,7 @@ import { dbAll } from '../db';
 export const router = Router();
 
 // GET /pools/shared-liquidity
-router.get('/shared-liquidity', async (req: Request, res: Response) => {
+router.get('/shared-liquidity', async (_req: Request, res: Response) => {
   try {
     const pools = await dbAll(`
       SELECT 

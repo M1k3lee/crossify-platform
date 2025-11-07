@@ -629,7 +629,7 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
     const sortedBuckets = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]);
     
     // Fill gaps with previous close price
-    let lastClose = sortedBuckets[0]?.close || 0;
+    let lastClose = sortedBuckets.length > 0 ? sortedBuckets[0][1].close : 0;
     for (let time = startTime; time <= now; time += interval) {
       const bucket = buckets.get(time);
       if (bucket) {

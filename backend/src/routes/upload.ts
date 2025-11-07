@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { uploadToIPFS } from '../services/ipfs';
 
 export const router = Router();
 

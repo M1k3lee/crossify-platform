@@ -159,9 +159,33 @@ export function initializeDatabase(): Promise<void> {
 }
 
 // Helper functions for async operations
-export const dbRun = promisify(db.run.bind(db));
-export const dbGet = promisify(db.get.bind(db));
-export const dbAll = promisify(db.all.bind(db));
+// sqlite3 methods accept (sql, params, callback), so promisified version accepts (sql, params)
+export function dbRun(sql: string, params?: any[]): Promise<sqlite3.RunResult> {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params || [], function(err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+}
+
+export function dbGet<T = any>(sql: string, params?: any[]): Promise<T | undefined> {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params || [], (err, row) => {
+      if (err) reject(err);
+      else resolve(row as T | undefined);
+    });
+  });
+}
+
+export function dbAll<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params || [], (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows as T[]);
+    });
+  });
+}
 
 export default db;
 
