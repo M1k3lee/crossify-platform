@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link, Globe, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { Globe, AlertCircle, CheckCircle, Info } from 'lucide-react';
 
 interface CrossChainToggleProps {
   enabled: boolean;

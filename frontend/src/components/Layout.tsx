@@ -14,7 +14,6 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isConnected } = useAccount();
   const [appLaunched, setAppLaunched] = useState(() => {
     return localStorage.getItem('appLaunched') === 'true';
   });

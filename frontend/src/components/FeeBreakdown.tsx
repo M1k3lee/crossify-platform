@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, Info, Zap, DollarSign } from 'lucide-react';
+import { Info, DollarSign } from 'lucide-react';
 import { ethers } from 'ethers';
 
 interface FeeBreakdownProps {

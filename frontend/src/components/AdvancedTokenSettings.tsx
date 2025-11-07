@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Settings, Zap, Shield, Lock, Users, AlertTriangle } from 'lucide-react';
 
 export interface AdvancedTokenSettings {
