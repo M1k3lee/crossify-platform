@@ -67,7 +67,7 @@ export default function Airdrop() {
       } else {
         setEligibilityStatus({
           isEligible: false,
-          reason: 'Your wallet does not currently meet the eligibility criteria. Complete quests on Galxe or become an early adopter to become eligible.',
+          reason: 'Your wallet does not currently meet the eligibility criteria. Complete quests on Zealy or become an early adopter to become eligible.',
           checked: true,
         });
         toast.error('Not eligible at this time');
@@ -122,7 +122,7 @@ export default function Airdrop() {
           </div>
         </motion.div>
 
-        {/* Galxe Campaign Section */}
+        {/* Zealy Campaign Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -134,10 +134,10 @@ export default function Airdrop() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white mb-2">Galxe Campaign</h2>
+              <h2 className="text-2xl font-bold text-white mb-2">Zealy Campaign</h2>
               <p className="text-gray-300 leading-relaxed">
-                Participate in our official Galxe campaign to earn exclusive rewards and early access to Crossify features. 
-                Complete quests, invite friends, and unlock special NFT badges.
+                Participate in our official Zealy campaign to earn exclusive rewards and early access to Crossify features. 
+                Complete quests, invite friends, and climb the leaderboard to unlock special rewards.
               </p>
             </div>
           </div>
@@ -167,12 +167,12 @@ export default function Airdrop() {
           </div>
 
           <a
-            href="https://galxe.com/crossify"
+            href="https://zealy.io/cw/crossifyio/invite/4G_tDpbtDV0N1QCYDo3qb"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl"
           >
-            <span>Join Galxe Campaign</span>
+            <span>Join Zealy Campaign</span>
             <ExternalLink className="w-5 h-5" />
           </a>
         </motion.div>
@@ -204,8 +204,8 @@ export default function Airdrop() {
             <div className="flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-white font-semibold">Galxe Quest Completers</p>
-                <p className="text-gray-400 text-sm">Users who complete all quests in our Galxe campaign</p>
+                <p className="text-white font-semibold">Zealy Quest Completers</p>
+                <p className="text-gray-400 text-sm">Users who complete all quests in our Zealy campaign</p>
               </div>
             </div>
           </div>
@@ -277,7 +277,7 @@ export default function Airdrop() {
                   <div className="mt-4 pt-4 border-t border-red-500/30">
                     <p className="text-gray-400 text-sm mb-2">To become eligible:</p>
                     <ul className="list-disc list-inside space-y-1 text-gray-400 text-sm">
-                      <li>Complete quests on our Galxe campaign</li>
+                      <li>Complete quests on our <a href="https://zealy.io/cw/crossifyio/invite/4G_tDpbtDV0N1QCYDo3qb" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:text-primary-300 underline">Zealy campaign</a></li>
                       <li>Create a token on testnet before mainnet launch</li>
                       <li>Join our Discord and Twitter communities</li>
                       <li>Be an active community member</li>
