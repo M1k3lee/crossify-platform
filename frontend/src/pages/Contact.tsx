@@ -51,19 +51,12 @@ export default function Contact() {
         );
         const mailtoLink = `mailto:webapp@crossify.io?subject=${emailSubject}&body=${emailBody}`;
         
-        toast.error(
-          <div>
-            <p className="mb-2">Backend service is not available.</p>
-            <a 
-              href={mailtoLink}
-              className="text-primary-400 underline"
-              onClick={() => window.open(mailtoLink)}
-            >
-              Click here to send via email instead
-            </a>
-          </div>,
-          { duration: 10000 }
-        );
+        toast.error('Backend service is not available. Opening email client...', { duration: 5000 });
+        
+        // Open email client after a short delay
+        setTimeout(() => {
+          window.location.href = mailtoLink;
+        }, 500);
       } else {
         toast.error(error.response?.data?.error || 'Failed to send message. Please try again.');
       }
