@@ -2,6 +2,7 @@ import { Book, Code, Zap, Lock, ArrowRight, ExternalLink, FileText, Layers, Netw
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import QuantumBackground from '../components/QuantumBackground';
+import SEO from '../components/SEO';
 
 export default function Docs() {
   const sections = [
@@ -204,8 +205,15 @@ export default function Docs() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
+    <>
+      <SEO
+        title="Documentation - How to Use Crossify | Crossify.io"
+        description="Complete documentation for Crossify token launch platform. Learn how to create tokens, deploy on multiple blockchains, use cross-chain features, and integrate with your project."
+        keywords="crossify documentation, token launch guide, how to use crossify, crossify tutorial, token deployment guide, API documentation, integration guide"
+        url="https://crossify.io/docs"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
       
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-20">
         {/* Header */}

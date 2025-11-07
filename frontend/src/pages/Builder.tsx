@@ -13,8 +13,8 @@ import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import QuantumBackground from '../components/QuantumBackground';
 import { motion } from 'framer-motion';
 import { deployTokenOnEVM, getTestnetInfo } from '../services/blockchain';
-
-const API_BASE = '/api';
+import SEO, { generateHowToSchema } from '../components/SEO';
+import { API_BASE } from '../config/api';
 
 interface TokenData {
   name: string;
@@ -94,6 +94,33 @@ export default function Builder() {
       setCrossChainEnabled(false);
     }
   }, [formData.chains]);
+
+  const builderHowToSteps = [
+    {
+      name: 'Connect Your Wallet',
+      text: 'Connect MetaMask for Ethereum/BSC/Base or Phantom for Solana to begin creating your token.',
+    },
+    {
+      name: 'Enter Token Details',
+      text: 'Provide your token name, symbol, description, and upload a logo. Add social media links for better visibility.',
+    },
+    {
+      name: 'Set Token Economics',
+      text: 'Configure initial supply, base price, bonding curve slope, and fees. Choose buy/sell fee percentages.',
+    },
+    {
+      name: 'Select Blockchains',
+      text: 'Choose which blockchains to deploy on: Ethereum, BSC, Base, and/or Solana. Enable cross-chain sync for price synchronization.',
+    },
+    {
+      name: 'Configure Advanced Settings',
+      text: 'Set mintable, burnable, pausable options, and configure initial token distribution if needed.',
+    },
+    {
+      name: 'Review and Deploy',
+      text: 'Review all settings, check the fee breakdown, and deploy your token. It will be created on all selected chains simultaneously.',
+    },
+  ];
 
   // Validate symbol format
   const validateSymbol = (symbol: string): boolean => {
@@ -473,10 +500,18 @@ export default function Builder() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
-      
-      <div className="relative z-10 max-w-6xl mx-auto p-6 py-12">
+    <>
+      <SEO
+        title="Launch Token - Create Your Token on Multiple Blockchains | Crossify.io"
+        description="Create and deploy your token on Ethereum, BSC, Base, and Solana with one click. Step-by-step token creation tool with advanced settings, bonding curves, and cross-chain synchronization."
+        keywords="launch token, create token, deploy token, token builder, token creator, memecoin creator, create memecoin, token launch tool, multi-chain token, cross-chain token, ethereum token, solana token, BSC token, base token, token deployment, defi token"
+        url="https://crossify.io/builder"
+        schema={generateHowToSchema(builderHowToSteps)}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
+        
+        <div className="relative z-10 max-w-6xl mx-auto p-6 py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

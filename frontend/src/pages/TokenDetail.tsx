@@ -15,8 +15,8 @@ import TokenChart from '../components/TokenChart';
 import MarketDepthChart from '../components/MarketDepthChart';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-
-const API_BASE = '/api';
+import SEO from '../components/SEO';
+import { API_BASE } from '../config/api';
 
 const CHAIN_COLORS: Record<string, string> = {
   ethereum: '#627EEA',
@@ -80,26 +80,42 @@ export default function TokenDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
-        <div className="text-center">
+      <>
+        <SEO
+          title={`${tokenName} (${tokenSymbol}) - Token Details | Crossify.io`}
+          description={tokenDescription}
+          url={`https://crossify.io/token/${id}`}
+        />
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
+          <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
           <p className="mt-4 text-gray-400">Loading token details...</p>
         </div>
       </div>
+      </>
     );
   }
 
   if (!status) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-xl text-gray-400">Token not found</p>
+      <>
+        <SEO
+          title={`${tokenName} (${tokenSymbol}) - Token Details | Crossify.io`}
+          description={tokenDescription}
+          url={`https://crossify.io/token/${id}`}
+        />
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-xl text-gray-400">Token not found</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  const totalMarketCap = status.deployments?.reduce((sum: number, dep: any) => sum + (dep.marketCap || 0), 0) || 0;
+  const token = status.token;
+  const deployments = status.deployments || [];
+  const totalMarketCap = deployments.reduce((sum: number, dep: any) => sum + (dep.marketCap || 0), 0);
   const totalLiquidity = totalMarketCap * 0.7;
   const liquidityChange24h = 2.1;
 
@@ -522,5 +538,6 @@ export default function TokenDetail() {
         />
       )}
     </div>
+    </>
   );
 }

@@ -22,8 +22,8 @@ const getApiBase = (): string => {
 
 export const API_BASE = getApiBase();
 
-// Log for debugging (always log in production to help debug)
-console.log('🔗 API Base URL:', API_BASE);
-console.log('🔗 VITE_API_BASE env:', import.meta.env.VITE_API_BASE);
-console.log('🔗 PROD mode:', import.meta.env.PROD);
+// Log for debugging (only in development)
+if (import.meta.env.DEV) {
+  console.log('🔗 API Base URL:', API_BASE);
+}
 

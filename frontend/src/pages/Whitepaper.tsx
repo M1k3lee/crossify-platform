@@ -2,11 +2,19 @@ import { FileText, Target, Zap, Globe, TrendingUp, Users, Calendar, Rocket, Arro
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import QuantumBackground from '../components/QuantumBackground';
+import SEO from '../components/SEO';
 
 export default function Whitepaper() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
+    <>
+      <SEO
+        title="Whitepaper - Crossify Platform Overview | Crossify.io"
+        description="Read the Crossify whitepaper to learn about our multi-chain token launch platform, cross-chain synchronization technology, tokenomics, and roadmap."
+        keywords="crossify whitepaper, token launch platform, cross-chain technology, LayerZero, multi-chain tokens, platform overview, technical documentation"
+        url="https://crossify.io/whitepaper"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
       
       <div className="relative z-10 max-w-4xl mx-auto px-6 py-20">
         {/* Header */}

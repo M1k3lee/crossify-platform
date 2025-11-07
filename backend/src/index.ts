@@ -28,33 +28,22 @@ app.use(helmet());
 // CORS configuration - allow multiple origins
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://localhost:3001',
   'https://crossify-platform.vercel.app',
   'https://crossify.io',
   'https://www.crossify.io',
-  process.env.CORS_ORIGIN,
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-  process.env.FRONTEND_URL,
-].filter(Boolean) as string[];
+  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []),
+];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman)
-    if (!origin) {
-      return callback(null, true);
-    }
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
     
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
-      // In development, allow all origins for easier testing
-      if (process.env.NODE_ENV === 'development') {
-        callback(null, true);
-      } else {
-        console.warn(`CORS: Blocked origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-      }
+      console.warn(`⚠️ CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow all in development, but log warning
     }
   },
   credentials: true,

@@ -6,11 +6,19 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import QuantumBackground from '../components/QuantumBackground';
+import SEO from '../components/SEO';
 
 export default function Tokenomics() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
+    <>
+      <SEO
+        title="CFY Tokenomics - Crossify Token Economics | Crossify.io"
+        description="Learn about CFY token economics, distribution, staking rewards, buyback mechanisms, and token utility. CFY powers the Crossify ecosystem with deflationary mechanics and governance."
+        keywords="CFY token, crossify token, tokenomics, token economics, token distribution, staking rewards, buyback, token burn, deflationary token, governance token"
+        url="https://crossify.io/tokenomics"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
       
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">
         {/* Header */}

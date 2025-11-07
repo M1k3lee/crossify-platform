@@ -12,7 +12,7 @@ import QuantumBackground from '../components/QuantumBackground';
 import toast from 'react-hot-toast';
 import { mintTokens, burnTokens, pauseToken, updateBondingCurveFees } from '../services/tokenManagement';
 
-const API_BASE = '/api';
+import { API_BASE } from '../config/api';
 
 interface TokenCapabilities {
   mintable: boolean;

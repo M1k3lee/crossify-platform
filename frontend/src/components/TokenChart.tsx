@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import axios from 'axios';
-
-const API_BASE = '/api';
+import { API_BASE } from '../config/api';
 
 interface ChartDataPoint {
   time: number;

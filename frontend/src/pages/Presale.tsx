@@ -5,8 +5,15 @@ import QuantumBackground from '../components/QuantumBackground';
 
 export default function Presale() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
+    <>
+      <SEO
+        title="Presale - Early Access to CFY Token | Crossify.io"
+        description="Join the CFY token presale for early access. Get exclusive pricing and bonuses by participating in our token presale before the public launch."
+        keywords="CFY presale, token presale, early access, CFY token sale, presale bonus, token investment, crypto presale"
+        url="https://crossify.io/presale"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
       
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-20">
         {/* Header */}

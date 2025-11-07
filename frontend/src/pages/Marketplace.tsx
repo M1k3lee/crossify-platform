@@ -6,13 +6,14 @@ import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-
-const API_BASE = '/api';
+import SEO from '../components/SEO';
+import { API_BASE } from '../config/api';
 
 export default function Marketplace() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
   const [filters, setFilters] = useState({
     chains: [] as string[],
     status: [] as string[],
@@ -66,10 +67,17 @@ export default function Marketplace() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
-      
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+    <>
+      <SEO
+        title="Token Marketplace - Discover and Trade Tokens | Crossify.io"
+        description="Browse and discover tokens launched on Crossify. Find the latest memecoins and tokens across Ethereum, BSC, Base, and Solana. Buy, sell, and trade tokens with cross-chain price synchronization."
+        keywords="token marketplace, memecoin marketplace, buy tokens, trade tokens, token discovery, crypto tokens, defi tokens, ethereum tokens, solana tokens, BSC tokens, base tokens, token trading, cross-chain tokens"
+        url="https://crossify.io/marketplace"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

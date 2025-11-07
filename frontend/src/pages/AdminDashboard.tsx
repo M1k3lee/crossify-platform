@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '/api' : 'http://localhost:3001/api');
+import { API_BASE } from '../config/api';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();

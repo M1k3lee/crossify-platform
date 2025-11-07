@@ -3,6 +3,7 @@ import { Gift, CheckCircle, Clock, Users, ExternalLink, Sparkles, Zap, AlertCirc
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import toast from 'react-hot-toast';
+import SEO from '../components/SEO';
 
 export default function Airdrop() {
   const [walletAddress, setWalletAddress] = useState('');
@@ -82,8 +83,15 @@ export default function Airdrop() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
+    <>
+      <SEO
+        title="Airdrop - Earn CFY Tokens | Crossify.io"
+        description="Join the Crossify airdrop campaign and earn CFY tokens. Complete quests on Zealy, become an early adopter, and participate in our community to receive free tokens."
+        keywords="airdrop, crypto airdrop, token airdrop, CFY token, free tokens, zealy campaign, token rewards, community airdrop, early adopter rewards"
+        url="https://crossify.io/airdrop"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
       
       <div className="relative z-10 max-w-6xl mx-auto px-6 py-20">
         {/* Header */}
@@ -323,6 +331,7 @@ export default function Airdrop() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

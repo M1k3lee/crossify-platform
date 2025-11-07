@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import axios from 'axios';
-
-const API_BASE = '/api';
+import { API_BASE } from '../config/api';
 
 interface MarketDepthChartProps {
   tokenId: string;

@@ -2,10 +2,80 @@ import { Link } from 'react-router-dom';
 import { Rocket, Zap, Globe, TrendingUp, Sparkles, ArrowRight, Network, Layers, Shield, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
+import SEO, { generateOrganizationSchema, generateWebSiteSchema, generateSoftwareApplicationSchema, generateHowToSchema, generateFAQSchema } from '../components/SEO';
 
 export default function Home() {
+  const howToSteps = [
+    {
+      name: 'Connect Your Wallet',
+      text: 'Connect your MetaMask or Phantom wallet to get started with token creation.',
+    },
+    {
+      name: 'Configure Your Token',
+      text: 'Set your token name, symbol, initial supply, and bonding curve parameters.',
+    },
+    {
+      name: 'Select Blockchains',
+      text: 'Choose which blockchains to deploy on: Ethereum, BSC, Base, or Solana.',
+    },
+    {
+      name: 'Deploy Your Token',
+      text: 'Click deploy and your token will be created simultaneously on all selected chains.',
+    },
+  ];
+
+  const faqs = [
+    {
+      question: 'How do I launch a token on multiple blockchains?',
+      answer: 'Crossify allows you to launch your token simultaneously on Ethereum, BSC, Base, and Solana with one click. Simply configure your token settings and select the blockchains you want to deploy on.',
+    },
+    {
+      question: 'What is cross-chain price synchronization?',
+      answer: 'Cross-chain price synchronization ensures your token maintains the same price across all blockchains automatically. When someone buys on Ethereum, the price updates on all other chains within minutes.',
+    },
+    {
+      question: 'How much does it cost to launch a token?',
+      answer: 'Token creation on Crossify is free on testnet. On mainnet, there is a small platform fee plus blockchain gas fees for deployment. No hidden costs.',
+    },
+    {
+      question: 'Can I launch a memecoin using Crossify?',
+      answer: 'Yes! Crossify is perfect for launching memecoins and tokens. You can customize all aspects of your token including name, symbol, logo, and initial distribution.',
+    },
+    {
+      question: 'Which blockchains does Crossify support?',
+      answer: 'Crossify currently supports Ethereum, Binance Smart Chain (BSC), Base, and Solana. More blockchains will be added in the future.',
+    },
+  ];
+
+  const homeSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: 'Crossify.io - Launch Your Token on All Chains',
+    description: 'Launch your token simultaneously on Ethereum, BSC, Base, and Solana with one click.',
+    url: 'https://crossify.io',
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+    <>
+      <SEO
+        title="Crossify.io - Launch Your Token on All Chains | How to Launch a Memecoin"
+        description="Launch your token or memecoin simultaneously on Ethereum, BSC, Base, and Solana with one click. Crossify is the easiest way to create and deploy tokens with automatic cross-chain price synchronization. Learn how to launch a token today!"
+        keywords="crossify, launch token, launch memecoin, how to launch a memecoin, how to launch a token, create token, deploy token, multi-chain token, cross-chain token, token launch platform, memecoin launch, token creator, ethereum token, solana token, BSC token, base token, cross-chain sync, token deployment, defi token, crypto token launch, create memecoin, launch crypto token"
+        schema={homeSchema}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            generateOrganizationSchema(),
+            generateWebSiteSchema(),
+            generateSoftwareApplicationSchema(),
+            generateHowToSchema(howToSteps),
+            generateFAQSchema(faqs),
+          ]),
+        }}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
       <QuantumBackground />
       
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">

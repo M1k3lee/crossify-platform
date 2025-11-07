@@ -35,18 +35,43 @@ export default function Contact() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    try {
-      const url = `${API_BASE}/contact`;
-      console.log('📧 Contact form submitting to:', url);
-      await axios.post(url, formData);
-      toast.success('Message sent successfully! We\'ll get back to you soon.');
-      setIsSubmitted(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
+        try {
+          console.log('📧 Sending contact form to:', `${API_BASE}/contact`);
+          const response = await axios.post(`${API_BASE}/contact`, formData, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          console.log('✅ Contact form sent successfully:', response.data);
+          toast.success('Message sent successfully! We\'ll get back to you soon.');
+          setIsSubmitted(true);
+          setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error: any) {
-      console.error('Contact form error:', error);
+      console.error('❌ Contact form error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+      });
       
-      // Check if it's a 405 (backend not deployed) or network error
-      if (error.response?.status === 405 || error.code === 'ERR_NETWORK' || error.message?.includes('405')) {
+      // Check if it's a CORS error
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('CORS') || error.message?.includes('blocked')) {
+        toast.error('CORS error: Backend CORS not configured for this domain. Please check backend settings.', { duration: 7000 });
+        
+        // Fallback: Open email client
+        const emailSubject = encodeURIComponent(formData.subject || 'Contact Form Submission');
+        const emailBody = encodeURIComponent(
+          `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
+        );
+        const mailtoLink = `mailto:webapp@crossify.io?subject=${emailSubject}&body=${emailBody}`;
+        
+        setTimeout(() => {
+          window.location.href = mailtoLink;
+        }, 1000);
+      } else if (error.response?.status === 405 || error.code === 'ERR_NETWORK') {
         // Fallback: Open email client with pre-filled message
         const emailSubject = encodeURIComponent(formData.subject || 'Contact Form Submission');
         const emailBody = encodeURIComponent(

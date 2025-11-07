@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://crossify.io/sitemap.xml
+
+# Disallow admin and private routes
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /api/
+
+# Allow important pages
+Allow: /
+Allow: /marketplace
+Allow: /builder
+Allow: /airdrop
+Allow: /presale
+Allow: /contact
+Allow: /docs
+Allow: /whitepaper
+Allow: /tokenomics
+
+# Crawl delay (optional - be nice to servers)
+Crawl-delay: 1
+

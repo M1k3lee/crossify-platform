@@ -6,7 +6,7 @@ import QuantumBackground from '../components/QuantumBackground';
 import axios from 'axios';
 import { useAccount } from 'wagmi';
 
-const API_BASE = '/api';
+import { API_BASE } from '../config/api';
 
 export default function Dashboard() {
   const { address } = useAccount();
