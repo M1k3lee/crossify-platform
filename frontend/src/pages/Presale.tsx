@@ -2,6 +2,7 @@ import { Clock, Zap, TrendingUp, Users, Lock, Gift, ArrowRight } from 'lucide-re
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import QuantumBackground from '../components/QuantumBackground';
+import SEO from '../components/SEO';
 
 export default function Presale() {
   return (
@@ -170,6 +171,7 @@ export default function Presale() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }
 

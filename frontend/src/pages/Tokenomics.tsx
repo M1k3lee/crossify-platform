@@ -831,6 +831,7 @@ export default function Tokenomics() {
         </motion.section>
       </div>
     </div>
+    </>
   );
 }
 

@@ -1001,6 +1001,7 @@ export default function Builder() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }
 

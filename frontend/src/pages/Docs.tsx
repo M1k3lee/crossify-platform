@@ -360,6 +360,7 @@ export default function Docs() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }
 

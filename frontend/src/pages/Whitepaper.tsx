@@ -599,6 +599,7 @@ export default function Whitepaper() {
         </motion.div>
       </div>
     </div>
+    </>
   );
 }
 

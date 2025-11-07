@@ -82,8 +82,8 @@ export default function TokenDetail() {
     return (
       <>
         <SEO
-          title={`${tokenName} (${tokenSymbol}) - Token Details | Crossify.io`}
-          description={tokenDescription}
+          title="Loading Token - Crossify.io"
+          description="Loading token details..."
           url={`https://crossify.io/token/${id}`}
         />
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
@@ -100,8 +100,8 @@ export default function TokenDetail() {
     return (
       <>
         <SEO
-          title={`${tokenName} (${tokenSymbol}) - Token Details | Crossify.io`}
-          description={tokenDescription}
+          title="Token Not Found - Crossify.io"
+          description="The token you're looking for doesn't exist."
           url={`https://crossify.io/token/${id}`}
         />
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
@@ -119,11 +119,19 @@ export default function TokenDetail() {
   const totalLiquidity = totalMarketCap * 0.7;
   const liquidityChange24h = 2.1;
 
-  const allGraduated = status.deployments?.every((dep: any) => dep.isGraduated) || false;
-  const someGraduated = status.deployments?.some((dep: any) => dep.isGraduated) || false;
+  const allGraduated = deployments.every((dep: any) => dep.isGraduated) || false;
+  const someGraduated = deployments.some((dep: any) => dep.isGraduated) || false;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
+    <>
+      <SEO
+        title={`${token.name} (${token.symbol}) - Token Details, Price, Charts | Crossify.io`}
+        description={token.description || `View ${token.name} (${token.symbol}) token details, price charts, market depth, and trading information. Trade ${token.symbol} on Ethereum, BSC, Base, and Solana.`}
+        keywords={`${token.name}, ${token.symbol}, token price, token chart, token trading, ${token.symbol} price, buy ${token.symbol}, trade ${token.symbol}, memecoin, defi token`}
+        url={`https://crossify.io/token/${id}`}
+        image={token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : 'https://crossify.io/og-image.png'}
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
       {/* Header */}
       <div className="bg-gray-900/90 backdrop-blur-sm border-b border-gray-800 p-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -537,7 +545,7 @@ export default function TokenDetail() {
           }}
         />
       )}
-    </div>
+      </div>
     </>
   );
 }

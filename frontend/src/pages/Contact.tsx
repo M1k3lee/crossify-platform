@@ -132,12 +132,19 @@ export default function Contact() {
           </motion.div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      <QuantumBackground />
+    <>
+      <SEO
+        title="Contact Us - Get in Touch | Crossify.io"
+        description="Have questions about Crossify? Contact our team for support, partnerships, or general inquiries. We're here to help you launch your token successfully."
+        url="https://crossify.io/contact"
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
+        <QuantumBackground />
       
       <div className="relative z-10 max-w-4xl mx-auto px-6 py-20">
         {/* Header */}
@@ -321,6 +328,7 @@ export default function Contact() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
