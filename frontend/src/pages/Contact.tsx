@@ -34,13 +34,39 @@ export default function Contact() {
     setIsSubmitting(true);
 
     try {
-      await axios.post('/api/contact', formData);
+      const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '/api' : 'http://localhost:3001/api');
+      await axios.post(`${API_BASE}/contact`, formData);
       toast.success('Message sent successfully! We\'ll get back to you soon.');
       setIsSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error: any) {
       console.error('Contact form error:', error);
-      toast.error(error.response?.data?.error || 'Failed to send message. Please try again.');
+      
+      // Check if it's a 405 (backend not deployed) or network error
+      if (error.response?.status === 405 || error.code === 'ERR_NETWORK' || error.message?.includes('405')) {
+        // Fallback: Open email client with pre-filled message
+        const emailSubject = encodeURIComponent(formData.subject || 'Contact Form Submission');
+        const emailBody = encodeURIComponent(
+          `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
+        );
+        const mailtoLink = `mailto:webapp@crossify.io?subject=${emailSubject}&body=${emailBody}`;
+        
+        toast.error(
+          <div>
+            <p className="mb-2">Backend service is not available.</p>
+            <a 
+              href={mailtoLink}
+              className="text-primary-400 underline"
+              onClick={() => window.open(mailtoLink)}
+            >
+              Click here to send via email instead
+            </a>
+          </div>,
+          { duration: 10000 }
+        );
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to send message. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -134,10 +160,13 @@ export default function Contact() {
               <h3 className="text-lg font-semibold text-white mb-2">Email</h3>
               <a
                 href="mailto:webapp@crossify.io"
-                className="text-primary-400 hover:text-primary-300 transition-colors text-sm"
+                className="text-primary-400 hover:text-primary-300 transition-colors text-sm break-all"
               >
                 webapp@crossify.io
               </a>
+              <p className="text-gray-500 text-xs mt-2">
+                Click to send email directly
+              </p>
             </div>
 
             <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
