@@ -723,22 +723,27 @@ router.get('/:id/market-depth', async (req: Request, res: Response) => {
       const basePrice = parseFloat(token.base_price || '0');
       const slope = parseFloat(token.slope || '0');
       
-      // Calculate current price
-      const currentPrice = basePrice + (slope * currentSupply);
+      // Calculate current price (per token in wei, convert to readable)
+      const currentPriceWei = basePrice + (slope * currentSupply);
+      const currentPrice = currentPriceWei / Math.pow(10, 18);
       
       // Generate buy orders (what users would pay for different amounts)
       const buyOrders: Array<{ price: number; amount: number; total: number }> = [];
       const sellOrders: Array<{ price: number; amount: number; total: number }> = [];
       
       // Buy orders: simulate buying different amounts
+      // Formula: price = basePrice + (slope * (supply + amount/2))
       for (let i = 1; i <= 20; i++) {
-        const amount = (currentSupply * 0.05 * i) / Math.pow(10, 18); // 5% increments
-        const priceForAmount = basePrice + (slope * (currentSupply + (amount * Math.pow(10, 18)) / 2));
-        const totalCost = priceForAmount * amount;
+        const amountWei = (currentSupply * 0.05 * i); // 5% increments in wei
+        const amountTokens = amountWei / Math.pow(10, 18);
+        
+        // Average price for this amount (using bonding curve formula)
+        const avgPrice = basePrice + (slope * (currentSupply + amountWei / 2));
+        const totalCost = (avgPrice * amountWei) / Math.pow(10, 18);
         
         buyOrders.push({
-          price: priceForAmount,
-          amount: amount,
+          price: avgPrice / Math.pow(10, 18), // Convert to readable price
+          amount: amountTokens,
           total: totalCost,
         });
       }
@@ -746,14 +751,20 @@ router.get('/:id/market-depth', async (req: Request, res: Response) => {
       // Sell orders: simulate selling different amounts
       // For selling, price decreases as supply decreases
       const availableSupply = currentSupply;
-      for (let i = 1; i <= 20; i++) {
-        const amount = (availableSupply * 0.05 * i) / Math.pow(10, 18); // 5% of available
-        const priceAfterSell = basePrice + (slope * (currentSupply - (amount * Math.pow(10, 18))));
-        const totalReceived = priceAfterSell * amount;
+      for (let i = 1; i <= 20 && (availableSupply * 0.05 * i) < availableSupply; i++) {
+        const amountWei = (availableSupply * 0.05 * i); // 5% of available in wei
+        const amountTokens = amountWei / Math.pow(10, 18);
+        
+        // Price after selling (supply decreases)
+        const supplyAfterSell = currentSupply - amountWei;
+        if (supplyAfterSell < 0) break;
+        
+        const avgPrice = basePrice + (slope * (supplyAfterSell + amountWei / 2));
+        const totalReceived = (avgPrice * amountWei) / Math.pow(10, 18);
         
         sellOrders.push({
-          price: priceAfterSell,
-          amount: amount,
+          price: avgPrice / Math.pow(10, 18), // Convert to readable price
+          amount: amountTokens,
           total: totalReceived,
         });
       }
