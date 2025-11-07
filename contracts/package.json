@@ -1,0 +1,37 @@
+{
+  "name": "crossify-contracts",
+  "version": "1.0.0",
+  "description": "Crossify.io Smart Contracts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "deploy:bsc": "hardhat run scripts/deploy.ts --network bscTestnet",
+    "deploy:base": "hardhat run scripts/deploy.ts --network baseSepolia",
+    "verify": "hardhat verify"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.5",
+    "chai": "^4.3.10",
+    "dotenv": "^16.3.1",
+    "hardhat": "^2.19.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.144",
+    "@openzeppelin/contracts": "^5.4.0"
+  },
+  "author": {
+    "name": "M1k3lee",
+    "email": "mikewady@gmail.com"
+  },
+  "license": "MIT"
+}
+
+
+

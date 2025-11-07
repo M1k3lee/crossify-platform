@@ -1,0 +1,54 @@
+name: Deploy Contracts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'contracts/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: contracts/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./contracts
+        run: npm ci
+      
+      - name: Compile contracts
+        working-directory: ./contracts
+        run: npm run compile
+      
+      - name: Run tests
+        working-directory: ./contracts
+        run: npm test
+        env:
+          ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
+          ETHEREUM_PRIVATE_KEY: ${{ secrets.ETHEREUM_PRIVATE_KEY }}
+      
+      # Deploy to testnets (optional - uncomment when ready)
+      # - name: Deploy to Sepolia
+      #   working-directory: ./contracts
+      #   run: npm run deploy:sepolia
+      #   env:
+      #     ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
+      #     ETHEREUM_PRIVATE_KEY: ${{ secrets.ETHEREUM_PRIVATE_KEY }}
+
+
+
+
+
+
+
+

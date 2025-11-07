@@ -1,0 +1,31 @@
+{
+  "name": "crossify-platform",
+  "version": "1.0.0",
+  "description": "Crossify.io - Multichain Token Launch Platform",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install && cd ../contracts && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build:contracts": "cd contracts && npm run compile"
+  },
+  "author": {
+    "name": "M1k3lee",
+    "email": "mikewady@gmail.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/M1k3lee/crossify-platform.git"
+  }
+}
+
+
+
+
+
+
+
+
