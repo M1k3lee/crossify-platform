@@ -1,7 +1,5 @@
 import { getRedisClient, cachePrice, getAllPrices } from './redis';
-import { db } from '../db';
-import { ethers } from 'ethers';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { dbAll } from '../db';
 
 const PRICE_SYNC_INTERVAL = 10000; // 10 seconds
 const MAX_VARIANCE = 0.005; // 0.5%

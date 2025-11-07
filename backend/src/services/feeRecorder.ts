@@ -1,6 +1,6 @@
 // Service for recording platform fees to the database
 import axios from 'axios';
-import { dbRun } from '../db';
+import { dbRun, dbAll } from '../db';
 
 const API_BASE = process.env.API_BASE || 'http://localhost:3001/api';
 const PLATFORM_API_KEY = process.env.PLATFORM_API_KEY || 'your-api-key';
@@ -203,7 +203,7 @@ export async function getTotalFeesCollected(period: 'day' | 'week' | 'month' = '
     if (period === 'day') dateFilter = "datetime('now', '-1 day')";
     if (period === 'week') dateFilter = "datetime('now', '-7 days')";
     
-    const fees = await dbRun(
+    const fees = await dbAll<{ fee_type: string; total: number }>(
       `SELECT 
         fee_type,
         SUM(amount_usd) as total
@@ -211,7 +211,7 @@ export async function getTotalFeesCollected(period: 'day' | 'week' | 'month' = '
       WHERE collected_at >= ${dateFilter}
       AND status = 'confirmed'
       GROUP BY fee_type`
-    ) as any[];
+    );
     
     const byType: Record<string, number> = {};
     let totalUsd = 0;
