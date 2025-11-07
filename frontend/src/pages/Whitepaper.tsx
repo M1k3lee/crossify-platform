@@ -1,4 +1,4 @@
-import { FileText, Target, Zap, Globe, TrendingUp, Users, Calendar, Rocket, ArrowRight, Coins } from 'lucide-react';
+import { FileText, Target, Zap, Globe, TrendingUp, Users, Calendar, Rocket, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import QuantumBackground from '../components/QuantumBackground';

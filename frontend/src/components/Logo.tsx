@@ -22,6 +22,9 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     if (!context) return;
+    
+    // TypeScript: context is guaranteed to be non-null after this check
+    const ctx = context;
 
     const width = canvas.width;
     const height = canvas.height;
@@ -54,19 +57,19 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
 
     function animate() {
       time += 0.016;
-      context.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, width, height);
 
       // Enhanced central glow with pulsing
       const pulseIntensity = 0.7 + Math.sin(time * 2) * 0.3;
-      const gradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * 0.5);
+      const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * 0.5);
       gradient.addColorStop(0, `rgba(59, 130, 246, ${0.8 * pulseIntensity})`);
       gradient.addColorStop(0.4, `rgba(147, 51, 234, ${0.5 * pulseIntensity})`);
       gradient.addColorStop(0.7, `rgba(236, 72, 153, ${0.3 * pulseIntensity})`);
       gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-      context.fillStyle = gradient;
-      context.beginPath();
-      context.arc(centerX, centerY, width * 0.5, 0, Math.PI * 2);
-      context.fill();
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, width * 0.5, 0, Math.PI * 2);
+      ctx.fill();
 
       // Dynamic connecting lines
       for (let i = 0; i < particles.length; i++) {
@@ -84,12 +87,12 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
         const g = Math.floor(130 + Math.sin(colorPhase + Math.PI * 2/3) * 60);
         const b = Math.floor(246 + Math.sin(colorPhase + Math.PI * 4/3) * 60);
         
-        context.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.4 + Math.sin(time + i) * 0.2})`;
-        context.lineWidth = 1.5;
-        context.beginPath();
-        context.moveTo(x1, y1);
-        context.lineTo(x2, y2);
-        context.stroke();
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.4 + Math.sin(time + i) * 0.2})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
       }
 
       // Enhanced particles
@@ -102,19 +105,19 @@ export default function Logo({ className = '', size = 'md', animated = true }: L
         const g = Math.floor(197 + Math.sin(colorPhase + Math.PI * 2/3) * 40);
         const b = Math.floor(253);
 
-        const particleGradient = context.createRadialGradient(x, y, 0, x, y, p.size * 3);
+        const particleGradient = ctx.createRadialGradient(x, y, 0, x, y, p.size * 3);
         particleGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${p.opacity})`);
         particleGradient.addColorStop(0.5, `rgba(${r - 50}, ${g - 50}, ${b}, ${p.opacity * 0.5})`);
         particleGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-        context.fillStyle = particleGradient;
-        context.beginPath();
-        context.arc(x, y, p.size * 3, 0, Math.PI * 2);
-        context.fill();
+        ctx.fillStyle = particleGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, p.size * 3, 0, Math.PI * 2);
+        ctx.fill();
 
-        context.fillStyle = `rgba(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, 255, ${p.opacity + 0.2})`;
-        context.beginPath();
-        context.arc(x, y, p.size * 0.8, 0, Math.PI * 2);
-        context.fill();
+        ctx.fillStyle = `rgba(${Math.min(255, r + 50)}, ${Math.min(255, g + 50)}, 255, ${p.opacity + 0.2})`;
+        ctx.beginPath();
+        ctx.arc(x, y, p.size * 0.8, 0, Math.PI * 2);
+        ctx.fill();
       });
 
       // Enhanced center X symbol

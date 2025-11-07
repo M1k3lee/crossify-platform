@@ -41,7 +41,6 @@ export default function Builder() {
   const [loading, setLoading] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const { isConnected, address } = useAccount();
-  const { data: walletClient } = useWalletClient();
   const solanaWallet = useSolanaWallet();
   
   const [formData, setFormData] = useState<TokenData>({
@@ -140,7 +139,7 @@ export default function Builder() {
     }
 
     // Auto-disable cross-chain if only one chain selected
-    const actualCrossChainEnabled = formData.chains.length > 1 ? crossChainEnabled : false;
+    // actualCrossChainEnabled will be calculated in handleSubmit
 
     // Validate initialSupply
     if (!/^\d+$/.test(formData.initialSupply)) {

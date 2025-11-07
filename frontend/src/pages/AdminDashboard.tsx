@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { 
   Lock, TrendingUp, DollarSign, Coins, Activity, 
-  BarChart3, Users, ArrowRight, LogOut, RefreshCw 
+  BarChart3, Users, LogOut, RefreshCw 
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -17,7 +17,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [selectedTab, setSelectedTab] = useState<'overview' | 'tokens' | 'fees' | 'statistics'>('overview');
-  const [tokenPage, setTokenPage] = useState(1);
   const [feePeriod, setFeePeriod] = useState('30d');
 
   useEffect(() => {
@@ -68,19 +67,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchFees = async () => {
-    try {
-      const token = localStorage.getItem('admin_token');
-      const response = await axios.get(`${API_BASE}/admin/fees`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { period: feePeriod },
-      });
-      return response.data;
-    } catch (error) {
-      toast.error('Failed to fetch fees');
-      return null;
-    }
-  };
+  // fetchFees function - kept for future use
+  // const fetchFees = async () => {
+  //   try {
+  //     const token = localStorage.getItem('admin_token');
+  //     const response = await axios.get(`${API_BASE}/admin/fees`, {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //       params: { period: feePeriod },
+  //     });
+  //     return response.data;
+  //   } catch (error) {
+  //     toast.error('Failed to fetch fees');
+  //     return null;
+  //   }
+  // };
 
   // Auto-refresh every 30 seconds
   useEffect(() => {

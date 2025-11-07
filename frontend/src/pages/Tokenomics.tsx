@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, DollarSign, Flame, Zap, Users, 
-  BarChart3, PieChart, Target, Rocket, Lock,
+  BarChart3, PieChart, Target, Rocket,
   ArrowRight, CheckCircle, Gift, Coins, Shield
 } from 'lucide-react';
 import { Link } from 'react-router-dom';

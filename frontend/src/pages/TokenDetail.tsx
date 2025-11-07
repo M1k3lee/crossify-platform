@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   AlertCircle, Copy, CheckCircle, 
-  Zap, Twitter, MessageCircle, Link as LinkIcon,
-  Home, Coins, Bell, TrendingUp, TrendingDown, ExternalLink, Settings
+  Zap, Twitter, MessageCircle,
+  TrendingUp, TrendingDown, ExternalLink, Settings
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Filter, TrendingUp, Network, Globe, Layers, Sparkles, Zap, ArrowRight } from 'lucide-react';
+import { Search, Filter, Network, Globe, Layers, Sparkles, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import axios from 'axios';

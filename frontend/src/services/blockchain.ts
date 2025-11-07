@@ -1,5 +1,5 @@
 // Frontend blockchain service for real testnet deployments
-import { ethers, BrowserProvider, JsonRpcProvider } from 'ethers';
+import { ethers, BrowserProvider } from 'ethers';
 
 // Helper to get the preferred EVM provider (MetaMask > others)
 export function getPreferredEVMProvider(): any {
@@ -318,8 +318,10 @@ export async function deployTokenOnEVM(
       try {
         // Try to decode as a custom error
         const reason = factory.interface.parseError(estimateError.data);
-        errorMessage = `Transaction will revert: ${reason.name}`;
-        console.error(`Decoded error:`, reason);
+        if (reason) {
+          errorMessage = `Transaction will revert: ${reason.name}`;
+          console.error(`Decoded error:`, reason);
+        }
       } catch (parseError) {
         // Try to decode as a string revert
         try {
@@ -354,7 +356,9 @@ export async function deployTokenOnEVM(
 
   // Deploy token - THIS SHOULD TRIGGER METAMASK POPUP
   console.log(`📝 Calling createToken function - MetaMask should pop up now...`);
-  console.log(`⛽ Using gas limit: ${gasEstimate.toString()}`);
+  if (gasEstimate) {
+    console.log(`⛽ Using gas limit: ${gasEstimate.toString()}`);
+  }
   
   // Get current gas price to ensure transaction can be mined
   // Set minimum gas prices per chain (in Gwei)
@@ -408,7 +412,9 @@ export async function deployTokenOnEVM(
     console.log(`📋 Transaction details:`);
     console.log(`   To: ${factoryAddress}`);
     console.log(`   From: ${signerAddress}`);
-    console.log(`   Gas Limit: ${gasEstimate.toString()}`);
+    if (gasEstimate) {
+      console.log(`   Gas Limit: ${gasEstimate.toString()}`);
+    }
     console.log(`   Gas Price: ${txOptions.gasPrice ? ethers.formatUnits(txOptions.gasPrice, 'gwei') : 'auto'} Gwei`);
     
     // Build the function call manually to verify encoding
@@ -428,9 +434,11 @@ export async function deployTokenOnEVM(
     
     // Use the gas estimate we got (or default if estimation failed)
     // Increase gas limit by 20% to account for variations
-    const adjustedGasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
-    txOptions.gasLimit = adjustedGasLimit;
-    console.log(`⛽ Adjusted gas limit: ${adjustedGasLimit.toString()} (20% buffer added)`);
+    if (gasEstimate) {
+      const adjustedGasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
+      txOptions.gasLimit = adjustedGasLimit;
+      console.log(`⛽ Adjusted gas limit: ${adjustedGasLimit.toString()} (20% buffer added)`);
+    }
     
     const createTx = await factory.createToken(
       config.tokenData.name,
@@ -550,7 +558,9 @@ export async function deployTokenOnEVM(
       try {
         // Try to decode the error data
         const reason = factory.interface.parseError(error.data);
-        errorMessage = `Transaction reverted: ${reason.name}`;
+        if (reason) {
+          errorMessage = `Transaction reverted: ${reason.name}`;
+        }
       } catch (decodeError) {
         // If we can't decode, try to get more info from the error
         if (error.data && typeof error.data === 'string') {
