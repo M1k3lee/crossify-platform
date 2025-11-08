@@ -4,7 +4,7 @@ import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-reac
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
-import { getTestnetInfo, getPreferredEVMProvider } from '../services/blockchain';
+import { getTestnetInfo, getPreferredEVMProvider, switchNetwork } from '../services/blockchain';
 
 interface BuyWidgetProps {
   chain: string;
@@ -153,7 +153,25 @@ export default function BuyWidget({
         throw new Error('MetaMask is not installed');
       }
 
-      const provider = new ethers.BrowserProvider(getPreferredEVMProvider());
+      // CRITICAL: Switch to the correct network BEFORE doing anything else
+      console.log(`🔄 Switching to ${chain} network before buy...`);
+      await switchNetwork(chain as 'ethereum' | 'bsc' | 'base');
+      
+      // Wait a moment for network switch to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Verify we're on the correct network
+      const ethereumProvider = getPreferredEVMProvider();
+      const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
+      const expectedChainId = chain === 'ethereum' ? '0xAA36A7' : chain === 'bsc' ? '0x61' : '0x14A34';
+      
+      if (currentChainId !== expectedChainId) {
+        throw new Error(`Please switch to ${chain} network in MetaMask and try again.`);
+      }
+      
+      console.log(`✅ Confirmed on ${chain} network (chainId: ${currentChainId})`);
+
+      const provider = new ethers.BrowserProvider(ethereumProvider);
       const signer = await provider.getSigner();
       
       const bondingCurveABI = [
@@ -164,6 +182,12 @@ export default function BuyWidget({
       ];
 
       const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
+      
+      // Verify contract is on the correct chain
+      const code = await provider.getCode(curveAddress);
+      if (!code || code === '0x') {
+        throw new Error(`Bonding curve contract not found at ${curveAddress} on ${chain}. Please deploy the token first.`);
+      }
       
       // Check if graduated
       try {
@@ -176,17 +200,38 @@ export default function BuyWidget({
       }
       
       const tokenAmount = ethers.parseUnits(amount, 18);
+      console.log(`📊 Buying ${amount} tokens (${tokenAmount.toString()} wei)`);
       
-      // Get price estimate
-      let priceEstimateWei;
+      // Get price estimate with detailed logging
+      let priceEstimateWei: bigint;
       try {
         priceEstimateWei = await curveContract.getPriceForAmount(tokenAmount);
-      } catch {
+        console.log(`💰 Price estimate from contract: ${priceEstimateWei.toString()} wei (${ethers.formatEther(priceEstimateWei)} ETH)`);
+      } catch (err: any) {
+        console.warn('⚠️ getPriceForAmount failed, using currentPrice fallback:', err.message);
         const currentPriceWei = await curveContract.getCurrentPrice();
+        console.log(`💰 Current price per token: ${currentPriceWei.toString()} wei (${ethers.formatEther(currentPriceWei)} ETH)`);
+        // Calculate: price = currentPrice * tokenAmount
         priceEstimateWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
+        console.log(`💰 Fallback price estimate: ${priceEstimateWei.toString()} wei (${ethers.formatEther(priceEstimateWei)} ETH)`);
       }
       
+      // Validate price estimate is reasonable
+      if (priceEstimateWei <= 0 || priceEstimateWei > ethers.parseEther('1000')) {
+        throw new Error(`Invalid price estimate: ${ethers.formatEther(priceEstimateWei)} ETH. This seems too high.`);
+      }
+      
+      // Add 10% buffer for safety (contract will refund excess)
       const priceWithFee = (priceEstimateWei * BigInt(110)) / BigInt(100);
+      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${ethers.formatEther(priceWithFee)} ETH)`);
+      
+      // Double-check the value before sending
+      const valueInEth = ethers.formatEther(priceWithFee);
+      if (parseFloat(valueInEth) > 1000) {
+        throw new Error(`Price too high: ${valueInEth} ETH. Something is wrong with the price calculation.`);
+      }
+      
+      console.log(`🚀 Sending buy transaction with value: ${priceWithFee.toString()} wei`);
       
       const tx = await curveContract.buy(tokenAmount, {
         value: priceWithFee,

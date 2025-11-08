@@ -4,7 +4,7 @@ import { X, AlertCircle, Loader2 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
-import { getTestnetInfo } from '../services/blockchain';
+import { getTestnetInfo, getPreferredEVMProvider, switchNetwork } from '../services/blockchain';
 
 interface AddLiquidityModalProps {
   isOpen: boolean;
@@ -57,7 +57,25 @@ export default function AddLiquidityModal({
         throw new Error('MetaMask is not installed');
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      // CRITICAL: Switch to the correct network BEFORE doing anything else
+      console.log(`🔄 Switching to ${chain} network before buy...`);
+      await switchNetwork(chain as 'ethereum' | 'bsc' | 'base');
+      
+      // Wait a moment for network switch to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Verify we're on the correct network
+      const ethereumProvider = getPreferredEVMProvider();
+      const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
+      const expectedChainId = chain === 'ethereum' ? '0xAA36A7' : chain === 'bsc' ? '0x61' : '0x14A34';
+      
+      if (currentChainId !== expectedChainId) {
+        throw new Error(`Please switch to ${chain} network in MetaMask and try again.`);
+      }
+      
+      console.log(`✅ Confirmed on ${chain} network (chainId: ${currentChainId})`);
+
+      const provider = new ethers.BrowserProvider(ethereumProvider);
       const signer = await provider.getSigner();
       
       // BondingCurve ABI - just the buy function
@@ -70,10 +88,10 @@ export default function AddLiquidityModal({
 
       const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
       
-      // Check if contract is deployed and get code
+      // Verify contract is on the correct chain
       const code = await provider.getCode(curveAddress);
       if (!code || code === '0x') {
-        throw new Error('Bonding curve contract is not deployed. Please deploy the token first.');
+        throw new Error(`Bonding curve contract not found at ${curveAddress} on ${chain}. Please deploy the token first.`);
       }
 
       // Check if graduated
@@ -83,33 +101,51 @@ export default function AddLiquidityModal({
           throw new Error('Token has graduated to DEX. Please use a DEX to buy.');
         }
       } catch (err: any) {
-        // If isGraduated doesn't exist, that's okay - continue
+        if (err.message?.includes('graduated')) throw err;
         console.warn('Could not check graduation status:', err.message);
       }
       
       // Convert amount to token units (assuming 18 decimals)
       const tokenAmount = ethers.parseUnits(amount, 18);
+      console.log(`📊 Buying ${amount} tokens (${tokenAmount.toString()} wei)`);
       
-      // Get price estimate with error handling
-      let priceEstimate;
+      // Get price estimate with detailed logging
+      let priceEstimate: bigint;
       try {
         priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
+        console.log(`💰 Price estimate from contract: ${priceEstimate.toString()} wei (${ethers.formatEther(priceEstimate)} ETH)`);
       } catch (err: any) {
-        console.error('Error getting price estimate:', err);
-        // Try using getCurrentPrice as fallback
+        console.warn('⚠️ getPriceForAmount failed, using currentPrice fallback:', err.message);
         try {
           const currentPrice = await curveContract.getCurrentPrice();
-          priceEstimate = currentPrice * tokenAmount;
+          console.log(`💰 Current price per token: ${currentPrice.toString()} wei (${ethers.formatEther(currentPrice)} ETH)`);
+          // Calculate: price = currentPrice * tokenAmount
+          priceEstimate = (currentPrice * tokenAmount) / ethers.parseEther('1');
+          console.log(`💰 Fallback price estimate: ${priceEstimate.toString()} wei (${ethers.formatEther(priceEstimate)} ETH)`);
         } catch (fallbackErr: any) {
           throw new Error('Could not get price estimate. The contract may not be properly deployed.');
         }
       }
       
+      // Validate price estimate is reasonable
       if (!priceEstimate || priceEstimate === BigInt(0)) {
         throw new Error('Invalid price estimate. Please try a different amount.');
       }
       
-      const priceWithFee = priceEstimate * BigInt(110) / BigInt(100); // Add 10% buffer
+      if (priceEstimate > ethers.parseEther('1000')) {
+        throw new Error(`Price estimate too high: ${ethers.formatEther(priceEstimate)} ETH. This seems incorrect.`);
+      }
+      
+      const priceWithFee = (priceEstimate * BigInt(110)) / BigInt(100); // Add 10% buffer
+      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${ethers.formatEther(priceWithFee)} ETH)`);
+      
+      // Double-check the value before sending
+      const valueInEth = ethers.formatEther(priceWithFee);
+      if (parseFloat(valueInEth) > 1000) {
+        throw new Error(`Price too high: ${valueInEth} ETH. Something is wrong with the price calculation.`);
+      }
+      
+      console.log(`🚀 Sending buy transaction with value: ${priceWithFee.toString()} wei`);
       
       // Execute buy transaction
       const tx = await curveContract.buy(tokenAmount, {
