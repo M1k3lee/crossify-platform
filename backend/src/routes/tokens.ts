@@ -328,6 +328,158 @@ router.post('/:id/deploy', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/my-tokens - Get tokens for a specific creator (must be before /marketplace)
+router.get('/my-tokens', async (req: Request, res: Response) => {
+  try {
+    const creatorAddress = req.query.address as string;
+    
+    if (!creatorAddress) {
+      return res.status(400).json({ error: 'Creator address is required' });
+    }
+    
+    let query = `
+      SELECT 
+        t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
+        t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
+        t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
+        t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
+        COALESCE(t.archived, 0) as archived, COALESCE(t.pinned, 0) as pinned, COALESCE(t.deleted, 0) as deleted,
+        GROUP_CONCAT(td.chain) as chains,
+        GROUP_CONCAT(td.token_address) as token_addresses,
+        GROUP_CONCAT(td.curve_address) as curve_addresses,
+        GROUP_CONCAT(td.status) as deployment_statuses,
+        GROUP_CONCAT(td.is_graduated) as graduation_statuses,
+        GROUP_CONCAT(td.market_cap) as market_caps
+      FROM tokens t
+      LEFT JOIN token_deployments td ON t.id = td.token_id
+      WHERE LOWER(t.creator_address) = LOWER(?)
+        AND (t.deleted IS NULL OR t.deleted = 0)
+    `;
+    
+    const params: any[] = [creatorAddress];
+    
+    query += ` GROUP BY t.id ORDER BY t.pinned DESC, t.created_at DESC`;
+    
+    const tokens = await dbAll(query, params) as any[];
+    
+    const formattedTokens = tokens.map(token => {
+      const chains = token.chains ? token.chains.split(',') : [];
+      const tokenAddresses = token.token_addresses ? token.token_addresses.split(',') : [];
+      const curveAddresses = token.curve_addresses ? token.curve_addresses.split(',') : [];
+      const statuses = token.deployment_statuses ? token.deployment_statuses.split(',') : [];
+      const graduations = token.graduation_statuses ? token.graduation_statuses.split(',') : [];
+      const marketCaps = token.market_caps ? token.market_caps.split(',') : [];
+      
+      const deployments = chains.map((chain: string, idx: number) => ({
+        chain,
+        tokenAddress: tokenAddresses[idx] || null,
+        curveAddress: curveAddresses[idx] || null,
+        status: statuses[idx] || 'pending',
+        isGraduated: graduations[idx] === '1',
+        marketCap: parseFloat(marketCaps[idx] || '0') || 0,
+      }));
+      
+      return {
+        id: token.id,
+        name: token.name,
+        symbol: token.symbol,
+        decimals: token.decimals,
+        initialSupply: token.initial_supply,
+        logoIpfs: token.logo_ipfs,
+        logoUrl: token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null,
+        description: token.description,
+        twitterUrl: token.twitter_url,
+        discordUrl: token.discord_url,
+        telegramUrl: token.telegram_url,
+        websiteUrl: token.website_url,
+        basePrice: token.base_price,
+        slope: token.slope,
+        graduationThreshold: token.graduation_threshold,
+        buyFeePercent: token.buy_fee_percent,
+        sellFeePercent: token.sell_fee_percent,
+        creatorAddress: token.creator_address || null,
+        crossChainEnabled: token.cross_chain_enabled === 1,
+        advancedSettings: token.advanced_settings ? JSON.parse(token.advanced_settings) : {},
+        createdAt: token.created_at,
+        archived: token.archived === 1,
+        pinned: token.pinned === 1,
+        deleted: token.deleted === 1,
+        deployments,
+      };
+    });
+    
+    res.json({
+      tokens: formattedTokens,
+      count: formattedTokens.length,
+    });
+  } catch (error) {
+    console.error('Error fetching user tokens:', error);
+    res.status(500).json({ error: 'Failed to fetch user tokens' });
+  }
+});
+
+// PATCH /tokens/:id/status - Update token status (archive, pin, delete)
+router.patch('/:id/status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { archived, pinned, deleted } = req.body;
+    const creatorAddress = req.headers['x-creator-address'] as string;
+    
+    if (!creatorAddress) {
+      return res.status(401).json({ error: 'Creator address is required' });
+    }
+    
+    // Verify token ownership
+    const token = await dbGet('SELECT creator_address FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+    
+    if (!token.creator_address || token.creator_address.toLowerCase() !== creatorAddress.toLowerCase()) {
+      return res.status(403).json({ error: 'Unauthorized: You are not the creator of this token' });
+    }
+    
+    // Build update query dynamically based on provided fields
+    const updates: string[] = [];
+    const params: any[] = [];
+    
+    if (archived !== undefined) {
+      updates.push('archived = ?');
+      params.push(archived ? 1 : 0);
+    }
+    
+    if (pinned !== undefined) {
+      updates.push('pinned = ?');
+      params.push(pinned ? 1 : 0);
+    }
+    
+    if (deleted !== undefined) {
+      updates.push('deleted = ?');
+      params.push(deleted ? 1 : 0);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No status fields provided' });
+    }
+    
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    params.push(id);
+    
+    await dbRun(
+      `UPDATE tokens SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+    
+    res.json({
+      success: true,
+      message: 'Token status updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating token status:', error);
+    res.status(500).json({ error: 'Failed to update token status' });
+  }
+});
+
 // GET /tokens/marketplace
 router.get('/marketplace', async (req: Request, res: Response) => {
   try {
@@ -347,7 +499,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         GROUP_CONCAT(td.market_cap) as market_caps
       FROM tokens t
       LEFT JOIN token_deployments td ON t.id = td.token_id
-      WHERE 1=1
+      WHERE (t.deleted IS NULL OR t.deleted = 0)
     `;
     
     const params: any[] = [];
@@ -418,6 +570,9 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         crossChainEnabled: token.cross_chain_enabled === 1,
         advancedSettings: token.advanced_settings ? JSON.parse(token.advanced_settings) : {},
         createdAt: token.created_at,
+        archived: token.archived === 1,
+        pinned: token.pinned === 1,
+        deleted: token.deleted === 1,
         deployments,
       };
     });

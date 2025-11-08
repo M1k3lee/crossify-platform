@@ -142,6 +142,31 @@ export async function migrateDatabase(): Promise<void> {
       }
     }
 
+    // Check if archived, pinned, deleted columns exist
+    for (const column of ['archived', 'pinned', 'deleted']) {
+      try {
+        await dbGet(`SELECT ${column} FROM tokens LIMIT 1`);
+        console.log(`✅ ${column} column already exists`);
+      } catch (error: any) {
+        if (error.message?.includes('no such column')) {
+          console.log(`➕ Adding ${column} column...`);
+          await dbRun(`
+            ALTER TABLE tokens 
+            ADD COLUMN ${column} INTEGER DEFAULT 0
+          `);
+          // Update existing rows to have default value
+          await dbRun(`
+            UPDATE tokens 
+            SET ${column} = 0 
+            WHERE ${column} IS NULL
+          `);
+          console.log(`✅ Added ${column} column`);
+        } else {
+          throw error;
+        }
+      }
+    }
+
     console.log('✅ Database migrations completed successfully');
   } catch (error) {
     console.error('❌ Database migration error:', error);
