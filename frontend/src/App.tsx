@@ -23,6 +23,9 @@ import Whitepaper from './pages/Whitepaper';
 import CreatorDashboard from './pages/CreatorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Tokenomics from './pages/Tokenomics';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import FAQ from './pages/FAQ';
 import '@rainbow-me/rainbowkit/styles.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -59,6 +62,9 @@ function App() {
                     <Route path="/docs" element={<Layout><Docs /></Layout>} />
                     <Route path="/whitepaper" element={<Layout><Whitepaper /></Layout>} />
                     <Route path="/tokenomics" element={<Layout><Tokenomics /></Layout>} />
+                    <Route path="/terms" element={<Layout><TermsOfService /></Layout>} />
+                    <Route path="/privacy" element={<Layout><PrivacyPolicy /></Layout>} />
+                    <Route path="/faq" element={<Layout><FAQ /></Layout>} />
                     <Route path="/creator/:id" element={<Layout><CreatorDashboard /></Layout>} />
                     <Route path="/admin" element={<AdminDashboard />} />
                     {/* TokenDetail has its own layout */}

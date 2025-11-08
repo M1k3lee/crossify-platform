@@ -97,31 +97,31 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a
-                  href="/terms"
+                <Link
+                  to="/terms"
                   className="text-gray-400 hover:text-primary-400 transition-colors text-sm flex items-center gap-2"
                 >
                   <FileText className="w-4 h-4" />
                   <span>Terms of Service</span>
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/privacy"
+                <Link
+                  to="/privacy"
                   className="text-gray-400 hover:text-primary-400 transition-colors text-sm flex items-center gap-2"
                 >
                   <Shield className="w-4 h-4" />
                   <span>Privacy Policy</span>
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/faq"
+                <Link
+                  to="/faq"
                   className="text-gray-400 hover:text-primary-400 transition-colors text-sm flex items-center gap-2"
                 >
                   <HelpCircle className="w-4 h-4" />
                   <span>FAQ</span>
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
