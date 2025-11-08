@@ -153,23 +153,37 @@ export default function BuyWidget({
         throw new Error('MetaMask is not installed');
       }
 
-      // CRITICAL: Switch to the correct network BEFORE doing anything else
-      console.log(`🔄 Switching to ${chain} network before buy...`);
-      await switchNetwork(chain as 'ethereum' | 'bsc' | 'base');
-      
-      // Wait a moment for network switch to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Verify we're on the correct network
+      // Check current network first
       const ethereumProvider = getPreferredEVMProvider();
-      const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
-      const expectedChainId = chain === 'ethereum' ? '0xAA36A7' : chain === 'bsc' ? '0x61' : '0x14A34';
+      const currentChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
+      const expectedChainIdHex = chain === 'ethereum' ? '0xAA36A7' : chain === 'bsc' ? '0x61' : '0x14A34';
       
+      // Normalize chain IDs (convert to lowercase and compare as integers)
+      const currentChainId = parseInt(currentChainIdHex.toLowerCase(), 16);
+      const expectedChainId = parseInt(expectedChainIdHex.toLowerCase(), 16);
+      
+      console.log(`🔍 Current chain ID: ${currentChainIdHex} (${currentChainId}), Expected: ${expectedChainIdHex} (${expectedChainId})`);
+      
+      // Only switch if we're on a different network
       if (currentChainId !== expectedChainId) {
-        throw new Error(`Please switch to ${chain} network in MetaMask and try again.`);
+        console.log(`🔄 Switching to ${chain} network before buy...`);
+        await switchNetwork(chain as 'ethereum' | 'bsc' | 'base');
+        
+        // Wait a moment for network switch to complete
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Verify we're on the correct network after switch
+        const newChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
+        const newChainId = parseInt(newChainIdHex.toLowerCase(), 16);
+        
+        if (newChainId !== expectedChainId) {
+          throw new Error(`Please switch to ${chain} network in MetaMask and try again. Current: ${newChainIdHex}, Expected: ${expectedChainIdHex}`);
+        }
+        
+        console.log(`✅ Successfully switched to ${chain} network (chainId: ${newChainIdHex})`);
+      } else {
+        console.log(`✅ Already on ${chain} network (chainId: ${currentChainIdHex})`);
       }
-      
-      console.log(`✅ Confirmed on ${chain} network (chainId: ${currentChainId})`);
 
       const provider = new ethers.BrowserProvider(ethereumProvider);
       const signer = await provider.getSigner();
