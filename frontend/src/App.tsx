@@ -26,6 +26,7 @@ import Tokenomics from './pages/Tokenomics';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import FAQ from './pages/FAQ';
+import GoogleAnalytics from './components/GoogleAnalytics';
 import '@rainbow-me/rainbowkit/styles.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -51,6 +52,7 @@ function App() {
             <WalletProvider wallets={wallets} autoConnect={false}>
               <WalletModalProvider>
                 <Router>
+                  <GoogleAnalytics />
                   <Routes>
                     <Route path="/" element={<Layout><Home /></Layout>} />
                     <Route path="/marketplace" element={<Layout><Marketplace /></Layout>} />
