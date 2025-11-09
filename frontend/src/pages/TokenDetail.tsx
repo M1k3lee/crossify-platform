@@ -327,8 +327,12 @@ export default function TokenDetail() {
               tokenSymbol={status.token?.symbol || 'TOKEN'}
               currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
               onSuccess={() => {
-                // Refresh data after successful trade
-                window.location.reload();
+                // Invalidate queries to refresh chart and other data
+                // The chart will automatically refetch due to refetchInterval
+                // Force a small delay to ensure transaction is recorded
+                setTimeout(() => {
+                  window.location.reload();
+                }, 2000);
               }}
             />
           ) : status.deployments && status.deployments.length > 0 && !allGraduated ? (
