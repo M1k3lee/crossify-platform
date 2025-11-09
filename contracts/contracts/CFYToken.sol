@@ -183,7 +183,7 @@ contract CFYToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable, ReentrancyGua
      * @dev Collect platform fees and distribute according to tokenomics
      * Called by platform contracts when fees are collected (in native tokens)
      */
-    function collectFees(uint256 amount, string memory feeType) external payable nonReentrant {
+    function collectFees(uint256 amount, string memory feeType) public payable nonReentrant {
         require(msg.sender == feeCollector || msg.sender == owner(), "Not authorized");
         require(amount > 0 || msg.value > 0, "Amount must be greater than 0");
         
