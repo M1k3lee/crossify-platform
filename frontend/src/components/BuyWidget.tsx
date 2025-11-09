@@ -178,7 +178,26 @@ export default function BuyWidget({
       // Check current network first
       const ethereumProvider = getPreferredEVMProvider();
       const currentChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
-      const expectedChainIdHex = chain === 'ethereum' ? '0xAA36A7' : chain === 'bsc' ? '0x61' : '0x14A34';
+      
+      // Map chain name to chain ID (handle testnet variants)
+      const chainLower = chain.toLowerCase();
+      let expectedChainIdHex: string;
+      let switchChainName: 'ethereum' | 'bsc' | 'base';
+      
+      if (chainLower.includes('bsc') || chainLower === 'bsc-testnet') {
+        expectedChainIdHex = '0x61'; // BSC Testnet
+        switchChainName = 'bsc';
+      } else if (chainLower.includes('ethereum') || chainLower === 'sepolia' || chainLower === 'eth') {
+        expectedChainIdHex = '0xAA36A7'; // Sepolia
+        switchChainName = 'ethereum';
+      } else if (chainLower.includes('base') || chainLower === 'base-sepolia') {
+        expectedChainIdHex = '0x14A34'; // Base Sepolia
+        switchChainName = 'base';
+      } else {
+        // Default to Base Sepolia
+        expectedChainIdHex = '0x14A34';
+        switchChainName = 'base';
+      }
       
       // Normalize chain IDs (convert to lowercase and compare as integers)
       const currentChainId = parseInt(currentChainIdHex.toLowerCase(), 16);
@@ -188,8 +207,8 @@ export default function BuyWidget({
       
       // Only switch if we're on a different network
       if (currentChainId !== expectedChainId) {
-        console.log(`🔄 Switching to ${chain} network before buy...`);
-        await switchNetwork(chain as 'ethereum' | 'bsc' | 'base');
+        console.log(`🔄 Switching to ${switchChainName} network before buy...`);
+        await switchNetwork(switchChainName);
         
         // Wait a moment for network switch to complete
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -484,17 +503,24 @@ export default function BuyWidget({
 
   // Get chain-specific currency symbol
   const getChainSymbol = (chainName: string): string => {
-    switch (chainName.toLowerCase()) {
-      case 'bsc':
-        return 'BNB';
-      case 'ethereum':
-      case 'base':
-        return 'ETH';
-      case 'solana':
-        return 'SOL';
-      default:
-        return 'ETH';
+    const chainLower = chainName.toLowerCase();
+    
+    // Handle testnet variants
+    if (chainLower.includes('bsc') || chainLower === 'bsc-testnet') {
+      return 'BNB';
     }
+    if (chainLower.includes('ethereum') || chainLower === 'sepolia' || chainLower === 'eth') {
+      return 'ETH';
+    }
+    if (chainLower.includes('base') || chainLower === 'base-sepolia') {
+      return 'ETH'; // Base uses ETH as native currency
+    }
+    if (chainLower.includes('solana') || chainLower === 'sol') {
+      return 'SOL';
+    }
+    
+    // Default fallback
+    return 'ETH';
   };
   
   const chainSymbol = getChainSymbol(chain);
