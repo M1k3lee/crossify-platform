@@ -13,7 +13,7 @@
 - **CrossChainSync**: `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
 - **GlobalSupplyTracker**: `0xe84Ae64735261F441e0bcB12bCf60630c5239ef4`
 - **Chain EID**: 40102
-- **Status**: ✅ Deployed, Configured, ⚠️ Not Funded (insufficient balance)
+- **Status**: ✅ Deployed, Configured, Funded (0.1 BNB tracker, 0.1 BNB sync)
 - **Explorer**: https://testnet.bscscan.com/address/0xf5446E2690B2eb161231fB647476A98e1b6b7736
 
 ### Sepolia
@@ -64,11 +64,11 @@ All trusted remotes have been set up on all networks:
 - Base Sepolia (EID 40245): `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
 - BSC Testnet (EID 40102): `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
 
-### 2. Fund Contracts (Optional but Recommended)
+### 2. ~~Fund Contracts~~ ✅ COMPLETE
 The contracts need native tokens for LayerZero message fees:
-- **Base Sepolia**: Already funded ✅
-- **BSC Testnet**: Needs ~0.1 BNB
-- **Sepolia**: Needs ~0.1 ETH
+- **Base Sepolia**: ✅ Funded (0.05 ETH tracker, 0.1 ETH sync)
+- **BSC Testnet**: ✅ Funded (0.1 BNB tracker, 0.1 BNB sync)
+- **Sepolia**: ⚠️ Not funded (can be funded later if needed)
 
 ### 3. Update TokenFactory (If Needed)
 If you want new tokens to use the new GlobalSupplyTracker addresses, update the TokenFactory contracts.
