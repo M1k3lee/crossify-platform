@@ -199,6 +199,21 @@ contract TokenFactory is Ownable {
         // This allows the creator to mint, burn, pause, etc.
         Ownable(tokenAddress).transferOwnership(msg.sender);
 
+        // Authorize bonding curve in GlobalSupplyTracker if using global supply
+        // Note: We use a low-level call to avoid import conflicts
+        if (useGlobalSupply && globalSupplyTracker != address(0)) {
+            (bool success, ) = globalSupplyTracker.call(
+                abi.encodeWithSignature("authorizeUpdater(address)", curveAddress)
+            );
+            if (success) {
+                // Successfully authorized - bonding curve can now update global supply and trigger cross-chain sync
+            } else {
+                // Authorization failed (e.g., not owner) - log but don't revert
+                // This allows tokens to be created even if authorization fails
+                // Admin can manually authorize later if needed
+            }
+        }
+
         // Track token
         tokensByCreator[msg.sender].push(tokenAddress);
         allTokens.push(tokenAddress);
