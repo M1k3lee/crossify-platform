@@ -13,7 +13,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [appLaunched, setAppLaunched] = useState(() => {
+  const [, setAppLaunched] = useState(() => {
     return localStorage.getItem('appLaunched') === 'true';
   });
 
@@ -66,38 +66,67 @@ export default function Layout({ children }: LayoutProps) {
               
               {/* Only show navigation menu on app pages (not homepage) */}
               {showFullNav && (
-                <div className="hidden md:flex items-center gap-1 ml-4 overflow-x-auto scrollbar-hide">
-                  {navItems
-                    .filter(item => item.path !== '/') // Hide Home link in nav menu
-                    .map((item) => {
-                      const isActive = location.pathname === item.path || 
-                        (item.path !== '/' && location.pathname.startsWith(item.path));
-                      const Icon = item.icon;
-                      
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          className={`relative inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
-                            isActive
-                              ? 'text-white'
-                              : 'text-gray-400 hover:text-gray-300'
-                          }`}
-                        >
-                          {isActive && (
-                            <motion.div
-                              layoutId="activeTab"
-                              className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-blue-600/20 rounded-lg border border-primary-500/30"
-                              initial={false}
-                              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                            />
-                          )}
-                          <Icon className={`w-4 h-4 relative z-10 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
-                          <span className="relative z-10 whitespace-nowrap">{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                </div>
+                <>
+                  {/* Desktop navigation menu */}
+                  <div className="hidden md:flex items-center gap-1 ml-4 overflow-x-auto scrollbar-hide">
+                    {navItems
+                      .filter(item => item.path !== '/') // Hide Home link in nav menu
+                      .map((item) => {
+                        const isActive = location.pathname === item.path || 
+                          (item.path !== '/' && location.pathname.startsWith(item.path));
+                        const Icon = item.icon;
+                        
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`relative inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
+                              isActive
+                                ? 'text-white'
+                                : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                          >
+                            {isActive && (
+                              <motion.div
+                                layoutId="activeTab"
+                                className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-blue-600/20 rounded-lg border border-primary-500/30"
+                                initial={false}
+                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                              />
+                            )}
+                            <Icon className={`w-4 h-4 relative z-10 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
+                            <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                  </div>
+                  
+                  {/* Mobile navigation menu - show as dropdown or always visible on small screens */}
+                  <div className="md:hidden flex items-center gap-1 ml-2 overflow-x-auto scrollbar-hide">
+                    {navItems
+                      .filter(item => item.path !== '/') // Hide Home link in nav menu
+                      .map((item) => {
+                        const isActive = location.pathname === item.path || 
+                          (item.path !== '/' && location.pathname.startsWith(item.path));
+                        const Icon = item.icon;
+                        
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`relative inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex-shrink-0 ${
+                              isActive
+                                ? 'text-white bg-primary-500/20'
+                                : 'text-gray-400 hover:text-gray-300'
+                            }`}
+                          >
+                            <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
+                            <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                  </div>
+                </>
               )}
             </div>
             

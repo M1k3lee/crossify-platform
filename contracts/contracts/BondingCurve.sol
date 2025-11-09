@@ -283,19 +283,26 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         totalSupplySold += tokenAmount;
         totalReserve += price;
         
+        // Refund excess payment first (before cross-chain sync to avoid balance issues)
+        if (msg.value > totalCost) {
+            payable(msg.sender).transfer(msg.value - totalCost);
+        }
+        
         // Update global supply if enabled
+        // Note: We pass 0 value - GlobalSupplyTracker will use its own balance for fees
+        // This avoids affecting the bonding curve's reserve calculations
         if (useGlobalSupply && address(globalSupplyTracker) != address(0)) {
-            try globalSupplyTracker.updateSupply(address(token), chainName, totalSupplySold) {
-                // Supply updated successfully
+            try globalSupplyTracker.updateSupply{value: 0}(
+                address(token), 
+                chainName, 
+                totalSupplySold
+            ) {
+                // Supply updated successfully, cross-chain sync attempted if enabled
+                // GlobalSupplyTracker will use its own balance for LayerZero fees
             } catch {
                 // If update fails (e.g., not authorized yet), continue without updating
                 // This allows tokens to be created even if tracker isn't fully set up
             }
-        }
-        
-        // Refund excess
-        if (msg.value > totalCost) {
-            payable(msg.sender).transfer(msg.value - totalCost);
         }
         
         emit TokenBought(msg.sender, price, tokenAmount);
@@ -329,17 +336,23 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         totalSupplySold = totalSupplySold > tokenAmount ? totalSupplySold - tokenAmount : 0;
         totalReserve = totalReserve > price ? totalReserve - price : 0;
         
+        // Transfer payment to seller first
+        payable(msg.sender).transfer(amountReceived);
+        
         // Update global supply if enabled
+        // Note: We pass 0 value - GlobalSupplyTracker will use its own balance for fees
         if (useGlobalSupply && address(globalSupplyTracker) != address(0)) {
-            try globalSupplyTracker.updateSupply(address(token), chainName, totalSupplySold) {
-                // Supply updated successfully
+            try globalSupplyTracker.updateSupply{value: 0}(
+                address(token), 
+                chainName, 
+                totalSupplySold
+            ) {
+                // Supply updated successfully, cross-chain sync attempted if enabled
+                // GlobalSupplyTracker will use its own balance for LayerZero fees
             } catch {
                 // If update fails (e.g., not authorized yet), continue without updating
             }
         }
-        
-        // Transfer payment to seller
-        payable(msg.sender).transfer(amountReceived);
         
         emit TokenSold(msg.sender, tokenAmount, amountReceived);
     }

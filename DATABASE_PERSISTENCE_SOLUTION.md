@@ -211,3 +211,4 @@ See `POSTGRES_MIGRATION_GUIDE.md` for detailed migration steps.
 **Status**: ✅ Blockchain sync implemented and ready to deploy
 **Next**: Deploy and verify tokens are automatically re-discovered
 
+

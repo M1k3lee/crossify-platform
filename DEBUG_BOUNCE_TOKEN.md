@@ -269,3 +269,4 @@ If the factory address is correct but prices are still wrong:
 **Status**: 🔍 Ready for investigation
 **Priority**: 🔴 High - Need to determine why new tokens are still broken
 
+

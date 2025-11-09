@@ -31,36 +31,83 @@ export default function BuyWidget({
   const [tokensEstimate, setTokensEstimate] = useState<number | null>(null);
   const [isValidAddress, setIsValidAddress] = useState(false);
 
+  // Get RPC URL for a specific chain
+  const getRpcUrlForChain = (chainName: string): string => {
+    const chainLower = chainName.toLowerCase().trim();
+    
+    console.log(`🔍 Getting RPC URL for chain: "${chainName}" (normalized: "${chainLower}")`);
+    
+    // Handle Base Sepolia testnet (most specific first - check before "sepolia" alone)
+    if (chainLower === 'base-sepolia' || (chainLower.includes('base') && chainLower.includes('sepolia'))) {
+      console.log(`   → Using Base Sepolia RPC`);
+      return 'https://base-sepolia-rpc.publicnode.com';
+    }
+    
+    // Handle BSC Testnet (check before "bsc" alone)
+    if (chainLower === 'bsc-testnet' || (chainLower.includes('bsc') && chainLower.includes('testnet'))) {
+      console.log(`   → Using BSC Testnet RPC`);
+      return 'https://bsc-testnet.publicnode.com';
+    }
+    
+    // Handle Ethereum/Sepolia testnet (check after base-sepolia to avoid false matches)
+    if (chainLower === 'sepolia' || chainLower.includes('sepolia')) {
+      console.log(`   → Using Sepolia RPC`);
+      return 'https://ethereum-sepolia-rpc.publicnode.com';
+    }
+    
+    // Handle base chain names (might be stored without testnet suffix)
+    if (chainLower === 'base') {
+      console.log(`   → Using Base Sepolia RPC (defaulting to testnet)`);
+      return 'https://base-sepolia-rpc.publicnode.com';
+    }
+    
+    if (chainLower === 'bsc' || chainLower === 'binance') {
+      console.log(`   → Using BSC Testnet RPC (defaulting to testnet)`);
+      return 'https://bsc-testnet.publicnode.com';
+    }
+    
+    if (chainLower === 'ethereum' || chainLower === 'eth') {
+      console.log(`   → Using Sepolia RPC (defaulting to testnet)`);
+      return 'https://ethereum-sepolia-rpc.publicnode.com';
+    }
+    
+    // Default to Base Sepolia (most common testnet)
+    console.log(`   → Using Base Sepolia RPC (default fallback)`);
+    return 'https://base-sepolia-rpc.publicnode.com';
+  };
+
   // Validate addresses and check contract deployment
   useEffect(() => {
     const validate = async () => {
       if (!curveAddress || curveAddress === '0x0000000000000000000000000000000000000000' || !ethers.isAddress(curveAddress)) {
+        console.log(`🔍 Validation: Invalid curveAddress: ${curveAddress}`);
         setIsValidAddress(false);
         return;
       }
 
       try {
-        if (typeof window === 'undefined' || !window.ethereum) {
-          setIsValidAddress(false);
-          return;
-        }
-
-        const provider = getPreferredEVMProvider();
-        if (!provider) {
-          setIsValidAddress(false);
-          return;
-        }
-
-        const ethersProvider = new ethers.BrowserProvider(provider);
-        const code = await ethersProvider.getCode(curveAddress);
-        setIsValidAddress(!!(code && code !== '0x'));
-      } catch {
+        // Use RPC provider for the specific chain (not the connected wallet chain)
+        // This ensures we check the contract on the correct chain
+        const rpcUrl = getRpcUrlForChain(chain);
+        console.log(`🔍 Validating contract on chain: ${chain}, RPC: ${rpcUrl}, Address: ${curveAddress}`);
+        
+        const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+        const code = await rpcProvider.getCode(curveAddress);
+        const isValid = !!(code && code !== '0x' && code !== '0x0');
+        
+        console.log(`🔍 Contract validation result: ${isValid ? '✅ Valid' : '❌ Invalid'} (code length: ${code?.length || 0})`);
+        
+        setIsValidAddress(isValid);
+      } catch (error: any) {
+        console.error(`❌ Error validating contract:`, error);
+        console.error(`   Chain: ${chain}, Address: ${curveAddress}`);
+        console.error(`   Error: ${error.message}`);
         setIsValidAddress(false);
       }
     };
 
     validate();
-  }, [curveAddress]);
+  }, [curveAddress, chain]);
 
   // Calculate price estimate when amount changes
   useEffect(() => {
@@ -72,14 +119,10 @@ export default function BuyWidget({
       }
 
       try {
-        if (typeof window === 'undefined' || !window.ethereum) {
-          return;
-        }
-
-        const provider = getPreferredEVMProvider();
-        if (!provider) return;
-
-        const ethersProvider = new ethers.BrowserProvider(provider);
+        // Use RPC provider for the specific chain (not the connected wallet chain)
+        // This ensures we get accurate price estimates for the correct chain
+        const rpcUrl = getRpcUrlForChain(chain);
+        const ethersProvider = new ethers.JsonRpcProvider(rpcUrl);
         
         const bondingCurveABI = [
           'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
@@ -93,10 +136,30 @@ export default function BuyWidget({
         const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
         const tokenAmount = ethers.parseUnits(amount, 18);
         
-        // Expected price using current price (safe fallback)
+        // CRITICAL: Validate current price is reasonable (same validation as buy function)
+        const maxReasonablePricePerToken = 0.0001; // 0.0001 ETH/BNB per token max
+        const maxReasonablePriceWei = ethers.parseEther(maxReasonablePricePerToken.toString());
+        
+        if (currentPriceWei > maxReasonablePriceWei || currentPriceEth > maxReasonablePricePerToken) {
+          console.warn(`⚠️ Current price too high for estimate: ${currentPriceEth} ${chainSymbol} per token`);
+          setPriceEstimate(null);
+          setTokensEstimate(null);
+          return;
+        }
+        
+        // Calculate expected price and validate total
         const expectedPriceEth = currentPriceEth * parseFloat(amount);
-        const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 0.1); // 0.1 ETH/BNB per token max
-        const maxReasonableWei = ethers.parseEther('100'); // 100 ETH/BNB max
+        const maxReasonableTotalPrice = 0.1; // 0.1 ETH/BNB total max
+        
+        if (expectedPriceEth > maxReasonableTotalPrice) {
+          console.warn(`⚠️ Estimated total price too high: ${expectedPriceEth} ${chainSymbol}`);
+          setPriceEstimate(null);
+          setTokensEstimate(null);
+          return;
+        }
+        
+        const absoluteMaxPrice = maxReasonableTotalPrice; // Use same limit as buy function
+        const maxReasonableWei = ethers.parseEther('0.1'); // 0.1 ETH/BNB max
 
         if (tab === 'buy') {
           // Calculate ETH/BNB needed for token amount
@@ -114,23 +177,47 @@ export default function BuyWidget({
             
             const priceEth = parseFloat(ethers.formatEther(priceFromContract));
             
-            // Validate: if price is way too high, use fallback
-            if (priceEth > absoluteMaxPrice || priceEth > 100 || (expectedPriceEth > 0.0001 && priceEth > expectedPriceEth * 100)) {
-              console.warn(`⚠️ Contract price too high (${priceEth}), using safe fallback (${expectedPriceEth})`);
-              // Use current price * amount as fallback
+            // Validate: if price is way too high, use fallback or reject
+            if (priceEth > absoluteMaxPrice || priceEth > maxReasonableTotalPrice) {
+              console.warn(`⚠️ Contract price too high (${priceEth} ${chainSymbol}), rejecting estimate`);
+              setPriceEstimate(null);
+              setTokensEstimate(null);
+              return;
+            }
+            
+            // Additional validation: compare against expected price
+            if (expectedPriceEth > 0 && priceEth > expectedPriceEth * 10) {
+              console.warn(`⚠️ Contract price much higher than expected (${priceEth} vs ${expectedPriceEth} ${chainSymbol}), using safe fallback`);
               const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
+              if (safeEstimate > maxReasonableTotalPrice) {
+                setPriceEstimate(null);
+                setTokensEstimate(null);
+                return;
+              }
               setPriceEstimate(safeEstimate);
               setTokensEstimate(parseFloat(amount));
             } else {
               const priceWithFee = (priceFromContract * BigInt(110)) / BigInt(100); // 10% buffer
-              setPriceEstimate(Number(ethers.formatEther(priceWithFee)));
+              const priceWithFeeEth = Number(ethers.formatEther(priceWithFee));
+              if (priceWithFeeEth > maxReasonableTotalPrice) {
+                setPriceEstimate(null);
+                setTokensEstimate(null);
+                return;
+              }
+              setPriceEstimate(priceWithFeeEth);
               setTokensEstimate(parseFloat(amount));
             }
           } catch {
-            // Fallback to current price
+            // Fallback to current price, but validate it's reasonable
             const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
-            setPriceEstimate(safeEstimate);
-            setTokensEstimate(parseFloat(amount));
+            if (safeEstimate > maxReasonableTotalPrice) {
+              console.warn(`⚠️ Fallback estimate too high: ${safeEstimate} ${chainSymbol}`);
+              setPriceEstimate(null);
+              setTokensEstimate(null);
+            } else {
+              setPriceEstimate(safeEstimate);
+              setTokensEstimate(parseFloat(amount));
+            }
           }
         } else {
           // Calculate ETH/BNB received for token amount
@@ -332,9 +419,33 @@ export default function BuyWidget({
         const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
         console.log(`💰 Current price per token: ${currentPriceWei.toString()} wei (${currentPriceEth} ETH)`);
         
-        // Validate current price is reasonable (should be very small for testnet tokens)
-        if (currentPriceEth > 1) {
-          console.warn(`⚠️ Current price seems high: ${currentPriceEth} ETH per token`);
+        // CRITICAL: Validate current price is reasonable BEFORE using it
+        // Maximum reasonable price per token: 0.0001 ETH/BNB (for testnet tokens, should be much lower)
+        // This prevents astronomical prices when multiplied by large amounts
+        const maxReasonablePricePerToken = 0.0001; // 0.0001 ETH/BNB per token max (very conservative)
+        const maxReasonablePriceWei = ethers.parseEther(maxReasonablePricePerToken.toString());
+        
+        if (currentPriceWei > maxReasonablePriceWei || currentPriceEth > maxReasonablePricePerToken) {
+          console.error(`❌ Current price from contract is too high: ${currentPriceEth} ${chainSymbol} per token`);
+          console.error(`   Maximum reasonable: ${maxReasonablePricePerToken} ${chainSymbol} per token`);
+          console.error(`   This indicates the contract has corrupted price data (likely old buggy version).`);
+          throw new Error(`Invalid current price: ${currentPriceEth} ${chainSymbol} per token. The bonding curve contract appears to have corrupted price data. Maximum allowed: ${maxReasonablePricePerToken} ${chainSymbol} per token. Please contact support or try a different token.`);
+        }
+        
+        // Additional check: Calculate total price and validate it's reasonable
+        const estimatedTotalPrice = currentPriceEth * parseFloat(amount);
+        const maxReasonableTotalPrice = 0.1; // 0.1 ETH/BNB total max for any transaction
+        
+        if (estimatedTotalPrice > maxReasonableTotalPrice) {
+          console.error(`❌ Estimated total price is too high: ${estimatedTotalPrice} ${chainSymbol} for ${amount} tokens`);
+          console.error(`   Current price per token: ${currentPriceEth} ${chainSymbol}`);
+          console.error(`   Maximum reasonable total: ${maxReasonableTotalPrice} ${chainSymbol}`);
+          throw new Error(`Price too high: ${estimatedTotalPrice.toFixed(6)} ${chainSymbol} for ${amount} tokens (${currentPriceEth.toFixed(6)} ${chainSymbol} per token). Maximum allowed: ${maxReasonableTotalPrice} ${chainSymbol}. Please try a much smaller amount (e.g., ${Math.floor(parseFloat(amount) * maxReasonableTotalPrice / estimatedTotalPrice)} tokens) or contact support.`);
+        }
+        
+        // Additional check: for testnet tokens, price should be very small
+        if (currentPriceEth > 0.00001) {
+          console.warn(`⚠️ Current price seems high for testnet: ${currentPriceEth} ${chainSymbol} per token`);
         }
         
         // Try to get price for amount
@@ -412,11 +523,7 @@ export default function BuyWidget({
           console.warn('   This happens when the bonding curve contract has calculation issues.');
           console.warn('   Fallback uses a simple linear approximation: price = currentPrice * amount');
           
-          // Validate current price is reasonable before using it
-          if (currentPriceEth <= 0 || currentPriceEth > 1) {
-            throw new Error(`Invalid current price: ${currentPriceEth} ${chainSymbol} per token. Cannot calculate fallback price.`);
-          }
-          
+          // At this point, currentPriceEth has already been validated to be <= 0.01 ETH/BNB per token
           // Use currentPrice * amount with proper wei calculation
           // currentPriceWei is in wei per token, tokenAmount is in wei (with 18 decimals)
           // Multiply and divide by 1e18 to get total price in wei
@@ -430,14 +537,17 @@ export default function BuyWidget({
               throw new Error(`Invalid fallback price calculation: ${fallbackPriceEth}`);
             }
             
-            if (fallbackPriceEth > 10) {
-              throw new Error(`Fallback price too high: ${fallbackPriceEth} ${chainSymbol}. Current price per token: ${currentPriceEth} ${chainSymbol}. Please try a smaller amount.`);
+            // Calculate maximum reasonable fallback price
+            // Use a very conservative limit: 0.1 ETH/BNB total for any transaction
+            const maxFallbackPrice = 0.1; // 0.1 ETH/BNB absolute max for fallback
+            if (fallbackPriceEth > maxFallbackPrice) {
+              throw new Error(`Fallback price too high: ${fallbackPriceEth.toFixed(6)} ${chainSymbol} for ${amount} tokens. Current price per token: ${currentPriceEth.toFixed(6)} ${chainSymbol}. This suggests the contract has corrupted data. Please try a much smaller amount (e.g., ${Math.floor(parseFloat(amount) * maxFallbackPrice / fallbackPriceEth)} tokens) or contact support.`);
             }
             
             console.log(`✅ Using fallback price: ${fallbackPriceEth} ${chainSymbol}`);
           } catch (fallbackErr: any) {
             console.error('❌ Fallback calculation failed:', fallbackErr);
-            throw new Error(`Failed to calculate price: ${fallbackErr.message}. Please try a smaller amount or contact support.`);
+            throw new Error(`Failed to calculate price: ${fallbackErr.message}. Please try a much smaller amount (e.g., 100 tokens) or contact support.`);
           }
         }
       } catch (err: any) {
@@ -447,18 +557,20 @@ export default function BuyWidget({
       
       // Final validation: price should be reasonable
       const finalPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
-      if (priceEstimateWei <= 0 || finalPriceEth > 100 || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
-        throw new Error(`Invalid price estimate: ${finalPriceEth.toExponential(2)} ${chainSymbol}. This suggests an issue with the bonding curve. Please try a smaller amount or contact support.`);
+      const maxFinalPrice = 0.1; // 0.1 ETH/BNB absolute max
+      
+      if (priceEstimateWei <= 0 || finalPriceEth > maxFinalPrice || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
+        throw new Error(`Invalid price estimate: ${finalPriceEth.toFixed(6)} ${chainSymbol} (max allowed: ${maxFinalPrice} ${chainSymbol}). This suggests an issue with the bonding curve. Please try a much smaller amount or contact support.`);
       }
       
       // Add 10% buffer for safety (contract will refund excess)
       const priceWithFee = (priceEstimateWei * BigInt(110)) / BigInt(100);
       const priceWithFeeEth = parseFloat(ethers.formatEther(priceWithFee));
-      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${priceWithFeeEth} ${chainSymbol})`);
+      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${priceWithFeeEth.toFixed(6)} ${chainSymbol})`);
       
-      // Final validation before sending
-      if (priceWithFeeEth > 100 || isNaN(priceWithFeeEth) || !isFinite(priceWithFeeEth)) {
-        throw new Error(`Price validation failed: ${priceWithFeeEth} ${chainSymbol}. Please try a smaller amount or contact support.`);
+      // Final validation before sending - must be within reasonable limits
+      if (priceWithFeeEth > maxFinalPrice || isNaN(priceWithFeeEth) || !isFinite(priceWithFeeEth)) {
+        throw new Error(`Price validation failed: ${priceWithFeeEth.toFixed(6)} ${chainSymbol} (max allowed: ${maxFinalPrice} ${chainSymbol}). Please try a much smaller amount or contact support.`);
       }
       
       console.log(`🚀 Sending buy transaction with value: ${priceWithFee.toString()} wei`);

@@ -89,6 +89,22 @@ contract CrossChainSync is Ownable, ILayerZeroReceiver {
     }
     
     /**
+     * @dev Authorize any address to sync (for GlobalSupplyTracker, etc.)
+     * This is a more general authorization function
+     */
+    function authorizeAddress(address addr) external onlyOwner {
+        require(addr != address(0), "Invalid address");
+        authorizedTokens[addr] = true;
+    }
+    
+    /**
+     * @dev Revoke address authorization
+     */
+    function revokeAddress(address addr) external onlyOwner {
+        authorizedTokens[addr] = false;
+    }
+    
+    /**
      * @dev Sync supply update across all chains
      * Called by token contracts when supply changes
      */

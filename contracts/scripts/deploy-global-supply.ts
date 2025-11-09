@@ -36,11 +36,26 @@ async function main() {
     console.warn("⚠️  Warning: Low balance! You may need more funds for deployment.");
   }
 
-  // Deploy GlobalSupplyTracker
+  // Get chain EID based on network
+  const chainEIDs: Record<string, number> = {
+    sepolia: 40161,      // Sepolia
+    bscTestnet: 40102,   // BSC Testnet
+    baseSepolia: 40245,  // Base Sepolia
+  };
+  
+  const chainEID = chainEIDs[network];
+  if (!chainEID) {
+    console.error(`❌ ERROR: Unknown network ${network}. Cannot determine chain EID.`);
+    process.exit(1);
+  }
+  
+  console.log(`📍 Chain EID: ${chainEID}`);
+  
+  // Deploy GlobalSupplyTracker with chain EID
   const GlobalSupplyTracker = await ethers.getContractFactory("GlobalSupplyTracker");
   console.log("\n📦 Deploying contract...");
   
-  const tracker = await GlobalSupplyTracker.deploy();
+  const tracker = await GlobalSupplyTracker.deploy(chainEID);
   await tracker.waitForDeployment();
   
   const address = await tracker.getAddress();

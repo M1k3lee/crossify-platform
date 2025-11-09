@@ -400,3 +400,4 @@ If you have existing SQLite data, you can migrate it:
 **Status**: 📋 Guide ready - Migration can be performed when needed
 **Priority**: ⚠️ Medium - Current SQLite + blockchain sync solution works for now
 
+
