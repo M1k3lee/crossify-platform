@@ -43,14 +43,54 @@ interface PauseParams {
 export async function mintTokens(params: MintParams): Promise<{ txHash: string; platformFeeAmount?: string }> {
   const { tokenAddress, to, amount, chain, platformFeePercent = 0 } = params;
 
-  // Switch to correct network
+  console.log(`🪙 Attempting to mint ${amount} tokens on ${chain}...`);
+  console.log(`   Token address: ${tokenAddress}`);
+  console.log(`   Recipient: ${to}`);
+
+  // Switch to correct network first
+  console.log(`🔄 Switching to ${chain} network...`);
   await switchNetwork(chain);
+
+  // Give wallet a moment to switch networks (important!)
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Get provider and signer (prefer MetaMask over Phantom)
   const ethereumProvider = getPreferredEVMProvider();
+  
+  // Verify we're on the correct network
+  try {
+    const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
+    const expectedChainIds: Record<string, string> = {
+      ethereum: '0xaa36a7', // Sepolia
+      bsc: '0x61', // BSC Testnet
+      base: '0x14a34', // Base Sepolia
+    };
+    const expectedChainId = expectedChainIds[chain];
+    
+    if (currentChainId.toLowerCase() !== expectedChainId.toLowerCase()) {
+      console.error(`❌ Network mismatch! Expected ${expectedChainId} (${chain}), got ${currentChainId}`);
+      throw new Error(`Please switch to ${chain} network in your wallet and try again.`);
+    }
+    console.log(`✅ Verified on ${chain} network (chainId: ${currentChainId})`);
+  } catch (error: any) {
+    if (error.message?.includes('Please switch')) {
+      throw error;
+    }
+    console.warn('⚠️ Could not verify network, continuing anyway...');
+  }
+
   const provider = new BrowserProvider(ethereumProvider);
   const signer = await provider.getSigner();
   const signerAddress = await signer.getAddress();
+  console.log(`✅ Connected with address: ${signerAddress}`);
+  
+  // Verify token contract exists on this network
+  console.log(`🔍 Verifying token contract exists at ${tokenAddress}...`);
+  const tokenCode = await provider.getCode(tokenAddress);
+  if (!tokenCode || tokenCode === '0x') {
+    throw new Error(`Token contract not found at ${tokenAddress} on ${chain}. Make sure the token is deployed on this chain.`);
+  }
+  console.log(`✅ Token contract verified`);
 
   // Connect to token contract
   const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
@@ -112,12 +152,53 @@ export async function mintTokens(params: MintParams): Promise<{ txHash: string; 
 export async function burnTokens(params: BurnParams): Promise<{ txHash: string }> {
   const { tokenAddress, amount, chain } = params;
 
+  console.log(`🔥 Attempting to burn ${amount} tokens on ${chain}...`);
+  console.log(`   Token address: ${tokenAddress}`);
+
+  // Switch to correct network first
+  console.log(`🔄 Switching to ${chain} network...`);
   await switchNetwork(chain);
+
+  // Give wallet a moment to switch networks (important!)
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Get provider and signer (prefer MetaMask over Phantom)
   const ethereumProvider = getPreferredEVMProvider();
+  
+  // Verify we're on the correct network
+  try {
+    const currentChainId = await ethereumProvider.request({ method: 'eth_chainId' });
+    const expectedChainIds: Record<string, string> = {
+      ethereum: '0xaa36a7', // Sepolia
+      bsc: '0x61', // BSC Testnet
+      base: '0x14a34', // Base Sepolia
+    };
+    const expectedChainId = expectedChainIds[chain];
+    
+    if (currentChainId.toLowerCase() !== expectedChainId.toLowerCase()) {
+      console.error(`❌ Network mismatch! Expected ${expectedChainId} (${chain}), got ${currentChainId}`);
+      throw new Error(`Please switch to ${chain} network in your wallet and try again.`);
+    }
+    console.log(`✅ Verified on ${chain} network (chainId: ${currentChainId})`);
+  } catch (error: any) {
+    if (error.message?.includes('Please switch')) {
+      throw error;
+    }
+    console.warn('⚠️ Could not verify network, continuing anyway...');
+  }
+
   const provider = new BrowserProvider(ethereumProvider);
   const signer = await provider.getSigner();
+  const signerAddress = await signer.getAddress();
+  console.log(`✅ Connected with address: ${signerAddress}`);
+
+  // Verify token contract exists on this network
+  console.log(`🔍 Verifying token contract exists at ${tokenAddress}...`);
+  const tokenCode = await provider.getCode(tokenAddress);
+  if (!tokenCode || tokenCode === '0x') {
+    throw new Error(`Token contract not found at ${tokenAddress} on ${chain}. Make sure the token is deployed on this chain.`);
+  }
+  console.log(`✅ Token contract verified`);
 
   const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
   
@@ -125,20 +206,31 @@ export async function burnTokens(params: BurnParams): Promise<{ txHash: string }
   let decimals = 18; // Default
   try {
     decimals = await tokenContract.decimals();
+    console.log(`✅ Token decimals: ${decimals}`);
   } catch {
     // If decimals() fails, assume 18
+    console.warn('⚠️ Could not get token decimals, assuming 18');
   }
   
   const amountWei = ethers.parseUnits(amount, decimals);
+  console.log(`💰 Amount to burn: ${amountWei.toString()} (${amount} tokens)`);
 
   // Check balance
-  const balance = await tokenContract.balanceOf(await signer.getAddress());
+  console.log(`🔍 Checking token balance for ${signerAddress}...`);
+  const balance = await tokenContract.balanceOf(signerAddress);
+  const balanceFormatted = ethers.formatUnits(balance, decimals);
+  console.log(`💰 Current token balance: ${balanceFormatted} tokens (${balance.toString()} wei)`);
+  
   if (balance < amountWei) {
-    throw new Error('Insufficient balance to burn');
+    throw new Error(`Insufficient token balance to burn. You have ${balanceFormatted} tokens, but trying to burn ${amount} tokens. Make sure you have tokens on the ${chain} network.`);
   }
 
+  console.log(`✅ Balance check passed. Proceeding with burn...`);
   const tx = await tokenContract.burn(amountWei);
+  console.log(`📤 Burn transaction sent: ${tx.hash}`);
+  
   const receipt = await tx.wait();
+  console.log(`✅ Burn transaction confirmed: ${receipt.hash}`);
 
   return { txHash: receipt.hash };
 }
