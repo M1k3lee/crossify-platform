@@ -95,17 +95,28 @@ export default function BuyWidget({
         
         // Expected price using current price (safe fallback)
         const expectedPriceEth = currentPriceEth * parseFloat(amount);
-        const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 0.1); // 0.1 ETH per token max
+        const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 0.1); // 0.1 ETH/BNB per token max
+        const maxReasonableWei = ethers.parseEther('100'); // 100 ETH/BNB max
 
         if (tab === 'buy') {
           // Calculate ETH/BNB needed for token amount
           try {
             const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            
+            // CRITICAL: Check BigInt value BEFORE conversion (catches old contract bugs)
+            if (priceFromContract > maxReasonableWei) {
+              console.warn(`⚠️ Contract price too high (${priceFromContract.toString()} wei), using fallback`);
+              const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
+              setPriceEstimate(safeEstimate);
+              setTokensEstimate(parseFloat(amount));
+              return;
+            }
+            
             const priceEth = parseFloat(ethers.formatEther(priceFromContract));
             
             // Validate: if price is way too high, use fallback
             if (priceEth > absoluteMaxPrice || priceEth > 100 || (expectedPriceEth > 0.0001 && priceEth > expectedPriceEth * 100)) {
-              console.warn(`⚠️ Contract price too high (${priceEth} ETH), using safe fallback (${expectedPriceEth} ETH)`);
+              console.warn(`⚠️ Contract price too high (${priceEth}), using safe fallback (${expectedPriceEth})`);
               // Use current price * amount as fallback
               const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
               setPriceEstimate(safeEstimate);
@@ -125,11 +136,20 @@ export default function BuyWidget({
           // Calculate ETH/BNB received for token amount
           try {
             const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            
+            // CRITICAL: Check BigInt value BEFORE conversion
+            if (priceFromContract > maxReasonableWei) {
+              console.warn(`⚠️ Contract price too high, using fallback`);
+              setPriceEstimate(expectedPriceEth);
+              setTokensEstimate(parseFloat(amount));
+              return;
+            }
+            
             const priceEth = parseFloat(ethers.formatEther(priceFromContract));
             
             // Validate: if price is way too high, use fallback
             if (priceEth > absoluteMaxPrice || priceEth > 100 || (expectedPriceEth > 0.0001 && priceEth > expectedPriceEth * 100)) {
-              console.warn(`⚠️ Contract price too high (${priceEth} ETH), using safe fallback (${expectedPriceEth} ETH)`);
+              console.warn(`⚠️ Contract price too high, using safe fallback`);
               setPriceEstimate(expectedPriceEth);
               setTokensEstimate(parseFloat(amount));
             } else {
@@ -150,27 +170,49 @@ export default function BuyWidget({
 
     const timeoutId = setTimeout(calculateEstimate, 500); // Debounce
     return () => clearTimeout(timeoutId);
-  }, [amount, tab, curveAddress, isValidAddress]);
+  }, [amount, tab, curveAddress, isValidAddress, chain]);
 
   // Get chain-specific currency symbol (define before handleBuy)
   const getChainSymbol = (chainName: string): string => {
-    const chainLower = chainName.toLowerCase();
+    if (!chainName) return 'ETH'; // Default fallback
     
-    // Handle testnet variants
-    if (chainLower.includes('bsc') || chainLower === 'bsc-testnet') {
+    const chainLower = chainName.toLowerCase().trim();
+    
+    // Handle BSC/Binance Smart Chain (most specific first)
+    if (chainLower === 'bsc' || 
+        chainLower === 'bsc-testnet' || 
+        chainLower === 'binance' ||
+        chainLower === 'binance smart chain' ||
+        chainLower.includes('bsc') ||
+        chainLower.includes('binance')) {
       return 'BNB';
     }
-    if (chainLower.includes('ethereum') || chainLower === 'sepolia' || chainLower === 'eth') {
+    
+    // Handle Ethereum/Sepolia
+    if (chainLower === 'ethereum' || 
+        chainLower === 'eth' ||
+        chainLower === 'sepolia' ||
+        chainLower.includes('ethereum') ||
+        chainLower.includes('sepolia')) {
       return 'ETH';
     }
-    if (chainLower.includes('base') || chainLower === 'base-sepolia') {
-      return 'ETH'; // Base uses ETH as native currency
+    
+    // Handle Base (uses ETH as native currency)
+    if (chainLower === 'base' || 
+        chainLower === 'base-sepolia' ||
+        chainLower.includes('base')) {
+      return 'ETH';
     }
-    if (chainLower.includes('solana') || chainLower === 'sol') {
+    
+    // Handle Solana
+    if (chainLower === 'solana' || 
+        chainLower === 'sol' ||
+        chainLower.includes('solana')) {
       return 'SOL';
     }
     
     // Default fallback
+    console.warn(`Unknown chain name: ${chainName}, defaulting to ETH`);
     return 'ETH';
   };
 
@@ -299,40 +341,48 @@ export default function BuyWidget({
         try {
           const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
           
-          // First check: Validate the raw BigInt value before converting to ETH
-          // Maximum reasonable price: 100 ETH = 100 * 10^18 wei
+          // First check: Validate the raw BigInt value before converting to ETH/BNB
+          // Maximum reasonable price: 100 ETH/BNB = 100 * 10^18 wei
           const maxReasonableWei = ethers.parseEther('100');
+          
+          // CRITICAL: Check if price is astronomically high BEFORE any conversion
+          // This catches the bug in old BondingCurve contracts
           if (priceFromContract > maxReasonableWei) {
             console.warn(`⚠️ Price from contract is too high (raw wei): ${priceFromContract.toString()}`);
-            console.warn(`   Maximum reasonable: ${maxReasonableWei.toString()} wei (100 ETH/BNB)`);
-            console.warn(`   Using fallback calculation.`);
+            console.warn(`   Maximum reasonable: ${maxReasonableWei.toString()} wei (100 ${chainSymbol})`);
+            console.warn(`   This indicates the contract has a calculation bug (old version).`);
+            console.warn(`   Using fallback calculation based on current price.`);
             throw new Error('Contract price too high (BigInt check) - using fallback');
           }
           
+          // Additional safety: Check if price is unreasonably large even before parsing
+          // If price > 1e30 wei, it's definitely wrong (that's 1e12 ETH!)
+          const absoluteMaxWei = ethers.parseEther('1000000'); // 1 million ETH/BNB absolute max
+          if (priceFromContract > absoluteMaxWei) {
+            console.error(`❌ Contract returned astronomically high price: ${priceFromContract.toString()} wei`);
+            console.error(`   This is definitely a bug in the contract. Using fallback.`);
+            throw new Error('Contract price astronomically high - using fallback');
+          }
+          
+          // Convert to number for validation (but we already checked BigInt above)
           const priceEth = parseFloat(ethers.formatEther(priceFromContract));
           console.log(`💰 Price estimate from contract: ${priceFromContract.toString()} wei (${priceEth} ${chainSymbol})`);
           
-          // Validate: price should be reasonable
-          // The contract might have a unit mismatch bug where it multiplies wei by wei
-          // For a new token with basePrice ~0.0001 ETH and buying 100 tokens:
-          // Expected price ≈ 0.0001 * 100 = 0.01 ETH (for linear curve with no supply)
-          // With supply, it should be slightly higher, but not astronomical
-          
-          // Calculate expected price range
-          const expectedPrice = currentPriceEth * parseFloat(amount);
-          const expectedMaxPrice = expectedPrice * 10; // Allow 10x buffer for bonding curve
-          const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 1); // Absolute max: 1 ETH per token
-          
-          // Check if price is NaN or Infinity (invalid number)
+          // Additional validation: Check if conversion resulted in invalid number
           if (isNaN(priceEth) || !isFinite(priceEth)) {
             console.warn(`⚠️ Price from contract is invalid (NaN or Infinity). Using fallback.`);
             throw new Error('Invalid price from contract - using fallback');
           }
           
-          // Check 1: Absolute maximum - if price is > 100 ETH or > absoluteMaxPrice, use fallback
+          // Calculate expected price range
+          const expectedPrice = currentPriceEth * parseFloat(amount);
+          const expectedMaxPrice = expectedPrice * 10; // Allow 10x buffer for bonding curve
+          const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 1); // Absolute max: 1 ETH/BNB per token
+          
+          // Check 1: Absolute maximum - if price is > 100 ETH/BNB or > absoluteMaxPrice, use fallback
           if (priceEth > 100 || priceEth > absoluteMaxPrice) {
             console.warn(`⚠️ Price from contract is too high: ${priceEth} ${chainSymbol} (expected max: ${absoluteMaxPrice} ${chainSymbol}).`);
-            console.warn(`   This indicates a unit mismatch bug in the bonding curve contract.`);
+            console.warn(`   This indicates a bug in the bonding curve contract (likely old version).`);
             console.warn(`   Using fallback calculation based on current price.`);
             throw new Error('Contract price too high - using fallback');
           }
@@ -566,6 +616,13 @@ export default function BuyWidget({
 
   // Get chain-specific currency symbol for display
   const chainSymbol = getChainSymbol(chain);
+  
+  // Debug: Log chain info to help diagnose currency display issues
+  useEffect(() => {
+    if (chain) {
+      console.log(`🔍 BuyWidget chain info: chain="${chain}", symbol="${chainSymbol}"`);
+    }
+  }, [chain, chainSymbol]);
 
   return (
     <div className="bg-gradient-to-br from-gray-800/90 to-gray-800/70 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-xl">
