@@ -92,15 +92,27 @@ async function queryAllTokens(
   
   try {
     const currentBlock = await provider.getBlockNumber();
-    // Query from a reasonable range (last 50k blocks, or from deployment block)
-    const startBlock = Math.max(fromBlock, currentBlock - 50000);
+    // Query from block 0 to ensure we find all tokens (testnets don't have that many blocks)
+    // For mainnet, you might want to limit this, but for testnets it's fine
+    const startBlock = 0;
     
+    console.log(`  📊 Current block: ${currentBlock}`);
     console.log(`  📊 Querying TokenCreated events from block ${startBlock} to ${currentBlock}...`);
+    console.log(`  📊 Block range: ${currentBlock - startBlock} blocks`);
     
     const filter = factoryContract.filters.TokenCreated();
     const events = await factoryContract.queryFilter(filter, startBlock, currentBlock);
     
     console.log(`  ✅ Found ${events.length} TokenCreated events`);
+    
+    if (events.length > 0) {
+      console.log(`  📋 Sample events:`);
+      events.slice(0, 3).forEach((event, idx) => {
+        if ('args' in event) {
+          console.log(`     ${idx + 1}. ${event.args.name} (${event.args.symbol}) at block ${event.blockNumber}`);
+        }
+      });
+    }
     
     return events
       .filter((event): event is ethers.EventLog => 'args' in event)
@@ -242,6 +254,19 @@ async function syncChain(config: ChainConfig): Promise<number> {
     const blockNumber = await provider.getBlockNumber(); // Test connection
     console.log(`   ✅ Connected to ${config.chainName} (block: ${blockNumber})`);
 
+    // Verify factory contract exists
+    try {
+      const factoryCode = await provider.getCode(config.factoryAddress);
+      if (!factoryCode || factoryCode === '0x') {
+        console.error(`   ❌ Factory contract does not exist at ${config.factoryAddress}`);
+        return 0;
+      }
+      console.log(`   ✅ Factory contract verified (code size: ${(factoryCode.length - 2) / 2} bytes)`);
+    } catch (error: any) {
+      console.error(`   ❌ Error checking factory contract: ${error.message}`);
+      return 0;
+    }
+
     // Query all tokens
     const tokens = await queryAllTokens(provider, config.factoryAddress);
 
@@ -249,8 +274,10 @@ async function syncChain(config: ChainConfig): Promise<number> {
       console.log(`   ℹ️  No tokens found on ${config.chainName}`);
       console.log(`   💡 This could mean:`);
       console.log(`      - No tokens have been created yet`);
-      console.log(`      - Factory address is incorrect`);
-      console.log(`      - Tokens were created before the query range (last 50k blocks)`);
+      console.log(`      - Factory address is incorrect (verify on block explorer)`);
+      console.log(`      - Tokens were created with a different factory`);
+      console.log(`   🔍 Verify on block explorer:`);
+      console.log(`      - Check TokenCreated events for factory ${config.factoryAddress}`);
       return 0;
     }
 

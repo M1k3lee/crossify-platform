@@ -396,4 +396,30 @@ router.get('/database-stats', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /debug/sync-tokens
+ * Manually trigger token sync from blockchain
+ */
+router.post('/sync-tokens', async (req: Request, res: Response) => {
+  try {
+    console.log('🔄 Manual token sync triggered via API');
+    const { syncAllTokensFromBlockchain } = await import('../services/startupSync');
+    
+    const result = await syncAllTokensFromBlockchain();
+    
+    res.json({
+      success: true,
+      message: 'Token sync completed',
+      ...result,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Error in manual sync:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+    });
+  }
+});
+
 
