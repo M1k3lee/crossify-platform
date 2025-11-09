@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const router = Router();
+export const router = Router();
 
 // Helper to get RPC URL for a chain
 function getRpcUrl(chain: string): string | null {
@@ -343,5 +343,4 @@ router.get('/factory-info', async (req: Request, res: Response) => {
   }
 });
 
-export default router;
 
