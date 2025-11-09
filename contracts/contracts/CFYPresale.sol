@@ -306,7 +306,7 @@ contract CFYPresale is Ownable, ReentrancyGuard, Pausable {
             if (refund > 0) {
                 payable(msg.sender).transfer(refund);
             }
-            msg.value = requiredValue;
+            // Note: msg.value is read-only, but we've already refunded the excess
         }
         
         require(cfyToBuy > 0, "No tokens to buy");

@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  */
 interface IGlobalSupplyTracker {
     function getGlobalSupply(address tokenId) external view returns (uint256);
-    function updateSupply(address tokenId, string memory chain, uint256 newSupply) external;
+    function updateSupply(address tokenId, string memory chain, uint256 newSupply) external payable;
 }
 
 /**

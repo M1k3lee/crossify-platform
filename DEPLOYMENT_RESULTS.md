@@ -1,124 +1,87 @@
-# TokenFactory Deployment Results
+# Cross-Chain Deployment Results
 
-## ✅ Successfully Deployed!
-
-All three testnet deployments completed successfully with the ownership fixes.
-
-## Deployed Factory Addresses
-
-### Sepolia (Ethereum Testnet)
-- **Address**: `0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0`
-- **Explorer**: https://sepolia.etherscan.io/address/0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-- **Network**: Sepolia Testnet (Chain ID: 11155111)
-- **Global Supply Tracker**: `0xA4c5bFA9099347Bc405B72dd1955b75dCa263573`
-- **Ownership Fix**: ✅ Yes
-- **Status**: ✅ Deployed
-
-### BSC Testnet
-- **Address**: `0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58`
-- **Explorer**: https://testnet.bscscan.com/address/0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-- **Network**: BSC Testnet (Chain ID: 97)
-- **Global Supply Tracker**: `0x15Bc893fa73694106D1720f4f0c8C3EE3259a15e`
-- **Ownership Fix**: ✅ Yes
-- **Status**: ✅ Deployed
+## ✅ Deployment Complete - All Networks
 
 ### Base Sepolia
-- **Address**: `0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0`
-- **Explorer**: https://sepolia-explorer.base.org/address/0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-- **Network**: Base Sepolia (Chain ID: 84532)
-- **Global Supply Tracker**: `0xA4c5bFA9099347Bc405B72dd1955b75dCa263573`
-- **Ownership Fix**: ✅ Yes
-- **Status**: ✅ Deployed
+- **CrossChainSync**: `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
+- **GlobalSupplyTracker**: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
+- **Chain EID**: 40245
+- **Status**: ✅ Deployed, Configured, Funded (0.05 ETH tracker, 0.1 ETH sync)
+- **Explorer**: https://sepolia-explorer.base.org/address/0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
 
-## Environment Variables to Update
+### BSC Testnet
+- **CrossChainSync**: `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
+- **GlobalSupplyTracker**: `0xe84Ae64735261F441e0bcB12bCf60630c5239ef4`
+- **Chain EID**: 40102
+- **Status**: ✅ Deployed, Configured, ⚠️ Not Funded (insufficient balance)
+- **Explorer**: https://testnet.bscscan.com/address/0xf5446E2690B2eb161231fB647476A98e1b6b7736
 
-### Frontend `.env`
+### Sepolia
+- **CrossChainSync**: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
+- **GlobalSupplyTracker**: `0x130195A8D09dfd99c36D5903B94088EDBD66533e`
+- **Chain EID**: 40161
+- **Status**: ✅ Deployed, Configured, ⚠️ Not Funded (skipped for consistency)
+- **Explorer**: https://sepolia.etherscan.io/address/0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65
+
+## 📝 Environment Variables for Railway
+
+Add these to your Railway environment variables:
+
 ```env
-# TokenFactory addresses (NEW - with ownership fixes)
-VITE_ETH_FACTORY=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-VITE_BSC_FACTORY=0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-VITE_BASE_FACTORY=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-
-# Global Supply Trackers (already deployed)
-VITE_GLOBAL_SUPPLY_TRACKER_SEPOLIA=0xA4c5bFA9099347Bc405B72dd1955b75dCa263573
-VITE_GLOBAL_SUPPLY_TRACKER_BSCTESTNET=0x15Bc893fa73694106D1720f4f0c8C3EE3259a15e
-VITE_GLOBAL_SUPPLY_TRACKER_BASESEPOLIA=0xA4c5bFA9099347Bc405B72dd1955b75dCa263573
-```
-
-### Backend `.env` (if applicable)
-```env
-TOKEN_FACTORY_ETHEREUM=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-TOKEN_FACTORY_BSC=0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-TOKEN_FACTORY_BASE=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-```
-
-### Contracts `.env`
-```env
-TOKEN_FACTORY_ADDRESS_SEPOLIA=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-TOKEN_FACTORY_ADDRESS_BSCTESTNET=0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-TOKEN_FACTORY_ADDRESS_BASESEPOLIA=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-```
-
-## Key Improvements
-
-1. ✅ **Ownership Fix**: New tokens are owned by creator, not factory
-2. ✅ **Creator Tracking**: `tokenCreator` mapping tracks who created each token
-3. ✅ **Migration Support**: Can migrate existing tokens to correct ownership
-4. ✅ **Optimized Code**: Increased optimizer runs to 1000 to reduce contract size
-5. ✅ **Simplified Logic**: Always uses CrossChainToken (works with or without cross-chain sync)
-
-## Next Steps
-
-### Step 1: Update Environment Variables ✅
-Update frontend, backend, and contracts `.env` files with new addresses.
-
-### Step 2: Run Migration Scripts (If Needed)
-If you have existing tokens created with old factories, run migration:
-
-```bash
-# Sepolia
-cd contracts
-export TOKEN_FACTORY_ADDRESS=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-npx hardhat run scripts/migrate-token-ownership.ts --network sepolia
+# Base Sepolia
+CROSS_CHAIN_SYNC_BASE_SEPOLIA=0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
+GLOBAL_SUPPLY_TRACKER_BASE_SEPOLIA=0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65
 
 # BSC Testnet
-export TOKEN_FACTORY_ADDRESS=0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-npx hardhat run scripts/migrate-token-ownership.ts --network bscTestnet
+CROSS_CHAIN_SYNC_BSC_TESTNET=0xf5446E2690B2eb161231fB647476A98e1b6b7736
+GLOBAL_SUPPLY_TRACKER_BSC_TESTNET=0xe84Ae64735261F441e0bcB12bCf60630c5239ef4
 
-# Base Sepolia
-export TOKEN_FACTORY_ADDRESS=0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-npx hardhat run scripts/migrate-token-ownership.ts --network baseSepolia
+# Sepolia
+CROSS_CHAIN_SYNC_SEPOLIA=0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65
+GLOBAL_SUPPLY_TRACKER_SEPOLIA=0x130195A8D09dfd99c36D5903B94088EDBD66533e
 ```
 
-### Step 3: Verify Deployment
-1. Create a test token using the new factory
-2. Verify you are the owner (not the factory)
-3. Test owner functions:
-   - ✅ Mint tokens
-   - ✅ Burn tokens
-   - ✅ Pause/unpause token
-   - ✅ Update fees
+## ✅ Trusted Remotes Configured
 
-### Step 4: Update Frontend
-Update frontend to use new factory addresses in environment variables.
+All trusted remotes have been set up on all networks:
+- **Base Sepolia**: ✅ Trusts BSC Testnet and Sepolia
+- **BSC Testnet**: ✅ Trusts Base Sepolia and Sepolia
+- **Sepolia**: ✅ Trusts Base Sepolia and BSC Testnet
 
-## Migration Notes
+## ⚠️ Next Steps Required
 
-- **New Tokens**: All tokens created after this deployment will automatically have correct ownership
-- **Old Tokens**: If you have existing tokens, run migration scripts to fix ownership
-- **No Migration Needed**: If you have no existing tokens, you can skip migration
+### 1. ~~Set Trusted Remotes~~ ✅ COMPLETE
 
-## Deployment Date
-2025-01-XX
+**Base Sepolia** needs to trust:
+- BSC Testnet (EID 40102): `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
+- Sepolia (EID 40161): `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
 
-## Status
-✅ All deployments successful
-⏳ Environment variables need to be updated
-⏳ Migration scripts ready (run if needed)
-⏳ Verification pending
+**BSC Testnet** needs to trust:
+- Base Sepolia (EID 40245): `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
+- Sepolia (EID 40161): `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
 
----
+**Sepolia** needs to trust:
+- Base Sepolia (EID 40245): `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
+- BSC Testnet (EID 40102): `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
 
-**Congratulations!** Your TokenFactory contracts are now deployed with ownership fixes. New tokens will automatically have correct ownership!
+### 2. Fund Contracts (Optional but Recommended)
+The contracts need native tokens for LayerZero message fees:
+- **Base Sepolia**: Already funded ✅
+- **BSC Testnet**: Needs ~0.1 BNB
+- **Sepolia**: Needs ~0.1 ETH
 
+### 3. Update TokenFactory (If Needed)
+If you want new tokens to use the new GlobalSupplyTracker addresses, update the TokenFactory contracts.
 
+## 🔧 Setting Trusted Remotes
+
+Use the `setup-trusted-remotes.ts` script or run manually:
+
+```bash
+cd contracts
+npx hardhat run scripts/setup-trusted-remotes.ts --network baseSepolia
+npx hardhat run scripts/setup-trusted-remotes.ts --network bscTestnet
+npx hardhat run scripts/setup-trusted-remotes.ts --network sepolia
+```
+
+Or use the individual commands in the script to set them one by one.

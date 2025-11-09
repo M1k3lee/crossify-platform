@@ -67,7 +67,7 @@ contract CFYGovernance is Ownable, ReentrancyGuard {
     
     constructor(address _cfyToken, address _owner) Ownable(_owner) {
         require(_cfyToken != address(0), "Invalid CFY token address");
-        cfyToken = CFYToken(_cfyToken);
+        cfyToken = CFYToken(payable(_cfyToken));
     }
     
     /**
