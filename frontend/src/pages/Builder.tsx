@@ -27,12 +27,21 @@ interface TokenData {
   discordUrl: string;
   telegramUrl: string;
   websiteUrl: string;
+  githubUrl: string;
+  mediumUrl: string;
+  redditUrl: string;
+  youtubeUrl: string;
+  linkedinUrl: string;
   basePrice: string;
   slope: string;
   graduationThreshold: string;
   buyFeePercent: string;
   sellFeePercent: string;
   chains: string[];
+  bannerImageIpfs?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  backgroundColor?: string;
 }
 
 export default function Builder() {
@@ -53,12 +62,19 @@ export default function Builder() {
     discordUrl: '',
     telegramUrl: '',
     websiteUrl: '',
+    githubUrl: '',
+    mediumUrl: '',
+    redditUrl: '',
+    youtubeUrl: '',
+    linkedinUrl: '',
     basePrice: '0.0001',
     slope: '0.00001',
     graduationThreshold: '0', // Disabled - no graduation
     buyFeePercent: '0',
     sellFeePercent: '0',
     chains: [],
+    primaryColor: '#3B82F6',
+    accentColor: '#8B5CF6',
   });
 
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedTokenSettings>({
@@ -149,6 +165,20 @@ export default function Builder() {
       return response.data.cid;
     } catch (error) {
       console.error('Logo upload failed:', error);
+      return undefined;
+    }
+  };
+
+  const uploadBanner = async (file: File): Promise<string | undefined> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post(`${API_BASE}/upload/banner`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.cid;
+    } catch (error) {
+      console.error('Banner upload failed:', error);
       return undefined;
     }
   };
@@ -272,6 +302,27 @@ export default function Builder() {
       
       const cleanedWebsite = cleanUrl(formData.websiteUrl);
       if (cleanedWebsite) tokenData.websiteUrl = cleanedWebsite;
+
+      const cleanedGithub = cleanUrl(formData.githubUrl);
+      if (cleanedGithub) tokenData.githubUrl = cleanedGithub;
+
+      const cleanedMedium = cleanUrl(formData.mediumUrl);
+      if (cleanedMedium) tokenData.mediumUrl = cleanedMedium;
+
+      const cleanedReddit = cleanUrl(formData.redditUrl);
+      if (cleanedReddit) tokenData.redditUrl = cleanedReddit;
+
+      const cleanedYoutube = cleanUrl(formData.youtubeUrl);
+      if (cleanedYoutube) tokenData.youtubeUrl = cleanedYoutube;
+
+      const cleanedLinkedin = cleanUrl(formData.linkedinUrl);
+      if (cleanedLinkedin) tokenData.linkedinUrl = cleanedLinkedin;
+
+      // Add customization fields
+      if (formData.bannerImageIpfs) tokenData.bannerImageIpfs = formData.bannerImageIpfs;
+      if (formData.primaryColor) tokenData.primaryColor = formData.primaryColor;
+      if (formData.accentColor) tokenData.accentColor = formData.accentColor;
+      if (formData.backgroundColor) tokenData.backgroundColor = formData.backgroundColor;
 
       console.log('Creating token with data:', JSON.stringify(tokenData, null, 2));
 
@@ -736,6 +787,102 @@ export default function Builder() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
                     placeholder="https://..."
                   />
+                </div>
+              </div>
+
+              {/* Additional Social Links */}
+              <div className="mt-6 pt-6 border-t border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-4">Additional Social Links (Optional)</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">GitHub URL</label>
+                    <input
+                      type="url"
+                      value={formData.githubUrl}
+                      onChange={(e) => handleInputChange('githubUrl', e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                      placeholder="https://github.com/..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Medium URL</label>
+                    <input
+                      type="url"
+                      value={formData.mediumUrl}
+                      onChange={(e) => handleInputChange('mediumUrl', e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                      placeholder="https://medium.com/..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Reddit URL</label>
+                    <input
+                      type="url"
+                      value={formData.redditUrl}
+                      onChange={(e) => handleInputChange('redditUrl', e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                      placeholder="https://reddit.com/r/..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">YouTube URL</label>
+                    <input
+                      type="url"
+                      value={formData.youtubeUrl}
+                      onChange={(e) => handleInputChange('youtubeUrl', e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                      placeholder="https://youtube.com/..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">LinkedIn URL</label>
+                    <input
+                      type="url"
+                      value={formData.linkedinUrl}
+                      onChange={(e) => handleInputChange('linkedinUrl', e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                      placeholder="https://linkedin.com/..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Customization Section */}
+              <div className="mt-6 pt-6 border-t border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-4">Customize Your Token Page (Optional)</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Make your token page stand out with custom branding and styling.
+                </p>
+
+                {/* Banner Upload */}
+                <div className="mb-6">
+                  <BannerUpload
+                    value={formData.bannerImageIpfs}
+                    onChange={(cid) => handleInputChange('bannerImageIpfs', cid || '')}
+                  />
+                </div>
+
+                {/* Color Theme */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <ColorPicker
+                    label="Primary Color"
+                    value={formData.primaryColor || '#3B82F6'}
+                    onChange={(color) => handleInputChange('primaryColor', color)}
+                    defaultValue="#3B82F6"
+                  />
+                  <ColorPicker
+                    label="Accent Color"
+                    value={formData.accentColor || '#8B5CF6'}
+                    onChange={(color) => handleInputChange('accentColor', color)}
+                    defaultValue="#8B5CF6"
+                  />
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <p className="text-sm text-blue-300">
+                    💡 <strong>Tip:</strong> Your logo and banner will be prominently displayed on your token page. 
+                    Choose colors that match your brand for a professional look!
+                  </p>
                 </div>
               </div>
             </div>

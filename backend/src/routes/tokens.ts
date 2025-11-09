@@ -80,6 +80,67 @@ const createTokenSchema = z.object({
       z.undefined()
     ]).optional()
   ),
+  githubUrl: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed;
+      }
+      return val;
+    },
+    z.union([z.string().url('GitHub URL must be a valid URL'), z.undefined()]).optional()
+  ),
+  mediumUrl: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed;
+      }
+      return val;
+    },
+    z.union([z.string().url('Medium URL must be a valid URL'), z.undefined()]).optional()
+  ),
+  redditUrl: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed;
+      }
+      return val;
+    },
+    z.union([z.string().url('Reddit URL must be a valid URL'), z.undefined()]).optional()
+  ),
+  youtubeUrl: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed;
+      }
+      return val;
+    },
+    z.union([z.string().url('YouTube URL must be a valid URL'), z.undefined()]).optional()
+  ),
+  linkedinUrl: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? undefined : trimmed;
+      }
+      return val;
+    },
+    z.union([z.string().url('LinkedIn URL must be a valid URL'), z.undefined()]).optional()
+  ),
+  bannerImageIpfs: z.string().optional().nullable(),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Primary color must be a valid hex color').optional(),
+  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Accent color must be a valid hex color').optional(),
+  backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Background color must be a valid hex color').optional(),
+  layoutTemplate: z.string().optional(),
+  customSettings: z.any().optional(),
   basePrice: z.union([z.number().positive(), z.string()]).transform((val) => {
     if (typeof val === 'string') {
       const parsed = parseFloat(val);
@@ -170,9 +231,11 @@ router.post('/create', async (req: Request, res: Response) => {
       `INSERT INTO tokens (
         id, name, symbol, decimals, initial_supply,
         logo_ipfs, description, twitter_url, discord_url, telegram_url, website_url,
+        github_url, medium_url, reddit_url, youtube_url, linkedin_url,
         base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
-        cross_chain_enabled, creator_address, advanced_settings
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        cross_chain_enabled, creator_address, advanced_settings,
+        banner_image_ipfs, primary_color, accent_color, background_color, layout_template, custom_settings
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tokenId,
         data.name,
@@ -185,6 +248,11 @@ router.post('/create', async (req: Request, res: Response) => {
         data.discordUrl && data.discordUrl !== '' ? data.discordUrl : null,
         data.telegramUrl && data.telegramUrl !== '' ? data.telegramUrl : null,
         data.websiteUrl && data.websiteUrl !== '' ? data.websiteUrl : null,
+        data.githubUrl && data.githubUrl !== '' ? data.githubUrl : null,
+        data.mediumUrl && data.mediumUrl !== '' ? data.mediumUrl : null,
+        data.redditUrl && data.redditUrl !== '' ? data.redditUrl : null,
+        data.youtubeUrl && data.youtubeUrl !== '' ? data.youtubeUrl : null,
+        data.linkedinUrl && data.linkedinUrl !== '' ? data.linkedinUrl : null,
         data.basePrice,
         data.slope,
         data.graduationThreshold,
@@ -192,7 +260,13 @@ router.post('/create', async (req: Request, res: Response) => {
         data.sellFeePercent,
         crossChainEnabled ? 1 : 0,
         creatorAddress,
-        advancedSettings
+        advancedSettings,
+        data.bannerImageIpfs && data.bannerImageIpfs !== '' ? data.bannerImageIpfs : null,
+        data.primaryColor || '#3B82F6',
+        data.accentColor || '#8B5CF6',
+        data.backgroundColor || null,
+        data.layoutTemplate || 'default',
+        data.customSettings ? JSON.stringify(data.customSettings) : null
       ]
     );
     
@@ -740,6 +814,11 @@ router.get('/:id/status', async (req: Request, res: Response) => {
         discordUrl: token.discord_url,
         telegramUrl: token.telegram_url,
         websiteUrl: token.website_url,
+        githubUrl: token.github_url,
+        mediumUrl: token.medium_url,
+        redditUrl: token.reddit_url,
+        youtubeUrl: token.youtube_url,
+        linkedinUrl: token.linkedin_url,
         basePrice: token.base_price,
         slope: token.slope,
         graduationThreshold: token.graduation_threshold,
@@ -749,6 +828,14 @@ router.get('/:id/status', async (req: Request, res: Response) => {
         crossChainEnabled: token.cross_chain_enabled === 1,
         advancedSettings: token.advanced_settings ? JSON.parse(token.advanced_settings) : {},
         createdAt: token.created_at,
+        customization: {
+          bannerImageIpfs: token.banner_image_ipfs,
+          primaryColor: token.primary_color || '#3B82F6',
+          accentColor: token.accent_color || '#8B5CF6',
+          backgroundColor: token.background_color,
+          layoutTemplate: token.layout_template || 'default',
+          customSettings: token.custom_settings ? JSON.parse(token.custom_settings) : null,
+        },
       },
       deployments: deployments.map(d => ({
         chain: d.chain,
@@ -784,10 +871,19 @@ router.get('/:id/metadata', async (req: Request, res: Response) => {
       symbol: token.symbol,
       description: token.description,
       logoUrl: token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null,
+      bannerUrl: token.banner_image_ipfs ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null,
       twitterUrl: token.twitter_url,
       discordUrl: token.discord_url,
       telegramUrl: token.telegram_url,
       websiteUrl: token.website_url,
+      githubUrl: token.github_url,
+      mediumUrl: token.medium_url,
+      redditUrl: token.reddit_url,
+      youtubeUrl: token.youtube_url,
+      linkedinUrl: token.linkedin_url,
+      primaryColor: token.primary_color || '#3B82F6',
+      accentColor: token.accent_color || '#8B5CF6',
+      backgroundColor: token.background_color,
     });
   } catch (error) {
     console.error('Error fetching token metadata:', error);
@@ -1559,6 +1655,289 @@ router.post('/:id/update-fees', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error updating fees:', error);
     res.status(500).json({ error: 'Failed to update fees' });
+  }
+});
+
+// PUT /tokens/:id/customize - Update token customization settings
+router.put('/:id/customize', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      bannerImageIpfs,
+      primaryColor,
+      accentColor,
+      backgroundColor,
+      layoutTemplate,
+      customSettings,
+      githubUrl,
+      mediumUrl,
+      redditUrl,
+      youtubeUrl,
+      linkedinUrl,
+    } = req.body;
+    const creatorAddress = req.headers['x-creator-address'] as string;
+
+    const token = await dbGet('SELECT * FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+
+    // Verify creator
+    if (token.creator_address && token.creator_address.toLowerCase() !== creatorAddress?.toLowerCase()) {
+      return res.status(403).json({ error: 'Only token creator can update customization' });
+    }
+
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (bannerImageIpfs !== undefined) {
+      updates.push('banner_image_ipfs = ?');
+      values.push(bannerImageIpfs && bannerImageIpfs !== '' ? bannerImageIpfs : null);
+    }
+    if (primaryColor !== undefined) {
+      updates.push('primary_color = ?');
+      values.push(primaryColor || '#3B82F6');
+    }
+    if (accentColor !== undefined) {
+      updates.push('accent_color = ?');
+      values.push(accentColor || '#8B5CF6');
+    }
+    if (backgroundColor !== undefined) {
+      updates.push('background_color = ?');
+      values.push(backgroundColor && backgroundColor !== '' ? backgroundColor : null);
+    }
+    if (layoutTemplate !== undefined) {
+      updates.push('layout_template = ?');
+      values.push(layoutTemplate || 'default');
+    }
+    if (customSettings !== undefined) {
+      updates.push('custom_settings = ?');
+      values.push(customSettings ? JSON.stringify(customSettings) : null);
+    }
+    if (githubUrl !== undefined) {
+      updates.push('github_url = ?');
+      values.push(githubUrl && githubUrl !== '' ? githubUrl : null);
+    }
+    if (mediumUrl !== undefined) {
+      updates.push('medium_url = ?');
+      values.push(mediumUrl && mediumUrl !== '' ? mediumUrl : null);
+    }
+    if (redditUrl !== undefined) {
+      updates.push('reddit_url = ?');
+      values.push(redditUrl && redditUrl !== '' ? redditUrl : null);
+    }
+    if (youtubeUrl !== undefined) {
+      updates.push('youtube_url = ?');
+      values.push(youtubeUrl && youtubeUrl !== '' ? youtubeUrl : null);
+    }
+    if (linkedinUrl !== undefined) {
+      updates.push('linkedin_url = ?');
+      values.push(linkedinUrl && linkedinUrl !== '' ? linkedinUrl : null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    await dbRun(
+      `UPDATE tokens SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    res.json({
+      success: true,
+      message: 'Customization updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating customization:', error);
+    res.status(500).json({ error: 'Failed to update customization' });
+  }
+});
+
+// GET /tokens/:id/customize - Get token customization settings
+router.get('/:id/customize', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const token = await dbGet(
+      `SELECT 
+        banner_image_ipfs, primary_color, accent_color, background_color,
+        layout_template, custom_settings,
+        github_url, medium_url, reddit_url, youtube_url, linkedin_url
+      FROM tokens WHERE id = ?`,
+      [id]
+    ) as any;
+
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+
+    res.json({
+      bannerImageIpfs: token.banner_image_ipfs,
+      primaryColor: token.primary_color || '#3B82F6',
+      accentColor: token.accent_color || '#8B5CF6',
+      backgroundColor: token.background_color,
+      layoutTemplate: token.layout_template || 'default',
+      customSettings: token.custom_settings ? JSON.parse(token.custom_settings) : null,
+      githubUrl: token.github_url,
+      mediumUrl: token.medium_url,
+      redditUrl: token.reddit_url,
+      youtubeUrl: token.youtube_url,
+      linkedinUrl: token.linkedin_url,
+    });
+  } catch (error) {
+    console.error('Error fetching customization:', error);
+    res.status(500).json({ error: 'Failed to fetch customization' });
+  }
+});
+
+// POST /tokens/:id/sections - Add or update custom section
+router.post('/:id/sections', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { sectionType, title, content, sectionOrder, enabled } = req.body;
+    const creatorAddress = req.headers['x-creator-address'] as string;
+
+    if (!sectionType) {
+      return res.status(400).json({ error: 'sectionType is required' });
+    }
+
+    const token = await dbGet('SELECT * FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+
+    // Verify creator
+    if (token.creator_address && token.creator_address.toLowerCase() !== creatorAddress?.toLowerCase()) {
+      return res.status(403).json({ error: 'Only token creator can manage sections' });
+    }
+
+    // Check if section already exists (by type and order)
+    const existing = await dbGet(
+      'SELECT id FROM token_custom_sections WHERE token_id = ? AND section_type = ? AND section_order = ?',
+      [id, sectionType, sectionOrder || 0]
+    ) as any;
+
+    if (existing) {
+      // Update existing section
+      await dbRun(
+        `UPDATE token_custom_sections 
+         SET title = ?, content = ?, enabled = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [title || null, content ? JSON.stringify(content) : null, enabled !== undefined ? (enabled ? 1 : 0) : 1, existing.id]
+      );
+      res.json({
+        success: true,
+        message: 'Section updated successfully',
+        sectionId: existing.id,
+      });
+    } else {
+      // Create new section
+      const result = await dbRun(
+        `INSERT INTO token_custom_sections (
+          token_id, section_type, title, content, section_order, enabled
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          sectionType,
+          title || null,
+          content ? JSON.stringify(content) : null,
+          sectionOrder || 0,
+          enabled !== undefined ? (enabled ? 1 : 0) : 1
+        ]
+      );
+      res.json({
+        success: true,
+        message: 'Section created successfully',
+        sectionId: (result as any).lastID,
+      });
+    }
+  } catch (error: any) {
+    console.error('Error managing section:', error);
+    if (error.message?.includes('no such table')) {
+      // Table doesn't exist yet, return empty response
+      res.json({
+        success: false,
+        message: 'Custom sections not yet available',
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to manage section' });
+    }
+  }
+});
+
+// GET /tokens/:id/sections - Get all custom sections for a token
+router.get('/:id/sections', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { enabledOnly } = req.query;
+
+    let query = 'SELECT * FROM token_custom_sections WHERE token_id = ?';
+    const params: any[] = [id];
+
+    if (enabledOnly === 'true') {
+      query += ' AND enabled = 1';
+    }
+
+    query += ' ORDER BY section_order ASC, created_at ASC';
+
+    const sections = await dbAll(query, params) as any[];
+
+    res.json({
+      sections: sections.map(section => ({
+        id: section.id,
+        sectionType: section.section_type,
+        title: section.title,
+        content: section.content ? JSON.parse(section.content) : null,
+        sectionOrder: section.section_order,
+        enabled: section.enabled === 1,
+        createdAt: section.created_at,
+        updatedAt: section.updated_at,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Error fetching sections:', error);
+    if (error.message?.includes('no such table')) {
+      // Table doesn't exist yet, return empty array
+      res.json({ sections: [] });
+    } else {
+      res.status(500).json({ error: 'Failed to fetch sections' });
+    }
+  }
+});
+
+// DELETE /tokens/:id/sections/:sectionId - Delete a custom section
+router.delete('/:id/sections/:sectionId', async (req: Request, res: Response) => {
+  try {
+    const { id, sectionId } = req.params;
+    const creatorAddress = req.headers['x-creator-address'] as string;
+
+    const token = await dbGet('SELECT * FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+
+    // Verify creator
+    if (token.creator_address && token.creator_address.toLowerCase() !== creatorAddress?.toLowerCase()) {
+      return res.status(403).json({ error: 'Only token creator can delete sections' });
+    }
+
+    await dbRun(
+      'DELETE FROM token_custom_sections WHERE id = ? AND token_id = ?',
+      [sectionId, id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Section deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting section:', error);
+    res.status(500).json({ error: 'Failed to delete section' });
   }
 });
 
