@@ -398,7 +398,12 @@ router.post('/:id/deploy', async (req: Request, res: Response) => {
 router.get('/my-tokens', async (req: Request, res: Response) => {
   try {
     const creatorAddress = req.query.address as string;
-    const chains = req.query.chains ? (req.query.chains as string).split(',') : ['base', 'ethereum', 'bsc'];
+    // Default to testnet chains in development, mainnet in production
+    // Frontend can override by passing chains parameter
+    const defaultChains = process.env.NODE_ENV === 'production' 
+      ? ['base', 'ethereum', 'bsc']
+      : ['base-sepolia', 'sepolia', 'bsc-testnet'];
+    const chains = req.query.chains ? (req.query.chains as string).split(',') : defaultChains;
     const sync = req.query.sync !== 'false'; // Default to true, can be disabled with ?sync=false
     
     if (!creatorAddress) {

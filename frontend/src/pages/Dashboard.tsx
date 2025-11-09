@@ -4,21 +4,48 @@ import { TrendingUp, Sparkles, Rocket, Coins, Zap, Settings, Pin, Archive, Trash
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import axios from 'axios';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 
 import { API_BASE } from '../config/api';
 
+// Map chainId to chain name for blockchain sync
+function getChainNamesFromChainId(chainId: number): string[] {
+  // Default to testnet chains since we're on testnet
+  const testnetChains = ['base-sepolia', 'sepolia', 'bsc-testnet'];
+  
+  // Map specific chain IDs if needed
+  switch (chainId) {
+    case 84532: // Base Sepolia
+      return ['base-sepolia', 'sepolia', 'bsc-testnet'];
+    case 11155111: // Sepolia
+      return ['sepolia', 'base-sepolia', 'bsc-testnet'];
+    case 97: // BSC Testnet
+      return ['bsc-testnet', 'base-sepolia', 'sepolia'];
+    default:
+      // Default to testnet chains
+      return testnetChains;
+  }
+}
+
 export default function Dashboard() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  
+  // Get chain names based on connected chain, default to testnet
+  const chains = chainId ? getChainNamesFromChainId(chainId) : ['base-sepolia', 'sepolia', 'bsc-testnet'];
+  
   const { data: tokens, isLoading, refetch } = useQuery({
-    queryKey: ['my-tokens', address],
+    queryKey: ['my-tokens', address, chainId],
     queryFn: async () => {
       if (!address) return [];
       try {
         const response = await axios.get(`${API_BASE}/tokens/my-tokens`, {
-          params: { address },
+          params: { 
+            address,
+            chains: chains.join(','), // Pass testnet chains
+          },
         });
         return response.data.tokens || [];
       } catch (error) {

@@ -70,21 +70,21 @@ function getChainConfig(chain: string): ChainConfig | null {
       };
     case 'sepolia':
       return {
-        rpcUrl: process.env.ETHEREUM_RPC_URL || 'https://sepolia.infura.io/v3/YOUR_KEY',
+        rpcUrl: process.env.SEPOLIA_RPC_URL || process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
         factoryAddress,
         chainId: 11155111,
         chainName: 'sepolia',
       };
     case 'base-sepolia':
       return {
-        rpcUrl: process.env.BASE_RPC_URL || 'https://sepolia.base.org',
+        rpcUrl: process.env.BASE_SEPOLIA_RPC_URL || process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
         factoryAddress,
         chainId: 84532,
         chainName: 'base-sepolia',
       };
     case 'bsc-testnet':
       return {
-        rpcUrl: process.env.BSC_RPC_URL || 'https://data-seed-prebsc-1-s1.binance.org:8545',
+        rpcUrl: process.env.BSC_TESTNET_RPC_URL || process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
         factoryAddress,
         chainId: 97,
         chainName: 'bsc-testnet',
@@ -147,14 +147,25 @@ export async function syncTokensFromBlockchain(
 async function syncTokensForChain(userAddress: string, chain: string): Promise<any[]> {
   const config = getChainConfig(chain);
   if (!config) {
-    console.warn(`No configuration found for chain: ${chain} - skipping`);
+    console.warn(`⚠️ No configuration found for chain: ${chain} - skipping`);
     return [];
   }
   
   if (!config.factoryAddress) {
-    console.warn(`No TokenFactory address configured for chain: ${chain} - skipping. Please set ${chain.toUpperCase()}_FACTORY_ADDRESS in .env`);
+    // Try to determine the correct env var name
+    const envVarName = chain.toUpperCase().replace('-', '_') + '_FACTORY_ADDRESS';
+    const altEnvVars = chain.toLowerCase() === 'sepolia' 
+      ? 'ETHEREUM_FACTORY_ADDRESS or SEPOLIA_FACTORY_ADDRESS'
+      : chain.toLowerCase() === 'base-sepolia'
+      ? 'BASE_FACTORY_ADDRESS or BASE_SEPOLIA_FACTORY_ADDRESS'
+      : chain.toLowerCase() === 'bsc-testnet'
+      ? 'BSC_FACTORY_ADDRESS or BSC_TESTNET_FACTORY_ADDRESS'
+      : envVarName;
+    console.warn(`⚠️ No TokenFactory address configured for chain: ${chain} - skipping. Please set ${altEnvVars} in backend .env`);
     return [];
   }
+  
+  console.log(`🔍 Syncing tokens for ${userAddress} on ${chain} (factory: ${config.factoryAddress}, RPC: ${config.rpcUrl})`);
 
   let provider: ethers.JsonRpcProvider;
   try {
@@ -219,7 +230,10 @@ async function queryTokensFromEvents(
   const filter = factoryContract.filters.TokenCreated(null, userAddress, null);
   const events = await factoryContract.queryFilter(filter, fromBlock, currentBlock);
   
-  return events.map((event: any) => event.args.tokenAddress);
+  // Filter for EventLog types and extract token addresses
+  return events
+    .filter((event): event is ethers.EventLog => 'args' in event)
+    .map((event) => event.args.tokenAddress as string);
 }
 
 /**
@@ -274,8 +288,11 @@ async function syncTokenFromBlockchain(
         const filter = factoryContract.filters.TokenCreated(tokenAddress, creatorAddress, null);
         const events = await factoryContract.queryFilter(filter, fromBlock, currentBlock);
         
-        if (events.length > 0) {
-          curveAddress = events[0].args.curveAddress;
+        // Find first EventLog (events with args property)
+        const eventLog = events.find((event): event is ethers.EventLog => 'args' in event);
+        
+        if (eventLog) {
+          curveAddress = eventLog.args.curveAddress as string;
           
           // Fetch curve details
           if (curveAddress) {
