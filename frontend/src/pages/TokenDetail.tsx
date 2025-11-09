@@ -320,6 +320,7 @@ export default function TokenDetail() {
           {/* Buy Widget - Prominent */}
           {selectedDeployment && selectedDeployment.curveAddress && selectedDeployment.tokenAddress && !allGraduated ? (
             <BuyWidget
+              tokenId={id || ''}
               chain={selectedChain}
               curveAddress={selectedDeployment.curveAddress}
               tokenAddress={selectedDeployment.tokenAddress}

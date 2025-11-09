@@ -4,9 +4,12 @@ import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-reac
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import { getTestnetInfo, getPreferredEVMProvider, switchNetwork } from '../services/blockchain';
+import { API_BASE } from '../config/api';
 
 interface BuyWidgetProps {
+  tokenId: string;
   chain: string;
   curveAddress: string;
   tokenAddress: string;
@@ -16,6 +19,7 @@ interface BuyWidgetProps {
 }
 
 export default function BuyWidget({
+  tokenId,
   chain,
   curveAddress,
   tokenAddress,
@@ -584,6 +588,28 @@ export default function BuyWidget({
       
       const receipt = await tx.wait();
       
+      // Calculate price per token from the transaction
+      const pricePerToken = finalPriceEth / parseFloat(amount);
+      
+      // Record transaction in backend for chart display
+      try {
+        await axios.post(`${API_BASE}/transactions`, {
+          tokenId,
+          chain: chain.toLowerCase(),
+          txHash: receipt.hash,
+          type: 'buy',
+          fromAddress: address,
+          toAddress: curveAddress,
+          amount: amount,
+          price: pricePerToken,
+          status: 'confirmed',
+        });
+        console.log('✅ Transaction recorded for chart');
+      } catch (recordError) {
+        console.warn('⚠️ Failed to record transaction (non-critical):', recordError);
+        // Don't fail the buy if recording fails
+      }
+      
       toast.success(`Successfully bought ${amount} ${tokenSymbol}!`, { id: 'buy-tx' });
       
       setAmount('');
@@ -699,6 +725,34 @@ export default function BuyWidget({
       toast.loading(`Transaction submitted: ${tx.hash}`, { id: 'sell-tx' });
       
       const receipt = await tx.wait();
+      
+      // Get price per token from contract for sell transaction
+      let pricePerToken = currentPrice;
+      try {
+        const currentPriceWei = await curveContract.getCurrentPrice();
+        pricePerToken = parseFloat(ethers.formatEther(currentPriceWei));
+      } catch (err) {
+        console.warn('Could not get current price for sell transaction, using prop value');
+      }
+      
+      // Record transaction in backend for chart display
+      try {
+        await axios.post(`${API_BASE}/transactions`, {
+          tokenId,
+          chain: chain.toLowerCase(),
+          txHash: receipt.hash,
+          type: 'sell',
+          fromAddress: address,
+          toAddress: curveAddress,
+          amount: amount,
+          price: pricePerToken,
+          status: 'confirmed',
+        });
+        console.log('✅ Transaction recorded for chart');
+      } catch (recordError) {
+        console.warn('⚠️ Failed to record transaction (non-critical):', recordError);
+        // Don't fail the sell if recording fails
+      }
       
       toast.success(`Successfully sold ${amount} ${tokenSymbol}!`, { id: 'sell-tx' });
       

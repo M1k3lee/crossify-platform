@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { dbAll } from '../db';
+import { dbAll, dbRun } from '../db';
 
 export const router = Router();
 
@@ -50,6 +50,55 @@ router.get('/', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching transactions:', error);
     res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+});
+
+// POST /transactions - Record a transaction
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const { tokenId, chain, txHash, type, fromAddress, toAddress, amount, price, status = 'confirmed' } = req.body;
+    
+    if (!tokenId || !chain || !txHash || !type) {
+      return res.status(400).json({ error: 'Missing required fields: tokenId, chain, txHash, type' });
+    }
+    
+    // Record transaction
+    await dbRun(
+      `INSERT INTO transactions (
+        token_id, chain, tx_hash, type, from_address, to_address, amount, price, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        tokenId,
+        chain,
+        txHash,
+        type,
+        fromAddress || null,
+        toAddress || null,
+        amount || null,
+        price || null,
+        status,
+      ]
+    );
+    
+    console.log(`✅ Recorded ${type} transaction for token ${tokenId} on ${chain}: ${txHash}`);
+    
+    res.json({
+      success: true,
+      message: 'Transaction recorded',
+    });
+  } catch (error: any) {
+    console.error('Error recording transaction:', error);
+    
+    // If it's a duplicate, that's okay - just return success
+    if (error.message?.includes('UNIQUE constraint') || error.message?.includes('duplicate')) {
+      console.log('Transaction already recorded (duplicate)');
+      return res.json({
+        success: true,
+        message: 'Transaction already recorded',
+      });
+    }
+    
+    res.status(500).json({ error: 'Failed to record transaction' });
   }
 });
 
