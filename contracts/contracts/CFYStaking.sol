@@ -38,6 +38,7 @@ contract CFYStaking is Ownable, ReentrancyGuard {
     
     // Staking pool configuration
     struct PoolConfig {
+        PoolType poolType;              // Type of pool (Flexible, Locked, LP)
         uint256 apy;                    // APY in basis points (10000 = 100%)
         uint256 lockPeriod;             // Lock period in seconds (0 for flexible)
         uint256 totalStaked;            // Total amount staked in this pool
