@@ -47,6 +47,7 @@ function App() {
         <RainbowKitProvider 
           modalSize="compact"
           initialChain={sepolia}
+          showRecentTransactions={true}
         >
           <ConnectionProvider endpoint="https://api.devnet.solana.com">
             <WalletProvider wallets={wallets} autoConnect={false}>

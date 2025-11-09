@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import { deployTokenOnEVM, getTestnetInfo } from '../services/blockchain';
 import SEO, { generateHowToSchema } from '../components/SEO';
 import { API_BASE } from '../config/api';
+import { trackEvent, trackTokenCreation, trackButtonClick } from '../components/GoogleAnalytics';
 
 interface TokenData {
   name: string;
@@ -361,6 +362,15 @@ export default function Builder() {
         throw error;
       });
       const tokenId = tokenResponse.data.tokenId;
+      
+      // Track token creation
+      trackTokenCreation({
+        tokenName: formData.name,
+        tokenSymbol: formData.symbol,
+        chains: formData.chains,
+        crossChainEnabled: actualCrossChainEnabled,
+      });
+      
       toast.success('Token created! Starting blockchain deployment...');
 
       // Deploy to blockchains with real transactions
@@ -980,11 +990,24 @@ export default function Builder() {
                 {['ethereum', 'bsc', 'base', 'solana'].map((chain) => (
                   <button
                     key={chain}
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       const newChains = formData.chains.includes(chain)
                         ? formData.chains.filter(c => c !== chain)
                         : [...formData.chains, chain];
                       handleInputChange('chains', newChains);
+                      
+                      // Track chain selection
+                      trackButtonClick({
+                        buttonName: `select_chain_${chain}`,
+                        location: 'builder_step_4',
+                        additionalData: {
+                          action: formData.chains.includes(chain) ? 'deselect' : 'select',
+                          chains: newChains.join(','),
+                        },
+                      });
                     }}
                     className={`p-6 rounded-xl border-2 transition-all ${
                       formData.chains.includes(chain)
@@ -1110,7 +1133,17 @@ export default function Builder() {
           {/* Navigation */}
           <div className="flex justify-between mt-8 pt-6 border-t border-gray-700">
             <button
-              onClick={() => setStep(Math.max(1, step - 1))}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                trackButtonClick({
+                  buttonName: 'builder_previous_step',
+                  location: `builder_step_${step}`,
+                  additionalData: { fromStep: step, toStep: step - 1 },
+                });
+                setStep(Math.max(1, step - 1));
+              }}
               disabled={step === 1}
               className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
@@ -1119,7 +1152,17 @@ export default function Builder() {
             
             {step < 4 ? (
               <button
-                onClick={() => setStep(Math.min(4, step + 1))}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  trackButtonClick({
+                    buttonName: 'builder_next_step',
+                    location: `builder_step_${step}`,
+                    additionalData: { fromStep: step, toStep: step + 1 },
+                  });
+                  setStep(Math.min(4, step + 1));
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 rounded-lg transition flex items-center gap-2"
               >
                 Next
@@ -1127,7 +1170,21 @@ export default function Builder() {
               </button>
             ) : (
               <button
-                onClick={handleSubmit}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  trackButtonClick({
+                    buttonName: 'deploy_token',
+                    location: 'builder_step_4',
+                    additionalData: {
+                      chains: formData.chains.join(','),
+                      tokenSymbol: formData.symbol,
+                      crossChainEnabled: crossChainEnabled && formData.chains.length > 1,
+                    },
+                  });
+                  handleSubmit();
+                }}
                 disabled={loading || deploying || !formData.name || !formData.symbol || !formData.initialSupply || formData.chains.length === 0}
                 className="px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
               >

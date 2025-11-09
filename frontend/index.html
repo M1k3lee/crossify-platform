@@ -6,6 +6,42 @@
     <link rel="alternate icon" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Block WalletConnect API calls and prevent MetaMask store redirects -->
+    <!-- This MUST run before any other scripts to intercept API calls -->
+    <script>
+      // Inline script to block WalletConnect immediately
+      (function() {
+        'use strict';
+        const invalidProjectId = '0000000000000000000000000000000000000000';
+        const walletConnectUrl = 'api.web3modal.org';
+        const metamaskStoreUrl = 'chromewebstore.google.com';
+        
+        // Block window.open to MetaMask store
+        const originalOpen = window.open;
+        window.open = function(url, ...args) {
+          if (typeof url === 'string' && (url.includes(metamaskStoreUrl) || url.includes('metamask'))) {
+            console.warn('🚫 Blocked redirect to MetaMask store');
+            return null;
+          }
+          return originalOpen.apply(this, [url, ...args]);
+        };
+        
+        // Block fetch to WalletConnect API with invalid project ID
+        if (typeof window.fetch !== 'undefined') {
+          const originalFetch = window.fetch;
+          window.fetch = function(...args) {
+            const url = args[0];
+            if (typeof url === 'string' && url.includes(walletConnectUrl) && url.includes(invalidProjectId)) {
+              console.warn('🚫 Blocked WalletConnect API call');
+              return Promise.reject(new Error('WalletConnect disabled'));
+            }
+            return originalFetch.apply(this, args);
+          };
+        }
+      })();
+    </script>
+    <script src="/block-walletconnect.js"></script>
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-S0JFRRRPVX"></script>
     <script>
