@@ -16,6 +16,9 @@ export default function Layout({ children }: LayoutProps) {
   const [, setAppLaunched] = useState(() => {
     return localStorage.getItem('appLaunched') === 'true';
   });
+  
+  // Track wallet connections
+  useWalletTracking();
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },

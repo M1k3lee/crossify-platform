@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getTestnetInfo, getPreferredEVMProvider, switchNetwork } from '../services/blockchain';
 import { API_BASE } from '../config/api';
+import { trackTokenTransaction, trackButtonClick } from './GoogleAnalytics';
 
 interface BuyWidgetProps {
   tokenId: string;
@@ -612,6 +613,16 @@ export default function BuyWidget({
       
       toast.success(`Successfully bought ${amount} ${tokenSymbol}!`, { id: 'buy-tx' });
       
+      // Track successful purchase
+      trackTokenTransaction({
+        type: 'buy',
+        tokenId,
+        tokenSymbol,
+        chain: chain.toLowerCase(),
+        amount: amount,
+        value: finalPriceEth.toFixed(6),
+      });
+      
       setAmount('');
       onSuccess?.();
       
@@ -755,6 +766,16 @@ export default function BuyWidget({
       }
       
       toast.success(`Successfully sold ${amount} ${tokenSymbol}!`, { id: 'sell-tx' });
+      
+      // Track successful sale
+      trackTokenTransaction({
+        type: 'sell',
+        tokenId,
+        tokenSymbol,
+        chain: chain.toLowerCase(),
+        amount: amount,
+        value: (pricePerToken * parseFloat(amount)).toFixed(6),
+      });
       
       setAmount('');
       onSuccess?.();
@@ -933,7 +954,27 @@ export default function BuyWidget({
 
         {/* Action Button */}
         <button
-          onClick={tab === 'buy' ? handleBuy : handleSell}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            trackButtonClick({
+              buttonName: tab === 'buy' ? 'buy_tokens' : 'sell_tokens',
+              location: 'buy_widget',
+              additionalData: {
+                tokenId,
+                tokenSymbol,
+                chain: chain.toLowerCase(),
+                amount,
+                tab,
+              },
+            });
+            if (tab === 'buy') {
+              handleBuy();
+            } else {
+              handleSell();
+            }
+          }}
           disabled={loading || !isConnected || !amount || parseFloat(amount) <= 0 || !isValidAddress}
           className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
             tab === 'buy'
