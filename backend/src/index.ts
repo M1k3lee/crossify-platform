@@ -11,6 +11,7 @@ import { router as uploadRouter } from './routes/upload';
 import { router as contactRouter } from './routes/contact';
 import { router as crosschainRouter } from './routes/crosschain';
 import { router as adminRouter } from './routes/admin';
+import { router as debugRouter } from './routes/debug';
 import { initializeDatabase } from './db';
 import { initializeRedis } from './services/redis';
 import { startPriceSyncService } from './services/priceSync';
@@ -87,6 +88,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/crosschain', crosschainRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/debug', debugRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
