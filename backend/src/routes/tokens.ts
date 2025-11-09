@@ -394,14 +394,30 @@ router.post('/:id/deploy', async (req: Request, res: Response) => {
 });
 
 // GET /tokens/my-tokens - Get tokens for a specific creator (must be before /marketplace)
+// This endpoint now syncs tokens from the blockchain before querying the database
 router.get('/my-tokens', async (req: Request, res: Response) => {
   try {
     const creatorAddress = req.query.address as string;
+    const chains = req.query.chains ? (req.query.chains as string).split(',') : ['base', 'ethereum', 'bsc'];
+    const sync = req.query.sync !== 'false'; // Default to true, can be disabled with ?sync=false
     
     if (!creatorAddress) {
       return res.status(400).json({ error: 'Creator address is required' });
     }
     
+    // Sync tokens from blockchain if enabled
+    if (sync) {
+      try {
+        const { syncTokensFromBlockchain } = await import('../services/blockchainTokenSync');
+        const syncResult = await syncTokensFromBlockchain(creatorAddress, chains);
+        console.log(`✅ Synced ${syncResult.synced} tokens from blockchain for ${creatorAddress}`);
+      } catch (error) {
+        console.error('Error syncing tokens from blockchain:', error);
+        // Continue with database query even if sync fails
+      }
+    }
+    
+    // Query database for tokens
     let query = `
       SELECT 
         t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
