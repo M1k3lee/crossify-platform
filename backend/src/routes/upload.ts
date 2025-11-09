@@ -42,3 +42,39 @@ router.post('/logo', upload.single('file'), async (req: Request, res: Response) 
   }
 });
 
+// POST /upload/banner
+router.post('/banner', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    // Validate file type
+    if (!req.file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: 'File must be an image' });
+    }
+
+    // Validate file size (max 10MB for banners)
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({ error: 'File size must be less than 10MB' });
+    }
+
+    // For MVP: Generate a mock hash-based ID (in production, use Pinata or similar)
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+    const mockCid = `mock_banner_${hash.substring(0, 16)}`; // Mock CID format
+    
+    // Store file info (in production, upload to IPFS/Pinata here)
+    // Recommended banner size: 1200x400px (3:1 aspect ratio)
+
+    res.json({
+      success: true,
+      cid: mockCid,
+      message: 'Banner uploaded successfully (mock storage - use IPFS service for production)',
+    });
+  } catch (error) {
+    console.error('Error uploading banner:', error);
+    res.status(500).json({ error: 'Failed to upload banner' });
+  }
+});
+

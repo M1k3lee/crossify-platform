@@ -168,6 +168,78 @@ export async function migrateDatabase(): Promise<void> {
       }
     }
 
+    // Add customization fields
+    const customizationColumns = [
+      { name: 'banner_image_ipfs', type: 'TEXT', defaultValue: null },
+      { name: 'primary_color', type: 'TEXT', defaultValue: '#3B82F6' },
+      { name: 'accent_color', type: 'TEXT', defaultValue: '#8B5CF6' },
+      { name: 'background_color', type: 'TEXT', defaultValue: null },
+      { name: 'layout_template', type: 'TEXT', defaultValue: 'default' },
+      { name: 'custom_settings', type: 'TEXT', defaultValue: null },
+      { name: 'github_url', type: 'TEXT', defaultValue: null },
+      { name: 'medium_url', type: 'TEXT', defaultValue: null },
+      { name: 'reddit_url', type: 'TEXT', defaultValue: null },
+      { name: 'youtube_url', type: 'TEXT', defaultValue: null },
+      { name: 'linkedin_url', type: 'TEXT', defaultValue: null },
+    ];
+
+    for (const column of customizationColumns) {
+      try {
+        await dbGet(`SELECT ${column.name} FROM tokens LIMIT 1`);
+        console.log(`✅ ${column.name} column already exists`);
+      } catch (error: any) {
+        if (error.message?.includes('no such column')) {
+          console.log(`➕ Adding ${column.name} column...`);
+          const defaultClause = column.defaultValue !== null 
+            ? `DEFAULT '${column.defaultValue}'` 
+            : '';
+          await dbRun(`
+            ALTER TABLE tokens 
+            ADD COLUMN ${column.name} ${column.type} ${defaultClause}
+          `);
+          if (column.defaultValue !== null) {
+            await dbRun(`
+              UPDATE tokens 
+              SET ${column.name} = '${column.defaultValue}' 
+              WHERE ${column.name} IS NULL
+            `);
+          }
+          console.log(`✅ Added ${column.name} column`);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // Create token_custom_sections table if it doesn't exist
+    try {
+      await dbGet('SELECT id FROM token_custom_sections LIMIT 1');
+      console.log('✅ token_custom_sections table already exists');
+    } catch (error: any) {
+      if (error.message?.includes('no such table')) {
+        console.log('➕ Creating token_custom_sections table...');
+        await dbRun(`
+          CREATE TABLE IF NOT EXISTS token_custom_sections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_id TEXT NOT NULL,
+            section_type TEXT NOT NULL,
+            title TEXT,
+            content TEXT,
+            section_order INTEGER NOT NULL DEFAULT 0,
+            enabled BOOLEAN NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE
+          )
+        `);
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_token_custom_sections_token_id ON token_custom_sections(token_id)');
+        await dbRun('CREATE INDEX IF NOT EXISTS idx_token_custom_sections_enabled ON token_custom_sections(enabled)');
+        console.log('✅ Created token_custom_sections table');
+      } else {
+        throw error;
+      }
+    }
+
     console.log('✅ Database migrations completed successfully');
   } catch (error) {
     console.error('❌ Database migration error:', error);
