@@ -116,26 +116,43 @@ contract BondingCurve is Ownable, ReentrancyGuard {
     
     /**
      * @dev Get the supply used for price calculation (local or global)
-     * Safety: If global supply seems incorrect (way larger than local), use local supply
+     * Safety: Validates global supply to prevent astronomical prices from corrupted data
+     * Maximum reasonable supply: 1 billion tokens = 1e9 * 1e18 = 1e27 wei
      */
     function getSupplyForPricing() public view returns (uint256) {
         if (useGlobalSupply && address(globalSupplyTracker) != address(0)) {
             try globalSupplyTracker.getGlobalSupply(address(token)) returns (uint256 globalSupply) {
-                // Safety check: if global supply is way larger than local supply (1000x+), 
+                // CRITICAL SAFETY CHECK: Maximum reasonable supply is 1 billion tokens (1e27 wei)
+                // If global supply exceeds this, it's definitely corrupted - use local supply
+                uint256 maxReasonableSupply = 1e9 * 1 ether; // 1 billion tokens
+                if (globalSupply > maxReasonableSupply) {
+                    // Global supply is corrupted - use local supply instead
+                    return totalSupplySold;
+                }
+                
+                // Safety check: if global supply is way larger than local supply (100x+), 
                 // it might be a unit mismatch - use local supply instead
                 // This prevents astronomical prices from incorrect global supply values
                 if (globalSupply > totalSupplySold && totalSupplySold > 0) {
                     uint256 ratio = globalSupply / totalSupplySold;
-                    // If global is more than 1000x local, something is wrong - use local
-                    if (ratio > 1000) {
+                    // If global is more than 100x local, something is wrong - use local
+                    if (ratio > 100) {
                         return totalSupplySold;
                     }
                 }
-                // If local is 0 but global has value, use global (token might be new on this chain)
+                
+                // If local is 0 but global has value, validate global supply is reasonable
+                // For a new token on this chain, global supply should be small
                 if (totalSupplySold == 0 && globalSupply > 0) {
+                    // Additional validation: if global supply is extremely large for a "new" token,
+                    // it's likely corrupted - return 0 to use base price
+                    if (globalSupply > 1e6 * 1 ether) { // More than 1 million tokens seems unreasonable for a new chain
+                        return 0;
+                    }
                     return globalSupply;
                 }
-                // Otherwise use global supply
+                
+                // Otherwise use global supply (it has passed all safety checks)
                 return globalSupply;
             } catch {
                 // If tracker call fails, fall back to local supply
@@ -149,9 +166,12 @@ contract BondingCurve is Ownable, ReentrancyGuard {
      * @dev Calculate price for a specific amount of tokens
      * NOTE: totalSupplySold is in wei (18 decimals), but for price calculation we treat it as base token units
      * This means we divide by 1e18 to get the number of tokens, then calculate price
+     * SAFETY: Includes overflow protection and maximum price limits
      */
     function getPriceForAmount(uint256 tokenAmount) public view returns (uint256) {
-        // Use getSupplyForPricing which already handles global vs local supply
+        require(tokenAmount > 0, "Amount must be greater than 0");
+        
+        // Use getSupplyForPricing which already handles global vs local supply with safety checks
         uint256 supply = getSupplyForPricing();
         
         // Convert supply and tokenAmount from wei to base token units (divide by 1 ether)
@@ -159,25 +179,77 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         uint256 supplyInTokens = supply / 1 ether;
         uint256 amountInTokens = tokenAmount / 1 ether;
         
+        // SAFETY CHECK: Maximum reasonable amount is 1 billion tokens
+        // If amountInTokens is larger, the calculation would be invalid
+        require(amountInTokens <= 1e9, "Amount too large");
+        
         // For very small amounts (< 1 ether = < 1 token), handle separately
-        if (supply < 1 ether) {
-            supplyInTokens = 0;
-        }
         if (tokenAmount < 1 ether) {
-            // For amounts less than 1 token, use wei-based calculation with scaling
-            // Price = basePrice * tokenAmount + slope * supply * tokenAmount / (1 ether * 1 ether)
+            // For amounts less than 1 token, use simplified calculation to avoid overflow
+            // Price ≈ basePrice * (tokenAmount / 1 ether) 
+            // For small amounts, we can ignore the slope component to prevent overflow issues
             uint256 priceFromBase = (basePrice * tokenAmount) / 1 ether;
-            uint256 priceFromSlope = (slope * supply * tokenAmount) / (1 ether * 1 ether);
-            return priceFromBase + priceFromSlope;
+            
+            // SAFETY: Ensure result doesn't exceed maximum reasonable price (100 ETH)
+            uint256 maxPrice = 100 ether; // 100 ETH maximum
+            if (priceFromBase > maxPrice) {
+                revert("Price calculation overflow - basePrice may be too high");
+            }
+            
+            return priceFromBase;
         }
         
         // Standard calculation for amounts >= 1 token
         // Price per token at average supply = basePrice + slope * (supplyInTokens + amountInTokens / 2)
-        uint256 avgPricePerToken = basePrice + (slope * (supplyInTokens + amountInTokens / 2));
-        // Total price = avgPricePerToken * amountInTokens, but we need to convert back to wei
-        // Since avgPricePerToken is in wei per token, and amountInTokens is in tokens:
-        // Total price = avgPricePerToken * amountInTokens (already in wei, no conversion needed)
-        return avgPricePerToken * amountInTokens;
+        // SAFETY: Check for overflow in slope calculation
+        uint256 supplyForAvgPrice = supplyInTokens + (amountInTokens / 2);
+        
+        // Maximum reasonable supply for price calculation: 1 billion tokens
+        if (supplyForAvgPrice > 1e9) {
+            revert("Supply too large for price calculation");
+        }
+        
+        // Calculate average price per token
+        // Price = basePrice + slope * supplyForAvgPrice
+        // Solidity 0.8+ has automatic overflow protection, but we validate inputs first
+        
+        // SAFETY: Validate inputs before multiplication to prevent overflow
+        // Maximum reasonable slope: 0.01 ETH per token = 1e16 wei
+        // Maximum reasonable supplyForAvgPrice: 1e9 tokens (already checked above)
+        // Maximum product: 1e16 * 1e9 = 1e25, which is safe (well below 2^256)
+        uint256 slopeComponent = slope * supplyForAvgPrice;
+        
+        // SAFETY: Check if slopeComponent is reasonable
+        // If slopeComponent > 1e25, something is wrong with inputs
+        if (slopeComponent > 1e25) {
+            revert("Slope calculation error - slope or supply values are invalid");
+        }
+        
+        uint256 avgPricePerToken = basePrice + slopeComponent;
+        
+        // SAFETY: Validate avgPricePerToken is reasonable (max 1 ETH per token)
+        // This prevents astronomical prices per token
+        uint256 maxPricePerToken = 1 ether; // 1 ETH per token maximum
+        if (avgPricePerToken > maxPricePerToken) {
+            revert("Price per token exceeds maximum (1 ETH) - check basePrice and slope");
+        }
+        
+        // Total price = avgPricePerToken * amountInTokens
+        // Both are in wei, so result is in wei
+        // Validate inputs before multiplication
+        // Maximum avgPricePerToken: 1 ether (already validated)
+        // Maximum amountInTokens: 1e9 (already validated)
+        // Maximum product: 1e9 * 1e18 = 1e27, which is safe
+        uint256 totalPrice = avgPricePerToken * amountInTokens;
+        
+        // FINAL SAFETY CHECK: Maximum total price is 100 ETH
+        // This is the absolute maximum for any single transaction
+        uint256 maxTotalPrice = 100 ether;
+        if (totalPrice > maxTotalPrice) {
+            revert("Total price exceeds maximum (100 ETH) - reduce amount or check supply");
+        }
+        
+        return totalPrice;
     }
     
     /**
