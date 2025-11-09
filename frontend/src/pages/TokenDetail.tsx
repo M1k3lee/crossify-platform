@@ -90,12 +90,12 @@ export default function TokenDetail() {
           description="Loading token details..."
           url={`https://crossify.io/token/${id}`}
         />
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
           <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-          <p className="mt-4 text-gray-400">Loading token details...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+            <p className="mt-4 text-gray-400">Loading token details...</p>
+          </div>
         </div>
-      </div>
       </>
     );
   }
@@ -108,7 +108,7 @@ export default function TokenDetail() {
           description="The token you're looking for doesn't exist."
           url={`https://crossify.io/token/${id}`}
         />
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
           <div className="text-center">
             <p className="text-xl text-gray-400">Token not found</p>
           </div>
@@ -157,7 +157,7 @@ export default function TokenDetail() {
         url={`https://crossify.io/token/${id}`}
         image={token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : 'https://crossify.io/og-image.png'}
       />
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Token Header Card */}
         <div className="bg-gradient-to-r from-gray-800/90 to-gray-800/70 backdrop-blur-sm rounded-2xl p-8 mb-6 border border-gray-700/50">
           <div className="flex items-start justify-between">
