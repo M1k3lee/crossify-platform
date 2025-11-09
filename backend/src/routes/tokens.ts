@@ -575,18 +575,25 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 router.get('/marketplace', async (req: Request, res: Response) => {
   try {
     // Sync tokens from blockchain before querying (ensures tokens are discovered after deployments)
+    // Wait for sync to complete (with timeout) to ensure tokens are available
     try {
       const { syncAllTokensFromBlockchain } = await import('../services/startupSync');
-      // Run sync in background (don't block request)
-      syncAllTokensFromBlockchain().catch(error => {
-        console.error('Error syncing tokens for marketplace:', error);
-      });
+      console.log('🔄 Marketplace: Starting token sync...');
+      
+      // Run sync with timeout (max 10 seconds wait)
+      const syncPromise = syncAllTokensFromBlockchain();
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 10000));
+      
+      await Promise.race([syncPromise, timeoutPromise]);
+      console.log('✅ Marketplace: Token sync completed (or timed out)');
     } catch (error) {
-      console.error('Error starting marketplace sync:', error);
-      // Continue even if sync fails
+      console.error('❌ Marketplace: Error syncing tokens:', error);
+      // Continue even if sync fails - maybe tokens already exist in DB
     }
 
     const { chain, search, sortBy = 'newest' } = req.query;
+    
+    console.log(`📊 Marketplace: Querying tokens (chain: ${chain || 'all'}, search: ${search || 'none'})`);
     
     let query = `
       SELECT 
@@ -636,6 +643,18 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     }
     
     const tokens = await dbAll(query, params) as any[];
+    
+    console.log(`📊 Marketplace: Found ${tokens.length} tokens in database`);
+    
+    // Debug: Log first few tokens if any
+    if (tokens.length > 0) {
+      console.log(`📊 Marketplace: First token: ${tokens[0].name} (${tokens[0].symbol}) - chains: ${tokens[0].chains || 'none'}`);
+    } else {
+      // Check if there are any tokens at all in the database
+      const allTokens = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
+      const allDeployments = await dbAll('SELECT COUNT(*) as count FROM token_deployments', []) as any[];
+      console.log(`📊 Marketplace: Database has ${allTokens[0]?.count || 0} tokens total, ${allDeployments[0]?.count || 0} deployments`);
+    }
     
     const formattedTokens = tokens.map(token => {
       const chains = token.chains ? token.chains.split(',') : [];

@@ -343,4 +343,57 @@ router.get('/factory-info', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /debug/database-stats
+ * Debug endpoint to check database contents
+ */
+router.get('/database-stats', async (req: Request, res: Response) => {
+  try {
+    const { dbAll, dbGet } = await import('../db');
+    
+    // Get token count
+    const tokenCount = await dbGet('SELECT COUNT(*) as count FROM tokens', []) as any;
+    
+    // Get deployment count
+    const deploymentCount = await dbGet('SELECT COUNT(*) as count FROM token_deployments', []) as any;
+    
+    // Get tokens with deployments
+    const tokensWithDeployments = await dbAll(`
+      SELECT t.id, t.name, t.symbol, t.creator_address, 
+             GROUP_CONCAT(td.chain) as chains,
+             GROUP_CONCAT(td.status) as statuses
+      FROM tokens t
+      LEFT JOIN token_deployments td ON t.id = td.token_id
+      GROUP BY t.id
+      LIMIT 10
+    `, []) as any[];
+    
+    // Get all chains with deployments
+    const chainsWithTokens = await dbAll(`
+      SELECT chain, COUNT(*) as count
+      FROM token_deployments
+      GROUP BY chain
+    `, []) as any[];
+    
+    res.json({
+      tokens: {
+        total: tokenCount?.count || 0,
+        withDeployments: tokensWithDeployments.length,
+        sample: tokensWithDeployments,
+      },
+      deployments: {
+        total: deploymentCount?.count || 0,
+        byChain: chainsWithTokens,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Error in database-stats debug endpoint:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+    });
+  }
+});
+
 

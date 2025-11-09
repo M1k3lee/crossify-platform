@@ -239,37 +239,58 @@ async function syncChain(config: ChainConfig): Promise<number> {
 
   try {
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-    await provider.getBlockNumber(); // Test connection
-    console.log(`   ✅ Connected to ${config.chainName}`);
+    const blockNumber = await provider.getBlockNumber(); // Test connection
+    console.log(`   ✅ Connected to ${config.chainName} (block: ${blockNumber})`);
 
     // Query all tokens
     const tokens = await queryAllTokens(provider, config.factoryAddress);
 
     if (tokens.length === 0) {
       console.log(`   ℹ️  No tokens found on ${config.chainName}`);
+      console.log(`   💡 This could mean:`);
+      console.log(`      - No tokens have been created yet`);
+      console.log(`      - Factory address is incorrect`);
+      console.log(`      - Tokens were created before the query range (last 50k blocks)`);
       return 0;
     }
 
     console.log(`   📦 Found ${tokens.length} tokens, syncing to database...`);
 
     let synced = 0;
+    let skipped = 0;
+    let errors = 0;
+    
     for (const token of tokens) {
-      const success = await syncTokenToDatabase(
-        token.tokenAddress,
-        token.creator,
-        token.curveAddress,
-        token.name,
-        token.symbol,
-        config.chainName,
-        provider
-      );
-      if (success) synced++;
+      try {
+        const success = await syncTokenToDatabase(
+          token.tokenAddress,
+          token.creator,
+          token.curveAddress,
+          token.name,
+          token.symbol,
+          config.chainName,
+          provider
+        );
+        if (success) {
+          synced++;
+        } else {
+          skipped++;
+        }
+      } catch (error: any) {
+        console.error(`   ⚠️  Error syncing token ${token.tokenAddress}:`, error.message);
+        errors++;
+      }
     }
 
-    console.log(`   ✅ Synced ${synced} new tokens from ${config.chainName} (${tokens.length - synced} already existed)`);
+    console.log(`   ✅ Synced ${synced} new tokens from ${config.chainName}`);
+    console.log(`   ℹ️  ${skipped} already existed, ${errors} errors`);
     return synced;
   } catch (error: any) {
     console.error(`   ❌ Error syncing ${config.chainName}:`, error.message);
+    console.error(`   💡 Check:`);
+    console.error(`      - RPC URL is correct and accessible`);
+    console.error(`      - Factory address is correct`);
+    console.error(`      - Network is available`);
     return 0;
   }
 }
