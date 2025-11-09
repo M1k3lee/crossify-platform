@@ -152,6 +152,28 @@ export default function BuyWidget({
     return () => clearTimeout(timeoutId);
   }, [amount, tab, curveAddress, isValidAddress]);
 
+  // Get chain-specific currency symbol (define before handleBuy)
+  const getChainSymbol = (chainName: string): string => {
+    const chainLower = chainName.toLowerCase();
+    
+    // Handle testnet variants
+    if (chainLower.includes('bsc') || chainLower === 'bsc-testnet') {
+      return 'BNB';
+    }
+    if (chainLower.includes('ethereum') || chainLower === 'sepolia' || chainLower === 'eth') {
+      return 'ETH';
+    }
+    if (chainLower.includes('base') || chainLower === 'base-sepolia') {
+      return 'ETH'; // Base uses ETH as native currency
+    }
+    if (chainLower.includes('solana') || chainLower === 'sol') {
+      return 'SOL';
+    }
+    
+    // Default fallback
+    return 'ETH';
+  };
+
   const handleBuy = async () => {
     if (!isConnected || !address) {
       toast.error('Please connect your wallet first');
@@ -170,6 +192,9 @@ export default function BuyWidget({
 
     try {
       setLoading(true);
+      
+      // Get chain symbol for this transaction
+      const chainSymbol = getChainSymbol(chain);
       
       if (typeof window.ethereum === 'undefined') {
         throw new Error('MetaMask is not installed');
@@ -273,8 +298,19 @@ export default function BuyWidget({
         // Try to get price for amount
         try {
           const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+          
+          // First check: Validate the raw BigInt value before converting to ETH
+          // Maximum reasonable price: 100 ETH = 100 * 10^18 wei
+          const maxReasonableWei = ethers.parseEther('100');
+          if (priceFromContract > maxReasonableWei) {
+            console.warn(`⚠️ Price from contract is too high (raw wei): ${priceFromContract.toString()}`);
+            console.warn(`   Maximum reasonable: ${maxReasonableWei.toString()} wei (100 ETH/BNB)`);
+            console.warn(`   Using fallback calculation.`);
+            throw new Error('Contract price too high (BigInt check) - using fallback');
+          }
+          
           const priceEth = parseFloat(ethers.formatEther(priceFromContract));
-          console.log(`💰 Price estimate from contract: ${priceFromContract.toString()} wei (${priceEth} ETH)`);
+          console.log(`💰 Price estimate from contract: ${priceFromContract.toString()} wei (${priceEth} ${chainSymbol})`);
           
           // Validate: price should be reasonable
           // The contract might have a unit mismatch bug where it multiplies wei by wei
@@ -282,49 +318,76 @@ export default function BuyWidget({
           // Expected price ≈ 0.0001 * 100 = 0.01 ETH (for linear curve with no supply)
           // With supply, it should be slightly higher, but not astronomical
           
-          const expectedMaxPrice = currentPriceEth * parseFloat(amount) * 100; // Allow 100x buffer for bonding curve
-          const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 0.1); // Absolute max: 0.1 ETH per token for small amounts
+          // Calculate expected price range
+          const expectedPrice = currentPriceEth * parseFloat(amount);
+          const expectedMaxPrice = expectedPrice * 10; // Allow 10x buffer for bonding curve
+          const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 1); // Absolute max: 1 ETH per token
           
-          // If price is way too high, definitely use fallback
-          // Check 1: Absolute maximum (for 100 tokens, max should be ~10 ETH, not millions)
-          if (priceEth > absoluteMaxPrice || priceEth > 100) {
-            console.warn(`⚠️ Price from contract is astronomically high: ${priceEth} ETH (expected max: ${absoluteMaxPrice} ETH).`);
+          // Check if price is NaN or Infinity (invalid number)
+          if (isNaN(priceEth) || !isFinite(priceEth)) {
+            console.warn(`⚠️ Price from contract is invalid (NaN or Infinity). Using fallback.`);
+            throw new Error('Invalid price from contract - using fallback');
+          }
+          
+          // Check 1: Absolute maximum - if price is > 100 ETH or > absoluteMaxPrice, use fallback
+          if (priceEth > 100 || priceEth > absoluteMaxPrice) {
+            console.warn(`⚠️ Price from contract is too high: ${priceEth} ${chainSymbol} (expected max: ${absoluteMaxPrice} ${chainSymbol}).`);
             console.warn(`   This indicates a unit mismatch bug in the bonding curve contract.`);
             console.warn(`   Using fallback calculation based on current price.`);
-            throw new Error('Contract price calculation error - using safe fallback');
+            throw new Error('Contract price too high - using fallback');
           }
           
           // Check 2: Compare against expected price (currentPrice * amount)
-          // If contract price is 1000x+ higher than expected, use fallback
-          if (expectedMaxPrice > 0.0001 && priceEth > expectedMaxPrice * 100) {
-            console.warn(`⚠️ Price from contract (${priceEth} ETH) is way higher than expected (${expectedMaxPrice} ETH).`);
+          // If contract price is 100x+ higher than expected, use fallback
+          if (expectedPrice > 0 && priceEth > expectedMaxPrice) {
+            console.warn(`⚠️ Price from contract (${priceEth} ${chainSymbol}) is much higher than expected (${expectedPrice} ${chainSymbol}, max: ${expectedMaxPrice} ${chainSymbol}).`);
             console.warn(`   Using fallback calculation.`);
             throw new Error('Price validation failed - using fallback');
           }
           
           // Check 3: For small amounts, price should be reasonable
-          // Buying 100 tokens should cost at most a few ETH, not millions
-          if (parseFloat(amount) <= 1000 && priceEth > 10) {
-            console.warn(`⚠️ Price too high for ${amount} tokens: ${priceEth} ETH. Using fallback.`);
+          // Buying tokens should cost a reasonable amount
+          if (parseFloat(amount) <= 100 && priceEth > 5) {
+            console.warn(`⚠️ Price too high for ${amount} tokens: ${priceEth} ${chainSymbol}. Using fallback.`);
             throw new Error('Price validation failed - using fallback');
           }
           
+          // All validations passed - use contract price
           priceEstimateWei = priceFromContract;
+          console.log(`✅ Using contract price: ${priceEth} ${chainSymbol}`);
         } catch (priceErr: any) {
           // Fallback: use currentPrice * amount (simple linear calculation)
           console.warn('⚠️ Using fallback price calculation (currentPrice * amount)');
-          console.warn('   This happens when global supply tracking has unit mismatches.');
-          console.warn('   Fallback uses local bonding curve price only.');
+          console.warn(`   Reason: ${priceErr.message || 'Contract price validation failed'}`);
+          console.warn('   This happens when the bonding curve contract has calculation issues.');
+          console.warn('   Fallback uses a simple linear approximation: price = currentPrice * amount');
           
-          // Use currentPrice directly (already in wei per token)
-          // For small amounts, this should be accurate: price ≈ currentPrice * amount
-          priceEstimateWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
-          const fallbackPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
-          console.log(`💰 Fallback price estimate: ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ETH)`);
+          // Validate current price is reasonable before using it
+          if (currentPriceEth <= 0 || currentPriceEth > 1) {
+            throw new Error(`Invalid current price: ${currentPriceEth} ${chainSymbol} per token. Cannot calculate fallback price.`);
+          }
           
-          // Validate fallback is also reasonable
-          if (fallbackPriceEth > 100) {
-            throw new Error(`Fallback price also too high: ${fallbackPriceEth} ETH. Current price per token: ${currentPriceEth} ETH. Please check bonding curve configuration.`);
+          // Use currentPrice * amount with proper wei calculation
+          // currentPriceWei is in wei per token, tokenAmount is in wei (with 18 decimals)
+          // Multiply and divide by 1e18 to get total price in wei
+          try {
+            priceEstimateWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
+            const fallbackPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
+            console.log(`💰 Fallback price estimate: ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ${chainSymbol})`);
+            
+            // Validate fallback is reasonable
+            if (isNaN(fallbackPriceEth) || !isFinite(fallbackPriceEth) || fallbackPriceEth <= 0) {
+              throw new Error(`Invalid fallback price calculation: ${fallbackPriceEth}`);
+            }
+            
+            if (fallbackPriceEth > 10) {
+              throw new Error(`Fallback price too high: ${fallbackPriceEth} ${chainSymbol}. Current price per token: ${currentPriceEth} ${chainSymbol}. Please try a smaller amount.`);
+            }
+            
+            console.log(`✅ Using fallback price: ${fallbackPriceEth} ${chainSymbol}`);
+          } catch (fallbackErr: any) {
+            console.error('❌ Fallback calculation failed:', fallbackErr);
+            throw new Error(`Failed to calculate price: ${fallbackErr.message}. Please try a smaller amount or contact support.`);
           }
         }
       } catch (err: any) {
@@ -501,28 +564,7 @@ export default function BuyWidget({
     }
   };
 
-  // Get chain-specific currency symbol
-  const getChainSymbol = (chainName: string): string => {
-    const chainLower = chainName.toLowerCase();
-    
-    // Handle testnet variants
-    if (chainLower.includes('bsc') || chainLower === 'bsc-testnet') {
-      return 'BNB';
-    }
-    if (chainLower.includes('ethereum') || chainLower === 'sepolia' || chainLower === 'eth') {
-      return 'ETH';
-    }
-    if (chainLower.includes('base') || chainLower === 'base-sepolia') {
-      return 'ETH'; // Base uses ETH as native currency
-    }
-    if (chainLower.includes('solana') || chainLower === 'sol') {
-      return 'SOL';
-    }
-    
-    // Default fallback
-    return 'ETH';
-  };
-  
+  // Get chain-specific currency symbol for display
   const chainSymbol = getChainSymbol(chain);
 
   return (
