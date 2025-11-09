@@ -574,6 +574,18 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 // GET /tokens/marketplace
 router.get('/marketplace', async (req: Request, res: Response) => {
   try {
+    // Sync tokens from blockchain before querying (ensures tokens are discovered after deployments)
+    try {
+      const { syncAllTokensFromBlockchain } = await import('../services/startupSync');
+      // Run sync in background (don't block request)
+      syncAllTokensFromBlockchain().catch(error => {
+        console.error('Error syncing tokens for marketplace:', error);
+      });
+    } catch (error) {
+      console.error('Error starting marketplace sync:', error);
+      // Continue even if sync fails
+    }
+
     const { chain, search, sortBy = 'newest' } = req.query;
     
     let query = `

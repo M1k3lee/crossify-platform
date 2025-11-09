@@ -17,6 +17,7 @@ import { initializeRedis } from './services/redis';
 import { startPriceSyncService } from './services/priceSync';
 import { startPriceMonitoring } from './services/unifiedLiquidity';
 import { getCrossChainRelayer } from './services/crossChainRelayer';
+import { startStartupSync } from './services/startupSync';
 
 dotenv.config();
 
@@ -136,6 +137,10 @@ async function start() {
     // Start cross-chain relayer service (for fee conversion)
     getCrossChainRelayer();
     console.log('✅ Cross-chain relayer service started');
+
+    // Start startup sync (syncs all tokens from blockchain on startup)
+    startStartupSync();
+    console.log('✅ Startup sync service started (will sync tokens from blockchain)');
 
     // Start server
     app.listen(PORT, () => {
