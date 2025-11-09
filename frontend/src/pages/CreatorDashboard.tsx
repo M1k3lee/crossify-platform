@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import axios from 'axios';
 import {
@@ -38,11 +38,20 @@ export default function CreatorDashboard() {
   const [buyFee, setBuyFee] = useState('0');
   const [sellFee, setSellFee] = useState('0');
 
-  const { data: token, isLoading } = useQuery({
+  const { data: token, isLoading, error } = useQuery({
     queryKey: ['creator-token', id],
     queryFn: async () => {
-      const response = await axios.get(`${API_BASE}/tokens/${id}`);
-      return response.data;
+      try {
+        const response = await axios.get(`${API_BASE}/tokens/${id}`);
+        console.log('📦 Token response:', response.data);
+        return response.data;
+      } catch (err: any) {
+        console.error('❌ Error fetching token:', err);
+        if (err.response?.status === 404) {
+          throw new Error('Token not found');
+        }
+        throw err;
+      }
     },
     enabled: !!id,
     refetchInterval: 10000, // Refetch every 10 seconds to get updated deployments
@@ -378,14 +387,27 @@ export default function CreatorDashboard() {
     );
   }
 
-  if (!token) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-400 mb-4">Token not found</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+          <p className="mt-4 text-gray-400">Loading token...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !token) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400 mb-4">
+            {error instanceof Error ? error.message : 'Token not found'}
+          </p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-lg"
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
           >
             Back to Dashboard
           </button>
@@ -847,11 +869,35 @@ export default function CreatorDashboard() {
                         )}
                       </button>
                     </div>
+                    {dep.curveAddress && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Curve:</span>
+                        <button
+                          onClick={() => copyToClipboard(dep.curveAddress, 'Curve address')}
+                          className="flex items-center gap-1 text-primary-400 hover:text-primary-300"
+                        >
+                          <span className="font-mono text-xs">{dep.curveAddress.slice(0, 6)}...{dep.curveAddress.slice(-4)}</span>
+                          {copiedAddress === dep.curveAddress ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    )}
                     {dep.marketCap && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-400">Market Cap:</span>
                         <span className="text-white font-semibold">${(dep.marketCap / 1e6).toFixed(2)}M</span>
                       </div>
+                    )}
+                    {dep.status === 'deployed' && dep.curveAddress && (
+                      <Link
+                        to={`/token/${id}?chain=${dep.chain}`}
+                        className="block w-full mt-3 px-3 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition text-center"
+                      >
+                        Trade on {dep.chain === 'bsc' ? 'BSC' : dep.chain === 'ethereum' ? 'Ethereum' : dep.chain === 'base' ? 'Base' : dep.chain}
+                      </Link>
                     )}
                   </div>
                 )}

@@ -31,6 +31,23 @@ export default function AddLiquidityModal({
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
+  
+  // Get chain-specific currency symbol
+  const getChainSymbol = (chainName: string): string => {
+    switch (chainName.toLowerCase()) {
+      case 'bsc':
+        return 'BNB';
+      case 'ethereum':
+      case 'base':
+        return 'ETH';
+      case 'solana':
+        return 'SOL';
+      default:
+        return 'ETH';
+    }
+  };
+  
+  const chainSymbol = getChainSymbol(chain);
 
   const handleBuy = async () => {
     if (!isConnected || !address) {
@@ -123,41 +140,72 @@ export default function AddLiquidityModal({
       const tokenAmount = ethers.parseUnits(amount, 18);
       console.log(`📊 Buying ${amount} tokens (${tokenAmount.toString()} wei)`);
       
-      // Get price estimate with detailed logging
-      let priceEstimate: bigint;
-      try {
-        priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
-        console.log(`💰 Price estimate from contract: ${priceEstimate.toString()} wei (${ethers.formatEther(priceEstimate)} ETH)`);
-      } catch (err: any) {
-        console.warn('⚠️ getPriceForAmount failed, using currentPrice fallback:', err.message);
-        try {
-          const currentPrice = await curveContract.getCurrentPrice();
-          console.log(`💰 Current price per token: ${currentPrice.toString()} wei (${ethers.formatEther(currentPrice)} ETH)`);
-          // Calculate: price = currentPrice * tokenAmount
-          priceEstimate = (currentPrice * tokenAmount) / ethers.parseEther('1');
-          console.log(`💰 Fallback price estimate: ${priceEstimate.toString()} wei (${ethers.formatEther(priceEstimate)} ETH)`);
-        } catch (fallbackErr: any) {
-          throw new Error('Could not get price estimate. The contract may not be properly deployed.');
-        }
-      }
-      
-      // Validate price estimate is reasonable
-      if (!priceEstimate || priceEstimate === BigInt(0)) {
-        throw new Error('Invalid price estimate. Please try a different amount.');
-      }
-      
-      if (priceEstimate > ethers.parseEther('1000')) {
-        throw new Error(`Price estimate too high: ${ethers.formatEther(priceEstimate)} ETH. This seems incorrect.`);
-      }
-      
-      const priceWithFee = (priceEstimate * BigInt(110)) / BigInt(100); // Add 10% buffer
-      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${ethers.formatEther(priceWithFee)} ETH)`);
-      
-      // Double-check the value before sending
-      const valueInEth = ethers.formatEther(priceWithFee);
-      if (parseFloat(valueInEth) > 1000) {
-        throw new Error(`Price too high: ${valueInEth} ETH. Something is wrong with the price calculation.`);
-      }
+          // Get price estimate with detailed logging and validation
+          let priceEstimate: bigint;
+          try {
+            // First get current price to validate
+            const currentPriceWei = await curveContract.getCurrentPrice();
+            const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
+            console.log(`💰 Current price per token: ${currentPriceWei.toString()} wei (${currentPriceEth} ${chainSymbol})`);
+            
+            // Validate current price is reasonable
+            if (currentPriceEth > 1) {
+              console.warn(`⚠️ Current price seems high: ${currentPriceEth} ${chainSymbol} per token`);
+            }
+            
+            // Try to get price for amount
+            try {
+              const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+              const priceEth = parseFloat(ethers.formatEther(priceFromContract));
+              console.log(`💰 Price estimate from contract: ${priceFromContract.toString()} wei (${priceEth} ${chainSymbol})`);
+              
+              // Validate: price should be reasonable
+              const expectedMaxPrice = currentPriceEth * parseFloat(amount) * 10; // Allow 10x buffer
+              
+              // If price is astronomically high OR way higher than expected, use fallback
+              if (priceEth > 100 || (priceEth > expectedMaxPrice * 1000 && expectedMaxPrice > 0.0001)) {
+                console.warn(`⚠️ Price from getPriceForAmount seems incorrect (${priceEth} ${chainSymbol}). Using fallback.`);
+                throw new Error('Price too high - possible global supply unit mismatch');
+              }
+              
+              // Additional safety check
+              if (parseFloat(amount) <= 1000 && priceEth > 1) {
+                console.warn(`⚠️ Price seems too high for amount ${amount} tokens. Using fallback.`);
+                throw new Error('Price validation failed');
+              }
+              
+              priceEstimate = priceFromContract;
+            } catch (priceErr: any) {
+              // Fallback: use currentPrice * amount
+              console.warn('⚠️ Using fallback price calculation (currentPrice * amount)');
+              priceEstimate = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
+              const fallbackPriceEth = parseFloat(ethers.formatEther(priceEstimate));
+              console.log(`💰 Fallback price estimate: ${priceEstimate.toString()} wei (${fallbackPriceEth} ${chainSymbol})`);
+              
+              if (fallbackPriceEth > 100) {
+                throw new Error(`Fallback price too high: ${fallbackPriceEth} ${chainSymbol}. Please check bonding curve.`);
+              }
+            }
+          } catch (err: any) {
+            console.error('⚠️ Error getting price estimate:', err);
+            throw new Error(`Failed to get price estimate: ${err.message}. Please try again or contact support.`);
+          }
+          
+          // Final validation: price should be reasonable
+          const finalPriceEth = parseFloat(ethers.formatEther(priceEstimate));
+          if (priceEstimate <= 0 || finalPriceEth > 100 || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
+            throw new Error(`Invalid price estimate: ${finalPriceEth.toExponential(2)} ${chainSymbol}. This suggests an issue with the bonding curve. Please try a smaller amount or contact support.`);
+          }
+          
+          // Add 10% buffer for safety (contract will refund excess)
+          const priceWithFee = (priceEstimate * BigInt(110)) / BigInt(100);
+          const priceWithFeeEth = parseFloat(ethers.formatEther(priceWithFee));
+          console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${priceWithFeeEth} ${chainSymbol})`);
+          
+          // Final validation before sending
+          if (priceWithFeeEth > 100 || isNaN(priceWithFeeEth) || !isFinite(priceWithFeeEth)) {
+            throw new Error(`Price validation failed: ${priceWithFeeEth} ${chainSymbol}. Please try a smaller amount or contact support.`);
+          }
       
       console.log(`🚀 Sending buy transaction with value: ${priceWithFee.toString()} wei`);
       
@@ -298,16 +346,16 @@ export default function AddLiquidityModal({
       
       const receipt = await tx.wait();
       
-      // Get price estimate (optional, for display)
-      let ethReceived = '0';
-      try {
-        const priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
-        ethReceived = ethers.formatEther(priceEstimate);
-      } catch (err) {
-        console.warn('Could not get price estimate for display:', err);
-      }
-      
-      toast.success(`Successfully sold ${amount} ${tokenSymbol}${ethReceived !== '0' ? ` for ${ethReceived} ETH` : ''}!`, { id: 'sell-tx' });
+          // Get price estimate (optional, for display)
+          let nativeReceived = '0';
+          try {
+            const priceEstimate = await curveContract.getPriceForAmount(tokenAmount);
+            nativeReceived = ethers.formatEther(priceEstimate);
+          } catch (err) {
+            console.warn('Could not get price estimate for display:', err);
+          }
+          
+          toast.success(`Successfully sold ${amount} ${tokenSymbol}${nativeReceived !== '0' ? ` for ${nativeReceived} ${chainSymbol}` : ''}!`, { id: 'sell-tx' });
       
       setAmount('');
       onSuccess?.();
@@ -428,21 +476,21 @@ export default function AddLiquidityModal({
               <div className="p-4 bg-gray-900/50 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Current Price</span>
-                  <span className="text-white font-semibold">${currentPrice.toFixed(6)}</span>
+                  <span className="text-white font-semibold">{currentPrice.toFixed(6)} {chainSymbol}</span>
                 </div>
-                {tab === 'buy' && (
+                {tab === 'buy' && amount && parseFloat(amount) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Est. Cost</span>
                     <span className="text-white font-semibold">
-                      ~${(parseFloat(amount) * currentPrice).toFixed(4)} ETH
+                      ~{(parseFloat(amount) * currentPrice).toFixed(6)} {chainSymbol}
                     </span>
                   </div>
                 )}
-                {tab === 'sell' && (
+                {tab === 'sell' && amount && parseFloat(amount) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Est. Receive</span>
                     <span className="text-white font-semibold">
-                      ~${(parseFloat(amount) * currentPrice).toFixed(4)} ETH
+                      ~{(parseFloat(amount) * currentPrice).toFixed(6)} {chainSymbol}
                     </span>
                   </div>
                 )}

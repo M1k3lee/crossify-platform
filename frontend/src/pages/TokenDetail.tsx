@@ -1,12 +1,12 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   AlertCircle, Copy, CheckCircle, 
-  Zap, Twitter, MessageCircle, Coins,
+  Zap, Twitter, MessageCircle,
   TrendingUp, TrendingDown, ExternalLink, Settings
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import AddLiquidityModal from '../components/AddLiquidityModal';
@@ -34,6 +34,7 @@ const CHAIN_NAMES: Record<string, string> = {
 
 export default function TokenDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { address } = useAccount();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [liquidityModal, setLiquidityModal] = useState<{
@@ -41,6 +42,9 @@ export default function TokenDetail() {
     curveAddress: string;
     tokenAddress: string;
   } | null>(null);
+  
+  // Get chain from URL query parameter, default to first deployed chain
+  const selectedChainFromUrl = searchParams.get('chain');
 
   const { data: status, isLoading } = useQuery({
     queryKey: ['token-status', id],
@@ -121,6 +125,28 @@ export default function TokenDetail() {
 
   const allGraduated = deployments.every((dep: any) => dep.isGraduated) || false;
   const someGraduated = deployments.some((dep: any) => dep.isGraduated) || false;
+  
+  // Find selected deployment based on URL chain parameter or use first deployed chain
+  const selectedDeployment = useMemo(() => {
+    if (!deployments || deployments.length === 0) return null;
+    
+    // If chain is specified in URL, find matching deployment
+    if (selectedChainFromUrl) {
+      const found = deployments.find((dep: any) => 
+        dep.chain?.toLowerCase() === selectedChainFromUrl.toLowerCase() && 
+        dep.status === 'deployed' &&
+        dep.curveAddress
+      );
+      if (found) return found;
+    }
+    
+    // Otherwise, use first deployed chain with curve address
+    return deployments.find((dep: any) => 
+      dep.status === 'deployed' && dep.curveAddress
+    ) || deployments[0] || null;
+  }, [deployments, selectedChainFromUrl]);
+  
+  const selectedChain = selectedDeployment?.chain || 'ethereum';
 
   return (
     <>
@@ -131,29 +157,7 @@ export default function TokenDetail() {
         url={`https://crossify.io/token/${id}`}
         image={token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : 'https://crossify.io/og-image.png'}
       />
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
-      {/* Header */}
-      <div className="bg-gray-900/90 backdrop-blur-sm border-b border-gray-800 p-4 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center text-white font-bold">
-              X
-            </div>
-            <span className="text-xl font-bold text-white">Crossify.io</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              to="/builder"
-              className="bg-primary-600 hover:bg-primary-700 px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm font-semibold"
-            >
-              <Coins className="w-4 h-4" />
-              Create New Token
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Token Header Card */}
         <div className="bg-gradient-to-r from-gray-800/90 to-gray-800/70 backdrop-blur-sm rounded-2xl p-8 mb-6 border border-gray-700/50">
           <div className="flex items-start justify-between">
@@ -314,23 +318,29 @@ export default function TokenDetail() {
         {/* Trading Section - Buy Widget + Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Buy Widget - Prominent */}
-          {status.deployments && status.deployments.length > 0 && !allGraduated && (
+          {selectedDeployment && selectedDeployment.curveAddress && selectedDeployment.tokenAddress && !allGraduated ? (
             <BuyWidget
-              chain={status.deployments[0].chain}
-              curveAddress={status.deployments[0].curveAddress || ''}
-              tokenAddress={status.deployments[0].tokenAddress || ''}
+              chain={selectedChain}
+              curveAddress={selectedDeployment.curveAddress}
+              tokenAddress={selectedDeployment.tokenAddress}
               tokenSymbol={status.token?.symbol || 'TOKEN'}
-              currentPrice={priceSync?.prices?.[status.deployments[0].chain.toLowerCase()] || status.deployments[0].marketCap / 1000000 || 0.001}
+              currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
               onSuccess={() => {
                 // Refresh data after successful trade
                 window.location.reload();
               }}
             />
-          )}
+          ) : status.deployments && status.deployments.length > 0 && !allGraduated ? (
+            <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
+              <p className="text-yellow-400 text-sm">
+                No deployed bonding curve found for selected chain. Please deploy the token first.
+              </p>
+            </div>
+          ) : null}
           
           {/* Price Chart */}
-          <div className={status.deployments && status.deployments.length > 0 && !allGraduated ? '' : 'lg:col-span-2'}>
-            <TokenChart tokenId={id || ''} />
+          <div className={selectedDeployment && !allGraduated ? '' : 'lg:col-span-2'}>
+            <TokenChart tokenId={id || ''} chain={selectedChain} />
           </div>
         </div>
 
@@ -421,21 +431,17 @@ export default function TokenDetail() {
                     </div>
 
                     {!dep.isGraduated && dep.curveAddress && (
-                      <button
-                        onClick={() => setLiquidityModal({
-                          chain: dep.chain,
-                          curveAddress: dep.curveAddress,
-                          tokenAddress: dep.tokenAddress,
-                        })}
-                        className="w-full mt-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:opacity-90"
+                      <Link
+                        to={`/token/${id}?chain=${dep.chain}`}
+                        className="block w-full mt-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:opacity-90 text-center"
                         style={{
                           backgroundColor: `${chainColor}20`,
                           color: chainColor,
                           border: `1px solid ${chainColor}40`,
                         }}
                       >
-                        Trade
-                      </button>
+                        Trade on {CHAIN_NAMES[dep.chain] || dep.chain}
+                      </Link>
                     )}
                   </div>
                 </motion.div>
@@ -445,11 +451,11 @@ export default function TokenDetail() {
         </div>
 
         {/* Market Depth Chart */}
-        {status.deployments && status.deployments.length > 0 && !allGraduated && (
+        {selectedDeployment && !allGraduated && (
           <div className="mb-6">
             <MarketDepthChart 
               tokenId={id || ''} 
-              chain={status.deployments[0].chain}
+              chain={selectedChain}
             />
           </div>
         )}
@@ -545,7 +551,6 @@ export default function TokenDetail() {
           }}
         />
       )}
-      </div>
     </>
   );
 }

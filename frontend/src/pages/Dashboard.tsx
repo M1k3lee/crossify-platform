@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Sparkles, Rocket, Coins, Zap, Settings, Pin, Archive, Trash2, X } from 'lucide-react';
+import { TrendingUp, Sparkles, Rocket, Coins, Zap, Settings, Pin, Archive, Trash2, X, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import axios from 'axios';
@@ -182,7 +182,7 @@ function TokenCard({ token, address, onUpdate, index }: { token: any; address: s
   const [isManaging, setIsManaging] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleStatusUpdate = async (field: 'archived' | 'pinned' | 'deleted', value: boolean) => {
+  const handleStatusUpdate = async (field: 'archived' | 'pinned' | 'deleted' | 'visibleInMarketplace', value: boolean) => {
     if (!address) {
       toast.error('Wallet not connected');
       return;
@@ -200,12 +200,14 @@ function TokenCard({ token, address, onUpdate, index }: { token: any; address: s
         }
       );
       
-      toast.success(field === 'pinned' 
-        ? (value ? 'Token pinned' : 'Token unpinned')
-        : field === 'archived'
-        ? (value ? 'Token archived' : 'Token unarchived')
-        : 'Token deleted'
-      );
+      const messages: Record<string, string> = {
+        pinned: value ? 'Token pinned' : 'Token unpinned',
+        archived: value ? 'Token archived' : 'Token unarchived',
+        deleted: 'Token deleted',
+        visibleInMarketplace: value ? 'Token now visible in marketplace' : 'Token hidden from marketplace',
+      };
+      
+      toast.success(messages[field] || 'Token status updated');
       onUpdate();
     } catch (error: any) {
       console.error('Error updating token status:', error);
@@ -248,6 +250,9 @@ function TokenCard({ token, address, onUpdate, index }: { token: any; address: s
               <h3 className="text-lg font-semibold text-white">{token.name}</h3>
               {token.archived && (
                 <span className="text-xs px-2 py-0.5 bg-gray-600 text-gray-300 rounded">Archived</span>
+              )}
+              {!token.visibleInMarketplace && (
+                <span className="text-xs px-2 py-0.5 bg-orange-600 text-orange-100 rounded">Hidden</span>
               )}
             </div>
             <p className="text-sm text-gray-400">{token.symbol}</p>
@@ -304,6 +309,14 @@ function TokenCard({ token, address, onUpdate, index }: { token: any; address: s
                       title={token.archived ? 'Unarchive' : 'Archive'}
                     >
                       <Archive className={`w-4 h-4 ${token.archived ? 'text-orange-400' : 'text-gray-400'}`} />
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate('visibleInMarketplace', !token.visibleInMarketplace)}
+                      disabled={isUpdating}
+                      className="p-2 hover:bg-gray-700 rounded transition disabled:opacity-50"
+                      title={token.visibleInMarketplace ? 'Hide from Marketplace' : 'Show in Marketplace'}
+                    >
+                      <Globe className={`w-4 h-4 ${token.visibleInMarketplace ? 'text-green-400' : 'text-gray-400'}`} />
                     </button>
                     <button
                       onClick={() => {

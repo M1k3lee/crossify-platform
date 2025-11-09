@@ -32,13 +32,35 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim()] : [],
       chainId: 84532,
     },
+    base: {
+      url: process.env.BASE_MAINNET_RPC_URL || process.env.BASE_RPC_URL || "https://mainnet.base.org",
+      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim()] : [],
+      chainId: 8453,
+    },
+    ethereum: {
+      url: process.env.ETHEREUM_MAINNET_RPC_URL || process.env.ETHEREUM_RPC_URL || "https://eth.llamarpc.com",
+      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim()] : [],
+      chainId: 1,
+    },
   },
   etherscan: {
     apiKey: {
       sepolia: process.env.ETHERSCAN_API_KEY || "",
       bscTestnet: process.env.BSCSCAN_API_KEY || "",
       baseSepolia: process.env.BASESCAN_API_KEY || "",
+      base: process.env.BASESCAN_API_KEY || "",
+      mainnet: process.env.ETHERSCAN_API_KEY || "",
     },
+    customChains: [
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.basescan.org/api",
+          browserURL: "https://basescan.org"
+        }
+      }
+    ]
   },
 };
 

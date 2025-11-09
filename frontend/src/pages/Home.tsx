@@ -128,19 +128,12 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
-              to="/builder"
+              to="/marketplace"
               className="group relative px-8 py-4 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-primary-500/50 hover:shadow-xl hover:shadow-primary-500/70 flex items-center gap-2"
             >
               <Rocket className="w-5 h-5" />
-              Launch Token on Multiple Chains
+              Launch App
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link
-              to="/marketplace"
-              className="px-8 py-4 bg-gray-800/80 hover:bg-gray-700/80 backdrop-blur-sm text-white font-semibold rounded-xl transition-all border border-gray-700 hover:border-gray-600 flex items-center gap-2"
-            >
-              <Globe className="w-5 h-5" />
-              Explore Cross-Chain Tokens
             </Link>
           </div>
         </motion.div>

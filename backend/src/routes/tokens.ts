@@ -198,6 +198,30 @@ router.post('/create', async (req: Request, res: Response) => {
     
     console.log('Token created successfully:', tokenId);
     
+    // Calculate platform fee with CFY discount (if applicable)
+    // Base fee: 0.01 ETH (or equivalent)
+    const baseFee = 0.01;
+    let calculatedFee = baseFee;
+    let discountPercent = 0;
+    
+    if (creatorAddress) {
+      try {
+        const { calculatePlatformFee } = await import('../services/cfyFeeCollection');
+        // Use Base chain by default (or detect from request)
+        const chain = 'base'; // Default to Base
+        const feeCalculation = await calculatePlatformFee(baseFee, creatorAddress, chain);
+        calculatedFee = feeCalculation.finalFee;
+        discountPercent = feeCalculation.discountPercent;
+        
+        if (discountPercent > 0) {
+          console.log(`✅ CFY discount applied: ${discountPercent}% (Final fee: ${calculatedFee} ETH)`);
+        }
+      } catch (error) {
+        console.warn('Could not calculate CFY fee discount:', error);
+        // Continue with base fee if CFY service is unavailable
+      }
+    }
+    
     // Record token creation fee (if applicable)
     // In production, this would be called after successful deployment
     // For now, we'll record it when deployment is confirmed
@@ -212,6 +236,12 @@ router.post('/create', async (req: Request, res: Response) => {
       success: true,
       tokenId,
       message: 'Token created successfully',
+      feeInfo: {
+        baseFee,
+        finalFee: calculatedFee,
+        discountPercent,
+        currency: 'ETH', // Or BNB/SOL based on chain
+      },
     });
   } catch (error) {
     console.error('Error creating token - Full error:', error);
@@ -309,6 +339,41 @@ router.post('/:id/deploy', async (req: Request, res: Response) => {
         await updateGlobalSupply(id, chain, '0');
         // Sync prices across all chains
         await syncPriceAcrossChains(id);
+        
+        // Record token creation fee (collect via CFY contract if enabled)
+        try {
+          const token = await dbGet('SELECT creator_address FROM tokens WHERE id = ?', [id]) as any;
+          const creatorAddress = token?.creator_address;
+          
+          if (creatorAddress) {
+            const { recordTokenCreationFee } = await import('../services/feeRecorder');
+            const { createCFYFeeCollectionService } = await import('../services/cfyFeeCollection');
+            
+            // Try to collect fee via CFY contract
+            const feeService = createCFYFeeCollectionService(chain);
+            if (feeService) {
+              // Base fee: 0.01 ETH
+              const baseFee = '0.01';
+              const feeResult = await feeService.collectFee(baseFee, 'token_creation', creatorAddress);
+              
+              if (feeResult.success) {
+                console.log(`✅ Fee collected via CFY contract: ${feeResult.finalAmount} ETH (Discount: ${feeResult.discountApplied || 0}%)`);
+                // Record fee with transaction hash
+                await recordTokenCreationFee(id, chain, baseFee, feeResult.txHash);
+              } else {
+                // Fallback: record fee without CFY collection
+                console.warn('CFY fee collection failed, recording fee without contract interaction');
+                await recordTokenCreationFee(id, chain, baseFee);
+              }
+            } else {
+              // CFY service not configured, record fee normally
+              await recordTokenCreationFee(id, chain, '0.01');
+            }
+          }
+        } catch (error) {
+          console.error('Error recording token creation fee:', error);
+          // Don't fail deployment if fee recording fails
+        }
       }
     }
     
@@ -418,11 +483,11 @@ router.get('/my-tokens', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /tokens/:id/status - Update token status (archive, pin, delete)
+// PATCH /tokens/:id/status - Update token status (archive, pin, delete, visible_in_marketplace)
 router.patch('/:id/status', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { archived, pinned, deleted } = req.body;
+    const { archived, pinned, deleted, visibleInMarketplace } = req.body;
     const creatorAddress = req.headers['x-creator-address'] as string;
     
     if (!creatorAddress) {
@@ -458,6 +523,11 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
       params.push(deleted ? 1 : 0);
     }
     
+    if (visibleInMarketplace !== undefined) {
+      updates.push('visible_in_marketplace = ?');
+      params.push(visibleInMarketplace ? 1 : 0);
+    }
+    
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No status fields provided' });
     }
@@ -491,6 +561,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
         t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
         t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
+        COALESCE(t.visible_in_marketplace, 1) as visible_in_marketplace,
         GROUP_CONCAT(td.chain) as chains,
         GROUP_CONCAT(td.token_address) as token_addresses,
         GROUP_CONCAT(td.curve_address) as curve_addresses,
@@ -500,6 +571,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
       FROM tokens t
       LEFT JOIN token_deployments td ON t.id = td.token_id
       WHERE (t.deleted IS NULL OR t.deleted = 0)
+        AND (t.visible_in_marketplace IS NULL OR t.visible_in_marketplace = 1)
     `;
     
     const params: any[] = [];
@@ -573,6 +645,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         archived: token.archived === 1,
         pinned: token.pinned === 1,
         deleted: token.deleted === 1,
+        visibleInMarketplace: (token.visible_in_marketplace ?? 1) === 1,
         deployments,
       };
     });
@@ -1070,10 +1143,30 @@ router.get('/:id', async (req: Request, res: Response) => {
     console.log(`📖 Token ${id} advanced settings:`, JSON.stringify(advancedSettings, null, 2));
     
     res.json({
-      ...token,
+      id: token.id,
+      name: token.name,
+      symbol: token.symbol,
+      decimals: token.decimals,
+      initialSupply: token.initial_supply,
+      logoIpfs: token.logo_ipfs,
+      description: token.description,
+      twitterUrl: token.twitter_url,
+      discordUrl: token.discord_url,
+      telegramUrl: token.telegram_url,
+      websiteUrl: token.website_url,
+      basePrice: token.base_price,
+      slope: token.slope,
+      graduationThreshold: token.graduation_threshold,
+      buyFeePercent: token.buy_fee_percent,
+      sellFeePercent: token.sell_fee_percent,
       creatorAddress: token.creator_address || null,
       crossChainEnabled: token.cross_chain_enabled === 1,
       advancedSettings,
+      archived: (token.archived ?? 0) === 1,
+      pinned: (token.pinned ?? 0) === 1,
+      deleted: (token.deleted ?? 0) === 1,
+      visibleInMarketplace: (token.visible_in_marketplace ?? 1) === 1,
+      createdAt: token.created_at,
       deployments: deployments.map(d => ({
         chain: d.chain,
         tokenAddress: d.token_address || null,
@@ -1110,10 +1203,34 @@ router.post('/:id/mint', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Token not found' });
     }
 
-    // Verify creator
-    if (token.creator_address && token.creator_address.toLowerCase() !== creatorAddress?.toLowerCase()) {
-      return res.status(403).json({ error: 'Only token creator can mint tokens' });
+    // Verify creator - allow if creator_address is null (legacy tokens) or matches
+    if (!creatorAddress) {
+      return res.status(401).json({ error: 'Creator address is required in x-creator-address header' });
     }
+    
+    if (token.creator_address) {
+      // Normalize addresses for comparison (lowercase, no whitespace)
+      const dbCreator = token.creator_address.toLowerCase().trim();
+      const reqCreator = creatorAddress.toLowerCase().trim();
+      
+      if (dbCreator !== reqCreator) {
+        console.error(`❌ Creator mismatch for token ${id}:`, {
+          dbCreator,
+          reqCreator,
+          tokenCreator: token.creator_address,
+          headerCreator: creatorAddress,
+        });
+        return res.status(403).json({ 
+          error: 'Only token creator can mint tokens',
+          details: `Token creator: ${token.creator_address}, Requested by: ${creatorAddress}`
+        });
+      }
+    } else {
+      // Legacy token without creator_address - log warning but allow (for backwards compatibility)
+      console.warn(`⚠️ Token ${id} has no creator_address set. Allowing mint from ${creatorAddress}`);
+    }
+    
+    console.log(`✅ Creator verified for token ${id}: ${creatorAddress}`);
 
     const advancedSettings = token.advanced_settings ? JSON.parse(token.advanced_settings) : {};
     if (!advancedSettings.mintable) {

@@ -88,34 +88,56 @@ export default function BuyWidget({
 
         const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, ethersProvider);
 
+        // Always get current price first for validation
+        const currentPriceWei = await curveContract.getCurrentPrice();
+        const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
+        const tokenAmount = ethers.parseUnits(amount, 18);
+        
+        // Expected price using current price (safe fallback)
+        const expectedPriceEth = currentPriceEth * parseFloat(amount);
+        const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 0.1); // 0.1 ETH per token max
+
         if (tab === 'buy') {
           // Calculate ETH/BNB needed for token amount
-          const tokenAmount = ethers.parseUnits(amount, 18);
           try {
-            const price = await curveContract.getPriceForAmount(tokenAmount);
-            const priceWithFee = (price * BigInt(110)) / BigInt(100); // 10% buffer
-            setPriceEstimate(Number(ethers.formatEther(priceWithFee)));
-            setTokensEstimate(parseFloat(amount));
+            const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            const priceEth = parseFloat(ethers.formatEther(priceFromContract));
+            
+            // Validate: if price is way too high, use fallback
+            if (priceEth > absoluteMaxPrice || priceEth > 100 || (expectedPriceEth > 0.0001 && priceEth > expectedPriceEth * 100)) {
+              console.warn(`⚠️ Contract price too high (${priceEth} ETH), using safe fallback (${expectedPriceEth} ETH)`);
+              // Use current price * amount as fallback
+              const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
+              setPriceEstimate(safeEstimate);
+              setTokensEstimate(parseFloat(amount));
+            } else {
+              const priceWithFee = (priceFromContract * BigInt(110)) / BigInt(100); // 10% buffer
+              setPriceEstimate(Number(ethers.formatEther(priceWithFee)));
+              setTokensEstimate(parseFloat(amount));
+            }
           } catch {
             // Fallback to current price
-            const currentPriceWei = await curveContract.getCurrentPrice();
-            const tokenAmount = ethers.parseUnits(amount, 18);
-            const estimate = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
-            setPriceEstimate(Number(ethers.formatEther(estimate * BigInt(110) / BigInt(100))));
+            const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
+            setPriceEstimate(safeEstimate);
             setTokensEstimate(parseFloat(amount));
           }
         } else {
           // Calculate ETH/BNB received for token amount
-          const tokenAmount = ethers.parseUnits(amount, 18);
           try {
-            const price = await curveContract.getPriceForAmount(tokenAmount);
-            setPriceEstimate(Number(ethers.formatEther(price)));
-            setTokensEstimate(parseFloat(amount));
+            const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            const priceEth = parseFloat(ethers.formatEther(priceFromContract));
+            
+            // Validate: if price is way too high, use fallback
+            if (priceEth > absoluteMaxPrice || priceEth > 100 || (expectedPriceEth > 0.0001 && priceEth > expectedPriceEth * 100)) {
+              console.warn(`⚠️ Contract price too high (${priceEth} ETH), using safe fallback (${expectedPriceEth} ETH)`);
+              setPriceEstimate(expectedPriceEth);
+              setTokensEstimate(parseFloat(amount));
+            } else {
+              setPriceEstimate(priceEth);
+              setTokensEstimate(parseFloat(amount));
+            }
           } catch {
-            const currentPriceWei = await curveContract.getCurrentPrice();
-            const tokenAmount = ethers.parseUnits(amount, 18);
-            const estimate = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
-            setPriceEstimate(Number(ethers.formatEther(estimate)));
+            setPriceEstimate(expectedPriceEth);
             setTokensEstimate(parseFloat(amount));
           }
         }
@@ -216,33 +238,95 @@ export default function BuyWidget({
       const tokenAmount = ethers.parseUnits(amount, 18);
       console.log(`📊 Buying ${amount} tokens (${tokenAmount.toString()} wei)`);
       
-      // Get price estimate with detailed logging
+      // Get price estimate with detailed logging and validation
       let priceEstimateWei: bigint;
       try {
-        priceEstimateWei = await curveContract.getPriceForAmount(tokenAmount);
-        console.log(`💰 Price estimate from contract: ${priceEstimateWei.toString()} wei (${ethers.formatEther(priceEstimateWei)} ETH)`);
-      } catch (err: any) {
-        console.warn('⚠️ getPriceForAmount failed, using currentPrice fallback:', err.message);
+        // First get current price to validate
         const currentPriceWei = await curveContract.getCurrentPrice();
-        console.log(`💰 Current price per token: ${currentPriceWei.toString()} wei (${ethers.formatEther(currentPriceWei)} ETH)`);
-        // Calculate: price = currentPrice * tokenAmount
-        priceEstimateWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
-        console.log(`💰 Fallback price estimate: ${priceEstimateWei.toString()} wei (${ethers.formatEther(priceEstimateWei)} ETH)`);
+        const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
+        console.log(`💰 Current price per token: ${currentPriceWei.toString()} wei (${currentPriceEth} ETH)`);
+        
+        // Validate current price is reasonable (should be very small for testnet tokens)
+        if (currentPriceEth > 1) {
+          console.warn(`⚠️ Current price seems high: ${currentPriceEth} ETH per token`);
+        }
+        
+        // Try to get price for amount
+        try {
+          const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+          const priceEth = parseFloat(ethers.formatEther(priceFromContract));
+          console.log(`💰 Price estimate from contract: ${priceFromContract.toString()} wei (${priceEth} ETH)`);
+          
+          // Validate: price should be reasonable
+          // The contract might have a unit mismatch bug where it multiplies wei by wei
+          // For a new token with basePrice ~0.0001 ETH and buying 100 tokens:
+          // Expected price ≈ 0.0001 * 100 = 0.01 ETH (for linear curve with no supply)
+          // With supply, it should be slightly higher, but not astronomical
+          
+          const expectedMaxPrice = currentPriceEth * parseFloat(amount) * 100; // Allow 100x buffer for bonding curve
+          const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 0.1); // Absolute max: 0.1 ETH per token for small amounts
+          
+          // If price is way too high, definitely use fallback
+          // Check 1: Absolute maximum (for 100 tokens, max should be ~10 ETH, not millions)
+          if (priceEth > absoluteMaxPrice || priceEth > 100) {
+            console.warn(`⚠️ Price from contract is astronomically high: ${priceEth} ETH (expected max: ${absoluteMaxPrice} ETH).`);
+            console.warn(`   This indicates a unit mismatch bug in the bonding curve contract.`);
+            console.warn(`   Using fallback calculation based on current price.`);
+            throw new Error('Contract price calculation error - using safe fallback');
+          }
+          
+          // Check 2: Compare against expected price (currentPrice * amount)
+          // If contract price is 1000x+ higher than expected, use fallback
+          if (expectedMaxPrice > 0.0001 && priceEth > expectedMaxPrice * 100) {
+            console.warn(`⚠️ Price from contract (${priceEth} ETH) is way higher than expected (${expectedMaxPrice} ETH).`);
+            console.warn(`   Using fallback calculation.`);
+            throw new Error('Price validation failed - using fallback');
+          }
+          
+          // Check 3: For small amounts, price should be reasonable
+          // Buying 100 tokens should cost at most a few ETH, not millions
+          if (parseFloat(amount) <= 1000 && priceEth > 10) {
+            console.warn(`⚠️ Price too high for ${amount} tokens: ${priceEth} ETH. Using fallback.`);
+            throw new Error('Price validation failed - using fallback');
+          }
+          
+          priceEstimateWei = priceFromContract;
+        } catch (priceErr: any) {
+          // Fallback: use currentPrice * amount (simple linear calculation)
+          console.warn('⚠️ Using fallback price calculation (currentPrice * amount)');
+          console.warn('   This happens when global supply tracking has unit mismatches.');
+          console.warn('   Fallback uses local bonding curve price only.');
+          
+          // Use currentPrice directly (already in wei per token)
+          // For small amounts, this should be accurate: price ≈ currentPrice * amount
+          priceEstimateWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
+          const fallbackPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
+          console.log(`💰 Fallback price estimate: ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ETH)`);
+          
+          // Validate fallback is also reasonable
+          if (fallbackPriceEth > 100) {
+            throw new Error(`Fallback price also too high: ${fallbackPriceEth} ETH. Current price per token: ${currentPriceEth} ETH. Please check bonding curve configuration.`);
+          }
+        }
+      } catch (err: any) {
+        console.error('⚠️ Error getting price estimate:', err);
+        throw new Error(`Failed to get price estimate: ${err.message}. Please try again or contact support.`);
       }
       
-      // Validate price estimate is reasonable
-      if (priceEstimateWei <= 0 || priceEstimateWei > ethers.parseEther('1000')) {
-        throw new Error(`Invalid price estimate: ${ethers.formatEther(priceEstimateWei)} ETH. This seems too high.`);
+      // Final validation: price should be reasonable
+      const finalPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
+      if (priceEstimateWei <= 0 || finalPriceEth > 100 || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
+        throw new Error(`Invalid price estimate: ${finalPriceEth.toExponential(2)} ${chainSymbol}. This suggests an issue with the bonding curve. Please try a smaller amount or contact support.`);
       }
       
       // Add 10% buffer for safety (contract will refund excess)
       const priceWithFee = (priceEstimateWei * BigInt(110)) / BigInt(100);
-      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${ethers.formatEther(priceWithFee)} ETH)`);
+      const priceWithFeeEth = parseFloat(ethers.formatEther(priceWithFee));
+      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${priceWithFeeEth} ${chainSymbol})`);
       
-      // Double-check the value before sending
-      const valueInEth = ethers.formatEther(priceWithFee);
-      if (parseFloat(valueInEth) > 1000) {
-        throw new Error(`Price too high: ${valueInEth} ETH. Something is wrong with the price calculation.`);
+      // Final validation before sending
+      if (priceWithFeeEth > 100 || isNaN(priceWithFeeEth) || !isFinite(priceWithFeeEth)) {
+        throw new Error(`Price validation failed: ${priceWithFeeEth} ${chainSymbol}. Please try a smaller amount or contact support.`);
       }
       
       console.log(`🚀 Sending buy transaction with value: ${priceWithFee.toString()} wei`);
@@ -398,7 +482,22 @@ export default function BuyWidget({
     }
   };
 
-  const chainSymbol = chain === 'bsc' ? 'BNB' : 'ETH';
+  // Get chain-specific currency symbol
+  const getChainSymbol = (chainName: string): string => {
+    switch (chainName.toLowerCase()) {
+      case 'bsc':
+        return 'BNB';
+      case 'ethereum':
+      case 'base':
+        return 'ETH';
+      case 'solana':
+        return 'SOL';
+      default:
+        return 'ETH';
+    }
+  };
+  
+  const chainSymbol = getChainSymbol(chain);
 
   return (
     <div className="bg-gradient-to-br from-gray-800/90 to-gray-800/70 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-xl">

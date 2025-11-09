@@ -142,22 +142,23 @@ export async function migrateDatabase(): Promise<void> {
       }
     }
 
-    // Check if archived, pinned, deleted columns exist
-    for (const column of ['archived', 'pinned', 'deleted']) {
+    // Check if archived, pinned, deleted, visible_in_marketplace columns exist
+    for (const column of ['archived', 'pinned', 'deleted', 'visible_in_marketplace']) {
       try {
         await dbGet(`SELECT ${column} FROM tokens LIMIT 1`);
         console.log(`✅ ${column} column already exists`);
       } catch (error: any) {
         if (error.message?.includes('no such column')) {
           console.log(`➕ Adding ${column} column...`);
+          const defaultValue = column === 'visible_in_marketplace' ? 1 : 0;
           await dbRun(`
             ALTER TABLE tokens 
-            ADD COLUMN ${column} INTEGER DEFAULT 0
+            ADD COLUMN ${column} INTEGER DEFAULT ${defaultValue}
           `);
           // Update existing rows to have default value
           await dbRun(`
             UPDATE tokens 
-            SET ${column} = 0 
+            SET ${column} = ${defaultValue} 
             WHERE ${column} IS NULL
           `);
           console.log(`✅ Added ${column} column`);

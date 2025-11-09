@@ -89,22 +89,53 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         // Use global supply if enabled and tracker is set
         if (useGlobalSupply && address(globalSupplyTracker) != address(0)) {
             try globalSupplyTracker.getGlobalSupply(address(token)) returns (uint256 globalSupply) {
-                supply = globalSupply;
+                // Safety check: if global supply seems way off, use local
+                if (globalSupply > totalSupplySold && totalSupplySold > 0) {
+                    uint256 ratio = globalSupply / totalSupplySold;
+                    if (ratio > 1000) {
+                        supply = totalSupplySold; // Use local if global is 1000x+ larger
+                    } else {
+                        supply = globalSupply;
+                    }
+                } else if (totalSupplySold == 0 && globalSupply > 0) {
+                    supply = globalSupply;
+                } else {
+                    supply = globalSupply;
+                }
             } catch {
-                // If tracker call fails (e.g., not authorized yet), fall back to local supply
+                // If tracker call fails, fall back to local supply
                 supply = totalSupplySold;
             }
         }
         
-        return basePrice + (slope * supply);
+        // Convert supply from wei to base token units (divide by 1e18)
+        // slope is in wei per token, so: price = basePrice + slope * (supply / 1e18)
+        uint256 supplyInTokens = supply / 1 ether;
+        return basePrice + (slope * supplyInTokens);
     }
     
     /**
      * @dev Get the supply used for price calculation (local or global)
+     * Safety: If global supply seems incorrect (way larger than local), use local supply
      */
     function getSupplyForPricing() public view returns (uint256) {
         if (useGlobalSupply && address(globalSupplyTracker) != address(0)) {
             try globalSupplyTracker.getGlobalSupply(address(token)) returns (uint256 globalSupply) {
+                // Safety check: if global supply is way larger than local supply (1000x+), 
+                // it might be a unit mismatch - use local supply instead
+                // This prevents astronomical prices from incorrect global supply values
+                if (globalSupply > totalSupplySold && totalSupplySold > 0) {
+                    uint256 ratio = globalSupply / totalSupplySold;
+                    // If global is more than 1000x local, something is wrong - use local
+                    if (ratio > 1000) {
+                        return totalSupplySold;
+                    }
+                }
+                // If local is 0 but global has value, use global (token might be new on this chain)
+                if (totalSupplySold == 0 && globalSupply > 0) {
+                    return globalSupply;
+                }
+                // Otherwise use global supply
                 return globalSupply;
             } catch {
                 // If tracker call fails, fall back to local supply
@@ -116,14 +147,37 @@ contract BondingCurve is Ownable, ReentrancyGuard {
     
     /**
      * @dev Calculate price for a specific amount of tokens
+     * NOTE: totalSupplySold is in wei (18 decimals), but for price calculation we treat it as base token units
+     * This means we divide by 1e18 to get the number of tokens, then calculate price
      */
     function getPriceForAmount(uint256 tokenAmount) public view returns (uint256) {
         // Use getSupplyForPricing which already handles global vs local supply
         uint256 supply = getSupplyForPricing();
-        // Price = basePrice * amount + slope * (amount * (supply + amount/2))
-        // For more accuracy with linear bonding curve
-        uint256 avgPrice = basePrice + (slope * (supply + tokenAmount / 2));
-        return avgPrice * tokenAmount;
+        
+        // Convert supply and tokenAmount from wei to base token units (divide by 1 ether)
+        // This is needed because totalSupplySold stores tokens in wei, but price calculation expects base units
+        uint256 supplyInTokens = supply / 1 ether;
+        uint256 amountInTokens = tokenAmount / 1 ether;
+        
+        // For very small amounts (< 1 ether = < 1 token), handle separately
+        if (supply < 1 ether) {
+            supplyInTokens = 0;
+        }
+        if (tokenAmount < 1 ether) {
+            // For amounts less than 1 token, use wei-based calculation with scaling
+            // Price = basePrice * tokenAmount + slope * supply * tokenAmount / (1 ether * 1 ether)
+            uint256 priceFromBase = (basePrice * tokenAmount) / 1 ether;
+            uint256 priceFromSlope = (slope * supply * tokenAmount) / (1 ether * 1 ether);
+            return priceFromBase + priceFromSlope;
+        }
+        
+        // Standard calculation for amounts >= 1 token
+        // Price per token at average supply = basePrice + slope * (supplyInTokens + amountInTokens / 2)
+        uint256 avgPricePerToken = basePrice + (slope * (supplyInTokens + amountInTokens / 2));
+        // Total price = avgPricePerToken * amountInTokens, but we need to convert back to wei
+        // Since avgPricePerToken is in wei per token, and amountInTokens is in tokens:
+        // Total price = avgPricePerToken * amountInTokens (already in wei, no conversion needed)
+        return avgPricePerToken * amountInTokens;
     }
     
     /**

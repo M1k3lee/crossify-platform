@@ -67,8 +67,7 @@ function App() {
                     <Route path="/faq" element={<Layout><FAQ /></Layout>} />
                     <Route path="/creator/:id" element={<Layout><CreatorDashboard /></Layout>} />
                     <Route path="/admin" element={<AdminDashboard />} />
-                    {/* TokenDetail has its own layout */}
-                    <Route path="/token/:id" element={<TokenDetail />} />
+                    <Route path="/token/:id" element={<Layout><TokenDetail /></Layout>} />
                   </Routes>
                   <Toaster position="top-right" />
                 </Router>

@@ -30,8 +30,14 @@ export default function Layout({ children }: LayoutProps) {
     navigate('/marketplace');
   };
 
-  // Show wallet buttons only after app is launched or on app pages
-  const showWalletButtons = appLaunched || 
+  // Check if we're on the homepage
+  const isHomepage = location.pathname === '/';
+  
+  // Show full navigation menu on app pages (marketplace, builder, dashboard, etc.), but not on homepage
+  const showFullNav = !isHomepage;
+  
+  // Show wallet buttons on app pages (not on homepage)
+  const showWalletButtons = showFullNav || 
     location.pathname === '/builder' || 
     location.pathname === '/dashboard' || 
     location.pathname.startsWith('/token/');
@@ -58,40 +64,62 @@ export default function Layout({ children }: LayoutProps) {
                 </span>
               </Link>
               
-              <div className="hidden md:flex items-center gap-1 ml-4 overflow-x-auto scrollbar-hide">
-                {navItems.map((item) => {
-                  const isActive = location.pathname === item.path || 
-                    (item.path !== '/' && location.pathname.startsWith(item.path));
-                  const Icon = item.icon;
-                  
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`relative inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
-                        isActive
-                          ? 'text-white'
-                          : 'text-gray-400 hover:text-gray-300'
-                      }`}
-                    >
-                      {isActive && (
-                        <motion.div
-                          layoutId="activeTab"
-                          className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-blue-600/20 rounded-lg border border-primary-500/30"
-                          initial={false}
-                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        />
-                      )}
-                      <Icon className={`w-4 h-4 relative z-10 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
-                      <span className="relative z-10 whitespace-nowrap">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+              {/* Only show navigation menu on app pages (not homepage) */}
+              {showFullNav && (
+                <div className="hidden md:flex items-center gap-1 ml-4 overflow-x-auto scrollbar-hide">
+                  {navItems
+                    .filter(item => item.path !== '/') // Hide Home link in nav menu
+                    .map((item) => {
+                      const isActive = location.pathname === item.path || 
+                        (item.path !== '/' && location.pathname.startsWith(item.path));
+                      const Icon = item.icon;
+                      
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`relative inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
+                            isActive
+                              ? 'text-white'
+                              : 'text-gray-400 hover:text-gray-300'
+                          }`}
+                        >
+                          {isActive && (
+                            <motion.div
+                              layoutId="activeTab"
+                              className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-blue-600/20 rounded-lg border border-primary-500/30"
+                              initial={false}
+                              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                            />
+                          )}
+                          <Icon className={`w-4 h-4 relative z-10 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
+                          <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                </div>
+              )}
             </div>
             
             <div className="flex items-center gap-2 flex-shrink-0">
-              {!showWalletButtons ? (
+              {isHomepage ? (
+                // On homepage, show "Launch App" button
+                <button
+                  onClick={handleLaunchApp}
+                  className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                >
+                  <Rocket className="w-4 h-4" />
+                  <span className="hidden sm:inline">Launch App</span>
+                  <span className="sm:hidden">Launch</span>
+                </button>
+              ) : showWalletButtons ? (
+                // On app pages, show wallet connect
+                <>
+                  {/* EVM Wallet (RainbowKit) - handles all EVM chains (Ethereum, BSC, Base) */}
+                  <ConnectButton showBalance={false} />
+                </>
+              ) : (
+                // Fallback: show Launch App button if not on homepage and wallet buttons not shown
                 <button
                   onClick={handleLaunchApp}
                   className="px-4 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
@@ -100,11 +128,6 @@ export default function Layout({ children }: LayoutProps) {
                   <span className="hidden sm:inline">Launch App</span>
                   <span className="sm:hidden">Launch</span>
                 </button>
-              ) : (
-                <>
-                  {/* EVM Wallet (RainbowKit) - handles all EVM chains (Ethereum, BSC, Base) */}
-                  <ConnectButton showBalance={false} />
-                </>
               )}
             </div>
           </div>

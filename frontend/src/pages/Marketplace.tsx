@@ -29,6 +29,11 @@ export default function Marketplace() {
   });
 
   const tokens = marketplace?.tokens || [];
+  
+  // Debug logging
+  if (tokens.length === 0 && !isLoading) {
+    console.log('⚠️ Marketplace: No tokens found. Response:', marketplace);
+  }
 
   const filteredTokens = tokens.filter((token: any) => {
     // Search filter
