@@ -736,7 +736,7 @@ export default function TokenDetail() {
                         className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white"
                         style={{ backgroundColor: `${chainColor}20` }}
                       >
-                        {CHAIN_NAMES[chainName]?.charAt(0) || chainName.charAt(0).toUpperCase()}
+                        {chainDisplayName?.charAt(0) || chainName.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-white">{chainDisplayName}</h3>
