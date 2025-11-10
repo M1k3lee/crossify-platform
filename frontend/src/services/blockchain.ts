@@ -93,6 +93,19 @@ const FACTORY_ADDRESSES: Record<string, string> = {
   base: import.meta.env.VITE_BASE_FACTORY || '',
 };
 
+// Debug: Log factory addresses at build time (will show in console)
+console.log('🏭 Factory Addresses Configuration:', {
+  ethereum: FACTORY_ADDRESSES.ethereum || 'NOT SET',
+  bsc: FACTORY_ADDRESSES.bsc || 'NOT SET',
+  base: FACTORY_ADDRESSES.base || 'NOT SET',
+  envVars: {
+    VITE_ETH_FACTORY: import.meta.env.VITE_ETH_FACTORY || 'NOT SET',
+    VITE_ETHEREUM_FACTORY: import.meta.env.VITE_ETHEREUM_FACTORY || 'NOT SET',
+    VITE_BSC_FACTORY: import.meta.env.VITE_BSC_FACTORY || 'NOT SET',
+    VITE_BASE_FACTORY: import.meta.env.VITE_BASE_FACTORY || 'NOT SET',
+  }
+});
+
 // Token Factory ABI (createToken function)
 const TOKEN_FACTORY_ABI = [
   'function createToken(string memory name, string memory symbol, uint256 initialSupply, string memory uri, uint256 basePrice, uint256 slope, uint256 graduationThreshold, uint256 buyFeePercent, uint256 sellFeePercent) external returns (address tokenAddress, address curveAddress)',
