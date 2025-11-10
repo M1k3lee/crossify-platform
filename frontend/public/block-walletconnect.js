@@ -5,7 +5,7 @@
   'use strict';
   
   const invalidProjectId = '0000000000000000000000000000000000000000';
-  const walletConnectUrl = 'api.web3modal.org';
+  const walletConnectUrls = ['api.web3modal.org', 'pulse.walletconnect.org', 'relay.walletconnect.com'];
   const metamaskStoreUrl = 'chromewebstore.google.com';
   
   // Block any redirects to MetaMask store
@@ -24,12 +24,16 @@
     const originalFetch = window.fetch;
     window.fetch = function(...args) {
       const url = args[0];
-      if (typeof url === 'string' && url.includes(walletConnectUrl)) {
-        // Check if it's trying to use an invalid project ID
-        if (url.includes(invalidProjectId)) {
-          console.warn('🚫 Blocked WalletConnect API call with invalid project ID');
-          // Return a rejected promise silently to prevent errors
-          return Promise.reject(new Error('WalletConnect disabled - using injected provider only'));
+      if (typeof url === 'string') {
+        // Check if it's a WalletConnect/Reown API call
+        const isWalletConnectUrl = walletConnectUrls.some(wcUrl => url.includes(wcUrl));
+        if (isWalletConnectUrl) {
+          // Check if it's trying to use an invalid project ID
+          if (url.includes(invalidProjectId)) {
+            console.warn('🚫 Blocked WalletConnect/Reown API call with invalid project ID:', url);
+            // Return a rejected promise silently to prevent errors
+            return Promise.reject(new Error('WalletConnect disabled - using injected provider only'));
+          }
         }
       }
       return originalFetch.apply(this, args);
@@ -40,10 +44,13 @@
   if (typeof XMLHttpRequest !== 'undefined') {
     const originalOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-      if (typeof url === 'string' && url.includes(walletConnectUrl) && url.includes(invalidProjectId)) {
-        console.warn('🚫 Blocked WalletConnect XHR request with invalid project ID');
-        // Return early without opening the request
-        return;
+      if (typeof url === 'string') {
+        const isWalletConnectUrl = walletConnectUrls.some(wcUrl => url.includes(wcUrl));
+        if (isWalletConnectUrl && url.includes(invalidProjectId)) {
+          console.warn('🚫 Blocked WalletConnect/Reown XHR request with invalid project ID:', url);
+          // Return early without opening the request
+          return;
+        }
       }
       return originalOpen.apply(this, [method, url, ...rest]);
     };
