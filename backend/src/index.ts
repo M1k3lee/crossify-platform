@@ -27,7 +27,8 @@ const PORT = process.env.PORT || 3001;
 
 // Trust proxy - REQUIRED for Railway and other cloud platforms
 // This allows Express to correctly identify client IPs when behind a proxy
-app.set('trust proxy', true);
+// Set to 1 to trust only the first proxy (Railway's proxy)
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet());
