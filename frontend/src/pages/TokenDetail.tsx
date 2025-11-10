@@ -269,10 +269,19 @@ export default function TokenDetail() {
     return deployments[0] || null;
   }, [deployments, selectedChainFromUrl]);
   
-  const selectedChain = useMemo(() => 
-    selectedDeployment?.chain || 'ethereum',
-    [selectedDeployment?.chain]
-  );
+  // Normalize chain name for components (map testnet names to mainnet names)
+  const selectedChain = useMemo(() => {
+    if (!selectedDeployment?.chain) return 'ethereum';
+    const chain = selectedDeployment.chain.toLowerCase();
+    // Map testnet chain names to component-friendly names
+    if (chain.includes('base-sepolia') || chain === 'base-sepolia') return 'base-sepolia';
+    if (chain.includes('bsc-testnet') || chain === 'bsc-testnet') return 'bsc-testnet';
+    if (chain.includes('sepolia') && !chain.includes('base')) return 'sepolia';
+    if (chain.includes('base')) return 'base';
+    if (chain.includes('bsc') || chain.includes('binance')) return 'bsc';
+    if (chain.includes('ethereum') || chain === 'eth') return 'ethereum';
+    return chain;
+  }, [selectedDeployment?.chain]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -345,6 +354,13 @@ export default function TokenDetail() {
     );
   }
 
+  // Safe token properties with fallbacks - MUST be defined before rendering
+  const tokenName = token?.name || 'Unknown Token';
+  const tokenSymbol = token?.symbol || 'UNKNOWN';
+  const tokenDescription = token?.description || `View ${tokenName} (${tokenSymbol}) token details, price charts, market depth, and trading information. Trade ${tokenSymbol} on Ethereum, BSC, Base, and Solana.`;
+  const tokenLogoIpfs = token?.logoIpfs || null;
+  const tokenImage = tokenLogoIpfs ? `https://ipfs.io/ipfs/${tokenLogoIpfs}` : 'https://crossify.io/og-image.png';
+
   // Debug logging
   console.log('TokenDetail render:', { 
     id, 
@@ -352,17 +368,25 @@ export default function TokenDetail() {
     hasStatus: !!status, 
     deploymentsCount: deployments?.length || 0,
     isLoading,
-    statusError: statusError ? 'Error: ' + (statusError as any)?.message : null
+    statusError: statusError ? 'Error: ' + (statusError as any)?.message : null,
+    selectedDeployment: selectedDeployment?.chain,
+    tokenName,
+    tokenSymbol
   });
+
+  // Ensure we have a valid deployment before rendering trading components
+  if (!selectedDeployment) {
+    console.warn('⚠️ No valid deployment found, showing token info only');
+  }
 
   return (
     <>
       <SEO
-        title={`${token.name} (${token.symbol}) - Token Details, Price, Charts | Crossify.io`}
-        description={token.description || `View ${token.name} (${token.symbol}) token details, price charts, market depth, and trading information. Trade ${token.symbol} on Ethereum, BSC, Base, and Solana.`}
-        keywords={`${token.name}, ${token.symbol}, token price, token chart, token trading, ${token.symbol} price, buy ${token.symbol}, trade ${token.symbol}, memecoin, defi token`}
+        title={`${tokenName} (${tokenSymbol}) - Token Details, Price, Charts | Crossify.io`}
+        description={tokenDescription}
+        keywords={`${tokenName}, ${tokenSymbol}, token price, token chart, token trading, ${tokenSymbol} price, buy ${tokenSymbol}, trade ${tokenSymbol}, memecoin, defi token`}
         url={`https://crossify.io/token/${id}`}
-        image={token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : 'https://crossify.io/og-image.png'}
+        image={tokenImage}
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-transparent">
         {/* Banner */}
@@ -370,7 +394,7 @@ export default function TokenDetail() {
           <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border border-gray-700/50">
             <img
               src={bannerUrl}
-              alt={`${token.name} banner`}
+              alt={`${tokenName} banner`}
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -630,7 +654,7 @@ export default function TokenDetail() {
               chain={selectedChain}
               curveAddress={selectedDeployment.curveAddress}
               tokenAddress={selectedDeployment.tokenAddress}
-              tokenSymbol={status.token?.symbol || 'TOKEN'}
+              tokenSymbol={tokenSymbol}
               currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
               onSuccess={() => {
                 // Invalidate queries to refresh chart and other data
