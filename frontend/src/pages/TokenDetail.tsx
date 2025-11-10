@@ -21,16 +21,22 @@ import { API_BASE } from '../config/api';
 
 const CHAIN_COLORS: Record<string, string> = {
   ethereum: '#627EEA',
+  sepolia: '#627EEA',
   bsc: '#F3BA2F',
+  'bsc-testnet': '#F3BA2F',
   solana: '#9945FF',
   base: '#0052FF',
+  'base-sepolia': '#0052FF',
 };
 
 const CHAIN_NAMES: Record<string, string> = {
   ethereum: 'Ethereum',
+  sepolia: 'Sepolia',
   bsc: 'BSC',
+  'bsc-testnet': 'BSC Testnet',
   solana: 'Solana',
   base: 'Base',
+  'base-sepolia': 'Base Sepolia',
 };
 
 export default function TokenDetail() {
@@ -402,8 +408,8 @@ export default function TokenDetail() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">
-              <h1 className="text-4xl font-bold text-white mb-2">{status.token?.name || 'Unknown Token'}</h1>
-              <p className="text-xl text-gray-200">{status.token?.symbol}</p>
+              <h1 className="text-4xl font-bold text-white mb-2">{tokenName}</h1>
+              <p className="text-xl text-gray-200">{tokenSymbol}</p>
             </div>
           </div>
         )}
