@@ -19,17 +19,17 @@ const config: HardhatUserConfig = {
   networks: {
     sepolia: {
       url: process.env.SEPOLIA_RPC_URL || process.env.ETHEREUM_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
-      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim()] : [],
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
       chainId: 11155111,
     },
     bscTestnet: {
       url: process.env.BSC_TESTNET_RPC_URL || process.env.BSC_RPC_URL || "https://bsc-testnet.publicnode.com",
-      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim()] : [],
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
       chainId: 97,
     },
     baseSepolia: {
       url: process.env.BASE_SEPOLIA_RPC_URL || process.env.BASE_RPC_URL || "https://base-sepolia-rpc.publicnode.com",
-      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim()] : [],
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
       chainId: 84532,
     },
     base: {
