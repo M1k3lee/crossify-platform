@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import AddLiquidityModal from '../components/AddLiquidityModal';
 import BuyWidget from '../components/BuyWidget';
+import WalletHoldings from '../components/WalletHoldings';
 import TokenChart from '../components/TokenChart';
 import MarketDepthChart from '../components/MarketDepthChart';
 import toast from 'react-hot-toast';
@@ -652,26 +653,58 @@ export default function TokenDetail() {
           </div>
         </div>
 
+        {/* Wallet Holdings Section - Show if wallet is connected */}
+        {selectedDeployment && selectedDeployment.tokenAddress && (
+          <div className="mb-6">
+            <WalletHoldings
+              tokenId={id || ''}
+              chain={selectedChain}
+              tokenAddress={selectedDeployment.tokenAddress}
+              tokenSymbol={tokenSymbol}
+              currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
+              curveAddress={selectedDeployment.curveAddress || ''}
+              onSell={() => {
+                // Scroll to buy widget when sell is clicked
+                setTimeout(() => {
+                  const buyWidget = document.querySelector('[data-buy-widget]');
+                  if (buyWidget) {
+                    buyWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Switch to sell tab after a brief delay
+                    setTimeout(() => {
+                      const sellButton = document.querySelector('[data-sell-tab]') as HTMLButtonElement;
+                      if (sellButton) {
+                        sellButton.click();
+                      }
+                    }, 500);
+                  }
+                }, 100);
+              }}
+            />
+          </div>
+        )}
+
         {/* Trading Section - Buy Widget + Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Buy Widget - Prominent */}
           {selectedDeployment && selectedDeployment.curveAddress && selectedDeployment.tokenAddress && !allGraduated ? (
-            <BuyWidget
-              tokenId={id || ''}
-              chain={selectedChain}
-              curveAddress={selectedDeployment.curveAddress}
-              tokenAddress={selectedDeployment.tokenAddress}
-              tokenSymbol={tokenSymbol}
-              currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
-              onSuccess={() => {
-                // Invalidate queries to refresh chart and other data
-                // The chart will automatically refetch due to refetchInterval
-                // Force a small delay to ensure transaction is recorded
-                setTimeout(() => {
-                  window.location.reload();
-                }, 2000);
-              }}
-            />
+            <div data-buy-widget>
+              <BuyWidget
+                tokenId={id || ''}
+                chain={selectedChain}
+                curveAddress={selectedDeployment.curveAddress}
+                tokenAddress={selectedDeployment.tokenAddress}
+                tokenSymbol={tokenSymbol}
+                currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
+                onSuccess={() => {
+                  // Invalidate queries to refresh chart and other data
+                  // The chart will automatically refetch due to refetchInterval
+                  // Force a small delay to ensure transaction is recorded
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 2000);
+                }}
+              />
+            </div>
           ) : deployments && deployments.length > 0 && !allGraduated ? (
             <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
               <p className="text-yellow-400 text-sm mb-2">
