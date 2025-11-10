@@ -295,14 +295,20 @@ export async function deployTokenOnEVM(
           console.warn(`⚠️  Gas estimation failed, but static call succeeded. Using default gas limit.`);
           console.warn(`   Gas estimation error:`, gasEstError.message);
           // Use a more generous gas limit for deploying token + bonding curve
-          // Token deployment ~500k, BondingCurve deployment ~300k, transfers ~200k, overhead ~500k
-          // With cross-chain token, add extra for CrossChainToken deployment ~400k
-          gasEstimate = BigInt(3_000_000); // Increased to 3M for cross-chain tokens
+          // CrossChainToken deployment ~600k-800k (larger contract with LayerZero integration)
+          // BondingCurve deployment ~400k-500k
+          // Token transfers ~200k
+          // setBondingCurve call ~100k
+          // transferOwnership call ~50k
+          // authorizeUpdater call ~100k
+          // Overhead and safety margin ~1M
+          // Total: ~2.5M-2.7M, use 5M for safety with cross-chain tokens
+          gasEstimate = BigInt(5_000_000); // Increased to 5M for cross-chain tokens
           console.log(`📦 Using default gas limit: ${gasEstimate.toString()} gas units`);
         }
       } catch (populateError: any) {
         console.warn(`⚠️  Could not populate transaction, using default gas limit`);
-        gasEstimate = BigInt(2_000_000); // Increased from 1.5M to 2M
+        gasEstimate = BigInt(5_000_000); // Increased to 5M for safety
       }
     }
   } catch (estimateError: any) {
@@ -434,12 +440,15 @@ export async function deployTokenOnEVM(
     console.log(`📋 Function selector: ${functionData.slice(0, 10)}`);
     
     // Use the gas estimate we got (or default if estimation failed)
-    // Increase gas limit by 20% to account for variations
+    // Increase gas limit by 10% to account for variations (reduced buffer since we're using generous defaults)
+    // Cap at 8M to prevent excessive gas usage
     let adjustedGasLimit: bigint | undefined;
     if (gasEstimate) {
-      adjustedGasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
+      const bufferGasLimit = (gasEstimate * BigInt(110)) / BigInt(100);
+      const maxGasLimit = BigInt(8_000_000);
+      adjustedGasLimit = bufferGasLimit > maxGasLimit ? maxGasLimit : bufferGasLimit;
       txOptions.gasLimit = adjustedGasLimit;
-      console.log(`⛽ Adjusted gas limit: ${adjustedGasLimit.toString()} (20% buffer added)`);
+      console.log(`⛽ Adjusted gas limit: ${adjustedGasLimit.toString()} (10% buffer added, max ${maxGasLimit.toString()})`);
     }
     
     const createTx = await factory.createToken(
@@ -477,9 +486,11 @@ export async function deployTokenOnEVM(
           if (adjustedGasLimit) {
             console.error(`⛽ Gas used: ${txReceipt.gasUsed.toString()} / ${txReceipt.gasUsed === adjustedGasLimit ? 'LIMIT HIT!' : adjustedGasLimit.toString()}`);
             
-            // Check if we hit the gas limit
-            if (BigInt(txReceipt.gasUsed.toString()) >= adjustedGasLimit * BigInt(95) / BigInt(100)) {
-              throw new Error(`Transaction reverted due to insufficient gas. Gas used: ${txReceipt.gasUsed.toString()}, Limit: ${adjustedGasLimit.toString()}. The contract deployment may be too complex or the gas limit needs to be increased.`);
+            // Check if we hit the gas limit (within 98% of limit indicates out of gas)
+            const gasUsed = BigInt(txReceipt.gasUsed.toString());
+            const gasLimitThreshold = adjustedGasLimit * BigInt(98) / BigInt(100);
+            if (gasUsed >= gasLimitThreshold) {
+              throw new Error(`Transaction reverted due to insufficient gas. Gas used: ${gasUsed.toString()}, Limit: ${adjustedGasLimit.toString()}. The contract deployment requires more gas. Please try again with a higher gas limit or contact support.`);
             }
           }
           
