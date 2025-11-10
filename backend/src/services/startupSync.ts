@@ -2,7 +2,7 @@
 // This ensures tokens are re-discovered after database resets (e.g., Railway deployments)
 
 import { ethers } from 'ethers';
-import { dbRun, dbGet, dbAll } from '../db';
+import { dbRun, dbGet, dbAll } from '../db/adapter';
 import { v4 as uuidv4 } from 'uuid';
 
 // TokenFactory ABI
@@ -199,15 +199,52 @@ async function syncTokenToDatabase(
   provider: ethers.JsonRpcProvider
 ): Promise<boolean> {
   try {
-    // Check if token already exists
-    const existing = await dbGet(
-      `SELECT id FROM token_deployments WHERE token_address = ? AND chain = ?`,
-      [tokenAddress.toLowerCase(), chain]
+    const normalizedTokenAddress = tokenAddress.toLowerCase();
+    const normalizedCurveAddress = curveAddress?.toLowerCase() || null;
+    
+    // Check if deployment already exists for this token address + chain
+    const existingDeployment = await dbGet(
+      `SELECT token_id FROM token_deployments WHERE token_address = ? AND chain = ?`,
+      [normalizedTokenAddress, chain]
     ) as any;
 
-    if (existing) {
-      // Token already exists, skip
-      return false;
+    if (existingDeployment) {
+      // Deployment already exists - check if we need to update curve address
+      if (normalizedCurveAddress) {
+        const currentDeployment = await dbGet(
+          `SELECT curve_address FROM token_deployments WHERE token_id = ? AND chain = ?`,
+          [existingDeployment.token_id, chain]
+        ) as any;
+        
+        if (!currentDeployment?.curve_address && normalizedCurveAddress) {
+          // Update curve address if it's missing
+          await dbRun(
+            `UPDATE token_deployments SET curve_address = ?, updated_at = CURRENT_TIMESTAMP WHERE token_id = ? AND chain = ?`,
+            [normalizedCurveAddress, existingDeployment.token_id, chain]
+          );
+          console.log(`    ✅ Updated curve address for ${name} (${symbol}) on ${chain}`);
+        }
+      }
+      return false; // Already exists
+    }
+
+    // Check if token exists by token address (across all chains)
+    // If token exists in another chain, reuse the same token ID
+    let tokenId: string;
+    const existingToken = await dbGet(
+      `SELECT DISTINCT t.id FROM tokens t 
+       JOIN token_deployments td ON t.id = td.token_id 
+       WHERE td.token_address = ? LIMIT 1`,
+      [normalizedTokenAddress]
+    ) as any;
+
+    if (existingToken) {
+      // Token exists in another chain - reuse the token ID
+      tokenId = existingToken.id;
+      console.log(`    🔄 Token ${name} (${symbol}) exists in another chain, reusing token ID: ${tokenId}`);
+    } else {
+      // Generate new token ID
+      tokenId = uuidv4();
     }
 
     // Fetch token details
@@ -230,9 +267,9 @@ async function syncTokenToDatabase(
     let buyFeePercent = '0';
     let sellFeePercent = '0';
 
-    if (curveAddress && curveAddress !== ethers.ZeroAddress) {
+    if (normalizedCurveAddress && normalizedCurveAddress !== ethers.ZeroAddress.toLowerCase()) {
       try {
-        const curveContract = new ethers.Contract(curveAddress, BONDING_CURVE_ABI, provider);
+        const curveContract = new ethers.Contract(normalizedCurveAddress, BONDING_CURVE_ABI, provider);
         const basePriceWei = await curveContract.basePrice();
         const slopeWei = await curveContract.slope();
         const gradThreshold = await curveContract.graduationThreshold();
@@ -245,54 +282,82 @@ async function syncTokenToDatabase(
         buyFeePercent = buyFee.toString();
         sellFeePercent = sellFee.toString();
       } catch (error) {
-        console.warn(`    ⚠️ Could not fetch curve details for ${curveAddress}:`, error);
+        console.warn(`    ⚠️ Could not fetch curve details for ${normalizedCurveAddress}:`, error);
       }
     }
 
-    // Generate token ID
-    const tokenId = uuidv4();
+    // Insert or update token (only if it doesn't exist)
+    // Use INSERT OR IGNORE to handle case where token exists from another chain
+    try {
+      await dbRun(
+        `INSERT OR IGNORE INTO tokens (
+          id, name, symbol, decimals, initial_supply,
+          base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
+          creator_address, cross_chain_enabled
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          tokenId,
+          name,
+          symbol,
+          decimals,
+          totalSupply,
+          parseFloat(basePrice) || 0.0001,
+          parseFloat(slope) || 0.00001,
+          parseFloat(graduationThreshold) || 0,
+          parseFloat(buyFeePercent) || 0,
+          parseFloat(sellFeePercent) || 0,
+          creator.toLowerCase(),
+          0,
+        ]
+      );
+    } catch (error: any) {
+      // If insert fails, token might already exist - verify it exists
+      const verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
+      if (!verifyToken) {
+        console.error(`    ❌ Failed to insert token ${tokenId}:`, error.message);
+        throw error;
+      }
+    }
 
-    // Insert token
-    await dbRun(
-      `INSERT OR IGNORE INTO tokens (
-        id, name, symbol, decimals, initial_supply,
-        base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
-        creator_address, cross_chain_enabled
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        tokenId,
-        name,
-        symbol,
-        decimals,
-        totalSupply,
-        parseFloat(basePrice) || 0.0001,
-        parseFloat(slope) || 0.00001,
-        parseFloat(graduationThreshold) || 0,
-        parseFloat(buyFeePercent) || 0,
-        parseFloat(sellFeePercent) || 0,
-        creator.toLowerCase(),
-        0,
-      ]
-    );
+    // Verify token exists before inserting deployment
+    const verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
+    if (!verifyToken) {
+      console.error(`    ❌ Token ${tokenId} does not exist - cannot create deployment`);
+      throw new Error(`Token ${tokenId} not found in database`);
+    }
 
     // Insert deployment
-    await dbRun(
-      `INSERT OR IGNORE INTO token_deployments (
-        token_id, chain, token_address, curve_address, status
-      ) VALUES (?, ?, ?, ?, ?)`,
-      [
-        tokenId,
-        chain,
-        tokenAddress.toLowerCase(),
-        curveAddress?.toLowerCase() || null,
-        'deployed',
-      ]
-    );
-
-    console.log(`    ✅ Synced ${name} (${symbol}) on ${chain}`);
-    return true;
+    try {
+      await dbRun(
+        `INSERT INTO token_deployments (
+          token_id, chain, token_address, curve_address, status
+        ) VALUES (?, ?, ?, ?, ?)`,
+        [
+          tokenId,
+          chain,
+          normalizedTokenAddress,
+          normalizedCurveAddress,
+          'deployed',
+        ]
+      );
+      console.log(`    ✅ Synced ${name} (${symbol}) on ${chain} with token ID: ${tokenId}`);
+      return true;
+    } catch (error: any) {
+      // If deployment insert fails due to UNIQUE constraint, it already exists
+      if (error.message?.includes('UNIQUE constraint') || error.code === 'SQLITE_CONSTRAINT') {
+        console.log(`    ℹ️  Deployment for ${name} (${symbol}) on ${chain} already exists`);
+        return false;
+      }
+      throw error;
+    }
   } catch (error: any) {
     console.error(`    ❌ Error syncing token ${tokenAddress}:`, error.message);
+    if (error.code) {
+      console.error(`    Error code: ${error.code}`);
+    }
+    if (error.stack) {
+      console.error(`    Stack: ${error.stack}`);
+    }
     return false;
   }
 }

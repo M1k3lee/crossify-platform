@@ -1,6 +1,6 @@
 // Service for recording platform fees to the database
 import axios from 'axios';
-import { dbRun, dbAll } from '../db';
+import { dbRun, dbAll } from '../db/adapter';
 
 const API_BASE = process.env.API_BASE || 'http://localhost:3001/api';
 const PLATFORM_API_KEY = process.env.PLATFORM_API_KEY || 'your-api-key';

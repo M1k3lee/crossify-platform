@@ -2,7 +2,7 @@
 // Handles collection of platform fees and distribution to CFY token contract
 
 import { ethers } from 'ethers';
-import { dbRun, dbGet } from '../db';
+import { dbRun, dbGet } from '../db/adapter';
 
 // CFY Token Contract ABI (simplified - only functions we need)
 const CFY_TOKEN_ABI = [

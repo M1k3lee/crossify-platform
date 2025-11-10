@@ -4,7 +4,7 @@
 // 2. Detecting price deviations
 // 3. Triggering arbitrage or rebalancing when thresholds are exceeded
 
-import { dbAll, dbGet, dbRun } from '../db';
+import { dbAll, dbGet, dbRun } from '../db/adapter';
 import { getBlockchainService } from './blockchain';
 
 interface ChainPrice {

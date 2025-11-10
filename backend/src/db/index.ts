@@ -3,15 +3,18 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 
+// Only use SQLite if PostgreSQL is not configured
+const useSQLite = !process.env.DATABASE_URL || !process.env.DATABASE_URL.startsWith('postgres');
+
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../../data/crossify.db');
 const dbDir = path.dirname(dbPath);
 
-// Ensure data directory exists
-if (!fs.existsSync(dbDir)) {
+// Ensure data directory exists (only for SQLite)
+if (useSQLite && !fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-export const db = new sqlite3.Database(dbPath);
+export const db = useSQLite ? new sqlite3.Database(dbPath) : null as any;
 
 export function initializeDatabase(): Promise<void> {
   return new Promise(async (resolve, reject) => {
@@ -147,7 +150,7 @@ export function initializeDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_platform_fees_type ON platform_fees(fee_type);
     CREATE INDEX IF NOT EXISTS idx_platform_fees_collected_at ON platform_fees(collected_at);
     CREATE INDEX IF NOT EXISTS idx_fee_statistics_date ON fee_statistics(date);
-  `, async (err) => {
+  `, async (err: Error | null) => {
         if (err) return reject(err);
         console.log('Database tables created/verified');
         
@@ -176,8 +179,12 @@ export function initializeDatabase(): Promise<void> {
 // Helper functions for async operations
 // sqlite3 methods accept (sql, params, callback), so promisified version accepts (sql, params)
 export function dbRun(sql: string, params?: any[]): Promise<sqlite3.RunResult> {
+  if (!db) {
+    throw new Error('SQLite database not initialized');
+  }
+  
   return new Promise((resolve, reject) => {
-    db.run(sql, params || [], function(err) {
+    db!.run(sql, params || [], function(this: sqlite3.RunResult, err: Error | null) {
       if (err) reject(err);
       else resolve(this);
     });
@@ -185,8 +192,12 @@ export function dbRun(sql: string, params?: any[]): Promise<sqlite3.RunResult> {
 }
 
 export function dbGet<T = any>(sql: string, params?: any[]): Promise<T | undefined> {
+  if (!db) {
+    throw new Error('SQLite database not initialized');
+  }
+  
   return new Promise((resolve, reject) => {
-    db.get(sql, params || [], (err, row) => {
+    db!.get(sql, params || [], (err: Error | null, row: any) => {
       if (err) reject(err);
       else resolve(row as T | undefined);
     });
@@ -194,8 +205,12 @@ export function dbGet<T = any>(sql: string, params?: any[]): Promise<T | undefin
 }
 
 export function dbAll<T = any>(sql: string, params?: any[]): Promise<T[]> {
+  if (!db) {
+    throw new Error('SQLite database not initialized');
+  }
+  
   return new Promise((resolve, reject) => {
-    db.all(sql, params || [], (err, rows) => {
+    db!.all(sql, params || [], (err: Error | null, rows: any[]) => {
       if (err) reject(err);
       else resolve(rows as T[]);
     });

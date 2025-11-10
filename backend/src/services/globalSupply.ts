@@ -1,7 +1,7 @@
 // Global Supply Tracking Service
 // Tracks token supply across all chains for virtual liquidity and price synchronization
 
-import { dbAll, dbGet, dbRun } from '../db';
+import { dbAll, dbGet, dbRun } from '../db/adapter';
 
 /**
  * Update global supply for a token across all chains
