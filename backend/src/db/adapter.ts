@@ -79,30 +79,48 @@ export async function dbAll<T = any>(sql: string, params?: any[]): Promise<T[]> 
  * Convert SQLite SQL to PostgreSQL SQL
  */
 function convertToPostgreSQL(sql: string): string {
+  let pgSQL = sql;
+  
+  // Handle GROUP_CONCAT -> STRING_AGG (PostgreSQL equivalent)
+  // GROUP_CONCAT(DISTINCT column) -> STRING_AGG(DISTINCT column, ',')
+  // GROUP_CONCAT(column) -> STRING_AGG(column, ',')
+  pgSQL = pgSQL.replace(/GROUP_CONCAT\s*\(\s*DISTINCT\s+([^)]+)\s*\)/gi, (match, column) => {
+    return `STRING_AGG(DISTINCT ${column.trim()}, ',')`;
+  });
+  
+  // Handle GROUP_CONCAT without DISTINCT
+  pgSQL = pgSQL.replace(/GROUP_CONCAT\s*\(\s*([^)]+)\s*\)/gi, (match, column) => {
+    // Check if it already has DISTINCT (shouldn't happen after first replace, but just in case)
+    if (column.toUpperCase().includes('DISTINCT')) {
+      return match; // Already handled
+    }
+    return `STRING_AGG(${column.trim()}, ',')`;
+  });
+
   // Replace ? placeholders with $1, $2, etc.
   let paramIndex = 1;
-  let pgSQL = sql.replace(/\?/g, () => {
+  pgSQL = pgSQL.replace(/\?/g, () => {
     const placeholder = `$${paramIndex}`;
     paramIndex++;
     return placeholder;
   });
 
   // Handle INSERT OR IGNORE -> INSERT ... ON CONFLICT DO NOTHING
-  if (sql.includes('INSERT OR IGNORE')) {
-    // Extract table name
+  if (sql.toUpperCase().includes('INSERT OR IGNORE')) {
+    // Extract table name from original SQL
     const tableMatch = sql.match(/INSERT\s+OR\s+IGNORE\s+INTO\s+(\w+)/i);
     if (tableMatch) {
       const tableName = tableMatch[1];
+      // Remove INSERT OR IGNORE from the converted SQL (after placeholder replacement)
       pgSQL = pgSQL.replace(/INSERT\s+OR\s+IGNORE\s+INTO/gi, 'INSERT INTO');
       
-      // Determine primary key or unique constraint
+      // Determine conflict column
       const conflictColumn = getConflictColumn(tableName, sql);
-      if (conflictColumn) {
-        pgSQL += ` ON CONFLICT (${conflictColumn}) DO NOTHING`;
-      } else {
-        // Fallback: use table's primary key
-        pgSQL += ` ON CONFLICT DO NOTHING`;
-      }
+      
+      // Add ON CONFLICT clause at the end (before semicolon if present)
+      const hasSemicolon = pgSQL.trim().endsWith(';');
+      const sqlWithoutSemicolon = hasSemicolon ? pgSQL.trim().slice(0, -1) : pgSQL.trim();
+      pgSQL = `${sqlWithoutSemicolon} ON CONFLICT ${conflictColumn} DO NOTHING${hasSemicolon ? ';' : ''}`;
     }
   }
 
