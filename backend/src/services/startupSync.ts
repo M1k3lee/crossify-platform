@@ -44,7 +44,7 @@ function getChainConfigs(): ChainConfig[] {
   const baseSepoliaFactory = process.env.BASE_FACTORY_ADDRESS || process.env.BASE_SEPOLIA_FACTORY_ADDRESS;
   if (baseSepoliaFactory) {
     chains.push({
-      rpcUrl: process.env.BASE_SEPOLIA_RPC_URL || process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+      rpcUrl: process.env.BASE_SEPOLIA_RPC_URL || process.env.BASE_RPC_URL || 'https://sepolia.base.org',
       factoryAddress: baseSepoliaFactory,
       chainName: 'base-sepolia',
     });
@@ -54,7 +54,7 @@ function getChainConfigs(): ChainConfig[] {
   const bscTestnetFactory = process.env.BSC_FACTORY_ADDRESS || process.env.BSC_TESTNET_FACTORY_ADDRESS;
   if (bscTestnetFactory) {
     chains.push({
-      rpcUrl: process.env.BSC_TESTNET_RPC_URL || process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+      rpcUrl: process.env.BSC_TESTNET_RPC_URL || process.env.BSC_RPC_URL || 'https://data-seed-prebsc-1-s1.binance.org:8545',
       factoryAddress: bscTestnetFactory,
       chainName: 'bsc-testnet',
     });
@@ -64,7 +64,7 @@ function getChainConfigs(): ChainConfig[] {
   const sepoliaFactory = process.env.ETHEREUM_FACTORY_ADDRESS || process.env.SEPOLIA_FACTORY_ADDRESS;
   if (sepoliaFactory) {
     chains.push({
-      rpcUrl: process.env.SEPOLIA_RPC_URL || process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+      rpcUrl: process.env.SEPOLIA_RPC_URL || process.env.ETHEREUM_RPC_URL || 'https://rpc.sepolia.org',
       factoryAddress: sepoliaFactory,
       chainName: 'sepolia',
     });
@@ -318,15 +318,33 @@ async function syncTokenToDatabase(
 
     // Fetch token details
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-    let decimals = 18;
+    let decimals = 18; // Default to 18 if not available
     let totalSupply = '0';
 
     try {
-      decimals = await tokenContract.decimals();
+      const fetchedDecimals = await tokenContract.decimals();
+      // Ensure decimals is a valid number (handle null, undefined, or string)
+      decimals = typeof fetchedDecimals === 'number' ? fetchedDecimals : 
+                 typeof fetchedDecimals === 'string' ? parseInt(fetchedDecimals, 10) : 
+                 fetchedDecimals?.toString() ? parseInt(fetchedDecimals.toString(), 10) : 18;
+      
+      // Fallback to 18 if decimals is invalid
+      if (!decimals || isNaN(decimals) || decimals < 0 || decimals > 255) {
+        console.warn(`    ⚠️ Invalid decimals value: ${fetchedDecimals}, defaulting to 18`);
+        decimals = 18;
+      }
+      
       const supply = await tokenContract.totalSupply();
       totalSupply = ethers.formatUnits(supply, decimals);
     } catch (error) {
       console.warn(`    ⚠️ Could not fetch token details for ${tokenAddress}:`, error);
+      // Ensure decimals is set to a valid number even on error
+      decimals = 18;
+    }
+    
+    // Final safety check - ensure decimals is always a valid number
+    if (!decimals || isNaN(decimals) || decimals < 0 || decimals > 255) {
+      decimals = 18;
     }
 
     // Fetch curve details
@@ -366,10 +384,10 @@ async function syncTokenToDatabase(
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           tokenId,
-          name,
-          symbol,
-          decimals,
-          totalSupply,
+          name || '',
+          symbol || '',
+          Number(decimals) || 18, // Ensure it's a number
+          totalSupply || '0',
           parseFloat(basePrice) || 0.0001,
           parseFloat(slope) || 0.00001,
           parseFloat(graduationThreshold) || 0,
@@ -427,10 +445,10 @@ async function syncTokenToDatabase(
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               tokenId,
-              name,
-              symbol,
-              decimals,
-              totalSupply,
+              name || '',
+              symbol || '',
+              Number(decimals) || 18, // Ensure it's a number
+              totalSupply || '0',
               parseFloat(basePrice) || 0.0001,
               parseFloat(slope) || 0.00001,
               parseFloat(graduationThreshold) || 0,
