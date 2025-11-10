@@ -2235,3 +2235,167 @@ router.post('/fix-visibility', async (req: Request, res: Response) => {
   }
 });
 
+// POST /tokens/merge-duplicates - Merge duplicate tokens that have the same token address
+router.post('/merge-duplicates', async (_req: Request, res: Response) => {
+  try {
+    const { dbAll, dbRun, dbGet } = await import('../db/adapter');
+    
+    console.log('🔍 Finding duplicate tokens by token address...');
+    
+    // Find all tokens that have the same token_address across different token_ids
+    // Use PostgreSQL STRING_AGG or SQLite GROUP_CONCAT
+    const { isUsingPostgreSQL } = await import('../db/adapter');
+    const aggFunc = isUsingPostgreSQL() ? 'STRING_AGG' : 'GROUP_CONCAT';
+    const aggSeparator = isUsingPostgreSQL() ? "','" : ',';
+    const castFunc = isUsingPostgreSQL() ? '::text' : '';
+    
+    const duplicatesQuery = `
+      SELECT 
+        td.token_address,
+        COUNT(DISTINCT td.token_id) as token_count,
+        ${aggFunc}(DISTINCT td.token_id${castFunc}, '${aggSeparator}') as token_ids,
+        ${aggFunc}(DISTINCT td.chain${castFunc}, '${aggSeparator}') as chains
+      FROM token_deployments td
+      WHERE td.token_address IS NOT NULL
+      GROUP BY td.token_address
+      HAVING COUNT(DISTINCT td.token_id) > 1
+    `;
+    
+    const duplicates = await dbAll(duplicatesQuery, []) as any[];
+    
+    if (duplicates.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No duplicate tokens found',
+        merged: 0,
+      });
+    }
+    
+    console.log(`📊 Found ${duplicates.length} token addresses with duplicate token IDs`);
+    
+    let mergedCount = 0;
+    const mergeResults: any[] = [];
+    
+    for (const duplicate of duplicates) {
+      const tokenAddress = duplicate.token_address;
+      const tokenIds = duplicate.token_ids.split(',').filter((id: string) => id && id.trim() !== '');
+      const chains = duplicate.chains.split(',').filter((c: string) => c && c.trim() !== '');
+      
+      console.log(`\n🔀 Processing token address ${tokenAddress}:`);
+      console.log(`   Token IDs: ${tokenIds.join(', ')}`);
+      console.log(`   Chains: ${chains.join(', ')}`);
+      
+      // Choose the first token ID as the master (keep the oldest one by created_at)
+      // Get the oldest token
+      const tokens = await dbAll(
+        `SELECT id, created_at FROM tokens WHERE id IN (${tokenIds.map(() => '?').join(',')}) ORDER BY created_at ASC`,
+        tokenIds
+      ) as any[];
+      
+      if (tokens.length === 0) {
+        console.warn(`   ⚠️  No tokens found for IDs: ${tokenIds.join(', ')}, skipping...`);
+        continue;
+      }
+      
+      const masterTokenId = tokens[0].id;
+      const duplicateTokenIds = tokenIds.filter(id => id !== masterTokenId);
+      
+      console.log(`   Master token ID: ${masterTokenId} (created: ${tokens[0].created_at})`);
+      console.log(`   Duplicate token IDs to merge: ${duplicateTokenIds.join(', ')}`);
+      
+      // Get master token info
+      const masterToken = await dbGet('SELECT * FROM tokens WHERE id = ?', [masterTokenId]) as any;
+      if (!masterToken) {
+        console.warn(`   ⚠️  Master token ${masterTokenId} not found, skipping...`);
+        continue;
+      }
+      
+      // For each duplicate token ID, merge its deployments into the master token
+      for (const duplicateTokenId of duplicateTokenIds) {
+        // Get all deployments for this duplicate token
+        const duplicateDeployments = await dbAll(
+          'SELECT * FROM token_deployments WHERE token_id = ?',
+          [duplicateTokenId]
+        ) as any[];
+        
+        console.log(`   📦 Merging ${duplicateDeployments.length} deployments from token ${duplicateTokenId}...`);
+        
+        for (const deployment of duplicateDeployments) {
+          // Check if deployment already exists for master token on this chain
+          const existingDeployment = await dbGet(
+            'SELECT * FROM token_deployments WHERE token_id = ? AND chain = ?',
+            [masterTokenId, deployment.chain]
+          ) as any;
+          
+          if (existingDeployment) {
+            // Update existing deployment with data from duplicate if it's missing info
+            if (!existingDeployment.token_address && deployment.token_address) {
+              await dbRun(
+                'UPDATE token_deployments SET token_address = ?, curve_address = COALESCE(?, curve_address), status = COALESCE(?, status), is_graduated = COALESCE(?, is_graduated), market_cap = COALESCE(?, market_cap) WHERE token_id = ? AND chain = ?',
+                [
+                  deployment.token_address,
+                  deployment.curve_address,
+                  deployment.status,
+                  deployment.is_graduated,
+                  deployment.market_cap,
+                  masterTokenId,
+                  deployment.chain,
+                ]
+              );
+              console.log(`     ✅ Updated deployment for chain ${deployment.chain}`);
+            } else {
+              console.log(`     ⏭️  Deployment for chain ${deployment.chain} already exists, skipping...`);
+            }
+          } else {
+            // Insert deployment for master token
+            await dbRun(
+              'INSERT INTO token_deployments (token_id, chain, token_address, curve_address, status, is_graduated, market_cap, current_supply, reserve_balance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [
+                masterTokenId,
+                deployment.chain,
+                deployment.token_address,
+                deployment.curve_address,
+                deployment.status,
+                deployment.is_graduated,
+                deployment.market_cap,
+                deployment.current_supply,
+                deployment.reserve_balance,
+              ]
+            );
+            console.log(`     ✅ Added deployment for chain ${deployment.chain}`);
+          }
+        }
+        
+        // Delete the duplicate token and its deployments (cascade should handle deployments)
+        await dbRun('DELETE FROM token_deployments WHERE token_id = ?', [duplicateTokenId]);
+        await dbRun('DELETE FROM tokens WHERE id = ?', [duplicateTokenId]);
+        console.log(`   🗑️  Deleted duplicate token ${duplicateTokenId}`);
+        
+        mergedCount++;
+      }
+      
+      mergeResults.push({
+        tokenAddress,
+        masterTokenId,
+        duplicateTokenIds,
+        chains,
+      });
+    }
+    
+    console.log(`\n✅ Merge complete: ${mergedCount} duplicate tokens merged`);
+    
+    res.json({
+      success: true,
+      message: `Merged ${mergedCount} duplicate tokens`,
+      merged: mergedCount,
+      results: mergeResults,
+    });
+  } catch (error: any) {
+    console.error('❌ Error merging duplicate tokens:', error);
+    res.status(500).json({
+      error: 'Failed to merge duplicate tokens',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
