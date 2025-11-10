@@ -147,6 +147,11 @@ export default function Builder() {
   };
 
   const handleInputChange = (field: keyof TokenData, value: any) => {
+    // Normalize initialSupply input: remove commas, spaces, and trim
+    if (field === 'initialSupply' && typeof value === 'string') {
+      // Remove commas, spaces, and trim whitespace
+      value = value.replace(/[,\s]/g, '').trim();
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -174,8 +179,11 @@ export default function Builder() {
 
 
   const handleSubmit = async () => {
+    // Normalize initialSupply first (remove commas, spaces, trim)
+    const normalizedSupply = formData.initialSupply.replace(/[,\s]/g, '').trim();
+    
     // Validate required fields
-    if (!formData.name || !formData.symbol || !formData.initialSupply) {
+    if (!formData.name || !formData.symbol || !normalizedSupply) {
       toast.error('Please fill in all required fields (Name, Symbol, Initial Supply)');
       return;
     }
@@ -188,10 +196,22 @@ export default function Builder() {
     // Auto-disable cross-chain if only one chain selected
     // actualCrossChainEnabled will be calculated in handleSubmit
 
-    // Validate initialSupply
-    if (!/^\d+$/.test(formData.initialSupply)) {
-      toast.error('Initial Supply must be a valid positive number');
+    // Validate initialSupply - normalize and validate
+    if (!normalizedSupply || normalizedSupply === '') {
+      toast.error('Initial Supply is required. Please enter a positive number (e.g., 1000000000)');
       return;
+    }
+    if (!/^\d+$/.test(normalizedSupply)) {
+      toast.error('Initial Supply must be a valid positive whole number. Please enter only digits (e.g., 1000000000). Commas and spaces are automatically removed.');
+      return;
+    }
+    if (parseInt(normalizedSupply, 10) <= 0) {
+      toast.error('Initial Supply must be greater than 0');
+      return;
+    }
+    // Update formData with normalized value if it changed
+    if (normalizedSupply !== formData.initialSupply) {
+      setFormData(prev => ({ ...prev, initialSupply: normalizedSupply }));
     }
 
     // Validate symbol format
@@ -264,11 +284,12 @@ export default function Builder() {
       };
 
       // Build tokenData object, only including fields that have values
+      // Use the already normalized supply from validation above
       const tokenData: any = {
         name: formData.name.trim(),
         symbol: formData.symbol.trim().toUpperCase(),
         decimals: formData.decimals,
-        initialSupply: formData.initialSupply,
+        initialSupply: normalizedSupply,
         basePrice: formData.basePrice,
         slope: formData.slope,
         graduationThreshold: '0', // Graduation disabled
@@ -447,7 +468,7 @@ export default function Builder() {
                     name: formData.name,
                     symbol: formData.symbol,
                     decimals: formData.decimals,
-                    initialSupply: formData.initialSupply,
+                    initialSupply: normalizedSupply,
                     metadataUri: logoIpfs,
                   },
                   curveData: {
@@ -781,9 +802,12 @@ export default function Builder() {
                     type="text"
                     value={formData.initialSupply}
                     onChange={(e) => handleInputChange('initialSupply', e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="1000000000"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter a positive whole number. Commas and spaces are automatically removed (e.g., "1,000,000" becomes "1000000").
+                  </p>
                 </div>
               </div>
             </div>

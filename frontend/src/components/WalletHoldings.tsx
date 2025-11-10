@@ -40,25 +40,26 @@ export default function WalletHoldings({
   const getRpcUrl = (chainName: string): string => {
     const chainLower = chainName.toLowerCase().trim();
     
+    // Use publicnode.com RPCs to avoid CORS issues
     if (chainLower === 'base-sepolia' || (chainLower.includes('base') && chainLower.includes('sepolia'))) {
-      return 'https://sepolia.base.org';
+      return 'https://base-sepolia-rpc.publicnode.com';
     }
     if (chainLower === 'bsc-testnet' || (chainLower.includes('bsc') && chainLower.includes('testnet'))) {
-      return 'https://data-seed-prebsc-1-s1.binance.org:8545';
+      return 'https://bsc-testnet.publicnode.com';
     }
     if (chainLower === 'sepolia' || chainLower.includes('sepolia')) {
-      return 'https://rpc.sepolia.org';
+      return 'https://ethereum-sepolia-rpc.publicnode.com';
     }
     if (chainLower === 'base') {
-      return 'https://sepolia.base.org';
+      return 'https://base-sepolia-rpc.publicnode.com';
     }
     if (chainLower === 'bsc' || chainLower === 'binance') {
-      return 'https://data-seed-prebsc-1-s1.binance.org:8545';
+      return 'https://bsc-testnet.publicnode.com';
     }
     if (chainLower === 'ethereum' || chainLower === 'eth') {
-      return 'https://rpc.sepolia.org';
+      return 'https://ethereum-sepolia-rpc.publicnode.com';
     }
-    return 'https://sepolia.base.org';
+    return 'https://base-sepolia-rpc.publicnode.com';
   };
 
   // Fetch wallet balance
