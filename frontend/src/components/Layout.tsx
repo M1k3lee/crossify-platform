@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import Logo from './Logo';
 import Footer from './Footer';
+import { useWalletTracking } from '../hooks/useWalletTracking';
 
 interface LayoutProps {
   children: React.ReactNode;
