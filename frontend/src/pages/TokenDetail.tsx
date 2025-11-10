@@ -889,29 +889,30 @@ export default function TokenDetail() {
             {deployments?.map((dep: any, idx: number) => {
               if (!dep) return null;
               return (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: CHAIN_COLORS[dep.chain] || '#FFFFFF' }}
-                  />
-                  <span className="text-sm font-medium text-white capitalize">{dep.chain}</span>
-                  <span className="text-xs text-gray-500">•</span>
-                  <span className="text-sm text-gray-400">
-                    {dep.status === 'graduated' ? 'Graduated to DEX' : 'Active on Curve'}
-                  </span>
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: CHAIN_COLORS[dep.chain?.toLowerCase()] || '#FFFFFF' }}
+                    />
+                    <span className="text-sm font-medium text-white capitalize">{dep.chain || 'Unknown'}</span>
+                    <span className="text-xs text-gray-500">•</span>
+                    <span className="text-sm text-gray-400">
+                      {dep.status === 'graduated' ? 'Graduated to DEX' : 'Active on Curve'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-white">
+                      ${((dep.marketCap || 0) / 1e6).toFixed(2)}M
+                    </p>
+                    <p className="text-xs text-gray-500">Market Cap</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-white">
-                    ${(dep.marketCap / 1e6).toFixed(2)}M
-                  </p>
-                  <p className="text-xs text-gray-500">Market Cap</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

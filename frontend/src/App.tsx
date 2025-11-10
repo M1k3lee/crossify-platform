@@ -70,7 +70,7 @@ function App() {
                     <Route path="/faq" element={<Layout><FAQ /></Layout>} />
                     <Route path="/creator/:id" element={<Layout><CreatorDashboard /></Layout>} />
                     <Route path="/admin" element={<AdminDashboard />} />
-                    <Route path="/token/:id" element={<Layout><TokenDetail /></Layout>} />
+                    <Route path="/token/:id" element={<Layout><ErrorBoundary><TokenDetail /></ErrorBoundary></Layout>} />
                   </Routes>
                   <Toaster position="top-right" />
                 </Router>
