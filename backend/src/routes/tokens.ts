@@ -2245,21 +2245,39 @@ router.post('/merge-duplicates', async (_req: Request, res: Response) => {
     // Find all tokens that have the same token_address across different token_ids
     // Use PostgreSQL STRING_AGG or SQLite GROUP_CONCAT
     const { isUsingPostgreSQL } = await import('../db/adapter');
-    const aggFunc = isUsingPostgreSQL() ? 'STRING_AGG' : 'GROUP_CONCAT';
-    const aggSeparator = isUsingPostgreSQL() ? "','" : ',';
-    const castFunc = isUsingPostgreSQL() ? '::text' : '';
+    const usingPostgres = isUsingPostgreSQL();
     
-    const duplicatesQuery = `
-      SELECT 
-        td.token_address,
-        COUNT(DISTINCT td.token_id) as token_count,
-        ${aggFunc}(DISTINCT td.token_id${castFunc}, '${aggSeparator}') as token_ids,
-        ${aggFunc}(DISTINCT td.chain${castFunc}, '${aggSeparator}') as chains
-      FROM token_deployments td
-      WHERE td.token_address IS NOT NULL
-      GROUP BY td.token_address
-      HAVING COUNT(DISTINCT td.token_id) > 1
-    `;
+    let duplicatesQuery: string;
+    if (usingPostgres) {
+      // PostgreSQL: Use DISTINCT in subquery or use array_agg with DISTINCT
+      duplicatesQuery = `
+        SELECT 
+          token_address,
+          COUNT(DISTINCT token_id) as token_count,
+          STRING_AGG(DISTINCT token_id::text, ',') as token_ids,
+          STRING_AGG(DISTINCT chain::text, ',') as chains
+        FROM (
+          SELECT DISTINCT token_address, token_id, chain
+          FROM token_deployments
+          WHERE token_address IS NOT NULL
+        ) td
+        GROUP BY token_address
+        HAVING COUNT(DISTINCT token_id) > 1
+      `;
+    } else {
+      // SQLite: Use GROUP_CONCAT with DISTINCT
+      duplicatesQuery = `
+        SELECT 
+          td.token_address,
+          COUNT(DISTINCT td.token_id) as token_count,
+          GROUP_CONCAT(DISTINCT td.token_id) as token_ids,
+          GROUP_CONCAT(DISTINCT td.chain) as chains
+        FROM token_deployments td
+        WHERE td.token_address IS NOT NULL
+        GROUP BY td.token_address
+        HAVING COUNT(DISTINCT td.token_id) > 1
+      `;
+    }
     
     const duplicates = await dbAll(duplicatesQuery, []) as any[];
     
