@@ -877,7 +877,9 @@ export default function TokenDetail() {
         <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
           <h2 className="text-2xl font-bold text-white mb-4">Recent Activity</h2>
           <div className="space-y-3">
-            {status.deployments?.map((dep: any, idx: number) => (
+            {deployments?.map((dep: any, idx: number) => {
+              if (!dep) return null;
+              return (
               <div
                 key={idx}
                 className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition"
