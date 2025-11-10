@@ -792,7 +792,13 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     
     // Log the actual query being executed (for debugging)
     console.log(`📊 Marketplace: Executing query with params:`, params);
-    console.log(`📊 Marketplace: Query:`, query.substring(0, 200) + '...');
+    console.log(`📊 Marketplace: Query (first 500 chars):`, query.substring(0, 500));
+    
+    // If using PostgreSQL, log that we're using the adapter
+    const { isUsingPostgreSQL } = await import('../db/adapter');
+    if (isUsingPostgreSQL()) {
+      console.log(`📊 Marketplace: Using PostgreSQL - query will be converted by adapter`);
+    }
     
     let tokens: any[] = [];
     try {
