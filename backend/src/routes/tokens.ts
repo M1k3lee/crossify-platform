@@ -2298,7 +2298,7 @@ router.post('/merge-duplicates', async (_req: Request, res: Response) => {
       }
       
       const masterTokenId = tokens[0].id;
-      const duplicateTokenIds = tokenIds.filter(id => id !== masterTokenId);
+      const duplicateTokenIds = tokenIds.filter((id: string) => id !== masterTokenId);
       
       console.log(`   Master token ID: ${masterTokenId} (created: ${tokens[0].created_at})`);
       console.log(`   Duplicate token IDs to merge: ${duplicateTokenIds.join(', ')}`);
