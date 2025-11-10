@@ -227,50 +227,68 @@ router.post('/create', async (req: Request, res: Response) => {
     console.log('📝 Advanced settings received:', JSON.stringify(advancedSettingsObj, null, 2));
     const advancedSettings = JSON.stringify(advancedSettingsObj);
     
-    await dbRun(
-      `INSERT INTO tokens (
-        id, name, symbol, decimals, initial_supply,
-        logo_ipfs, description, twitter_url, discord_url, telegram_url, website_url,
-        github_url, medium_url, reddit_url, youtube_url, linkedin_url,
-        base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
-        cross_chain_enabled, creator_address, advanced_settings,
-        banner_image_ipfs, primary_color, accent_color, background_color, layout_template, custom_settings
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        tokenId,
-        data.name,
-        data.symbol,
-        data.decimals,
-        data.initialSupply,
-        data.logoIpfs && data.logoIpfs !== '' ? data.logoIpfs : null,
-        data.description && data.description !== '' ? data.description : null,
-        data.twitterUrl && data.twitterUrl !== '' ? data.twitterUrl : null,
-        data.discordUrl && data.discordUrl !== '' ? data.discordUrl : null,
-        data.telegramUrl && data.telegramUrl !== '' ? data.telegramUrl : null,
-        data.websiteUrl && data.websiteUrl !== '' ? data.websiteUrl : null,
-        data.githubUrl && data.githubUrl !== '' ? data.githubUrl : null,
-        data.mediumUrl && data.mediumUrl !== '' ? data.mediumUrl : null,
-        data.redditUrl && data.redditUrl !== '' ? data.redditUrl : null,
-        data.youtubeUrl && data.youtubeUrl !== '' ? data.youtubeUrl : null,
-        data.linkedinUrl && data.linkedinUrl !== '' ? data.linkedinUrl : null,
-        data.basePrice,
-        data.slope,
-        data.graduationThreshold,
-        data.buyFeePercent,
-        data.sellFeePercent,
-        crossChainEnabled ? 1 : 0,
-        creatorAddress,
-        advancedSettings,
-        data.bannerImageIpfs && data.bannerImageIpfs !== '' ? data.bannerImageIpfs : null,
-        data.primaryColor || '#3B82F6',
-        data.accentColor || '#8B5CF6',
-        data.backgroundColor || null,
-        data.layoutTemplate || 'default',
-        data.customSettings ? JSON.stringify(data.customSettings) : null
-      ]
-    );
-    
-    console.log('Token created successfully:', tokenId);
+    try {
+      await dbRun(
+        `INSERT INTO tokens (
+          id, name, symbol, decimals, initial_supply,
+          logo_ipfs, description, twitter_url, discord_url, telegram_url, website_url,
+          github_url, medium_url, reddit_url, youtube_url, linkedin_url,
+          base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
+          cross_chain_enabled, creator_address, advanced_settings,
+          banner_image_ipfs, primary_color, accent_color, background_color, layout_template, custom_settings
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          tokenId,
+          data.name,
+          data.symbol,
+          data.decimals,
+          data.initialSupply,
+          data.logoIpfs && data.logoIpfs !== '' ? data.logoIpfs : null,
+          data.description && data.description !== '' ? data.description : null,
+          data.twitterUrl && data.twitterUrl !== '' ? data.twitterUrl : null,
+          data.discordUrl && data.discordUrl !== '' ? data.discordUrl : null,
+          data.telegramUrl && data.telegramUrl !== '' ? data.telegramUrl : null,
+          data.websiteUrl && data.websiteUrl !== '' ? data.websiteUrl : null,
+          data.githubUrl && data.githubUrl !== '' ? data.githubUrl : null,
+          data.mediumUrl && data.mediumUrl !== '' ? data.mediumUrl : null,
+          data.redditUrl && data.redditUrl !== '' ? data.redditUrl : null,
+          data.youtubeUrl && data.youtubeUrl !== '' ? data.youtubeUrl : null,
+          data.linkedinUrl && data.linkedinUrl !== '' ? data.linkedinUrl : null,
+          data.basePrice,
+          data.slope,
+          data.graduationThreshold,
+          data.buyFeePercent,
+          data.sellFeePercent,
+          crossChainEnabled ? 1 : 0,
+          creatorAddress,
+          advancedSettings,
+          data.bannerImageIpfs && data.bannerImageIpfs !== '' ? data.bannerImageIpfs : null,
+          data.primaryColor || '#3B82F6',
+          data.accentColor || '#8B5CF6',
+          data.backgroundColor || null,
+          data.layoutTemplate || 'default',
+          data.customSettings ? JSON.stringify(data.customSettings) : null
+        ]
+      );
+      
+      console.log('✅ Token created successfully in database:', tokenId);
+      
+      // Verify token was actually inserted
+      const verification = await dbGet('SELECT id, name FROM tokens WHERE id = ?', [tokenId]) as any;
+      if (!verification) {
+        console.error('❌ CRITICAL: Token insert succeeded but token not found in database!');
+        throw new Error('Token creation failed: Database insert verification failed');
+      }
+      console.log('✅ Token verified in database:', verification.name);
+    } catch (dbError: any) {
+      console.error('❌ Database error while creating token:', dbError);
+      console.error('   Error message:', dbError.message);
+      console.error('   Error code:', dbError.code);
+      if (dbError.stack) {
+        console.error('   Stack:', dbError.stack);
+      }
+      throw new Error(`Failed to save token to database: ${dbError.message}`);
+    }
     
     // Calculate platform fee with CFY discount (if applicable)
     // Base fee: 0.01 ETH (or equivalent)
