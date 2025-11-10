@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import { Upload, Check, Zap, Sparkles, AlertCircle } from 'lucide-react';
+import { Upload, Check, Zap, Sparkles, AlertCircle, Info, HelpCircle } from 'lucide-react';
 import AdvancedSettings from '../components/AdvancedSettings';
 import AdvancedTokenSettingsComponent, { AdvancedTokenSettings } from '../components/AdvancedTokenSettings';
 import InitialDistributionSettingsComponent, { InitialDistributionSettings } from '../components/InitialDistributionSettings';
@@ -170,7 +170,8 @@ export default function Builder() {
       const response = await axios.post(`${API_BASE}/upload/logo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      return response.data.cid;
+      // Return filename (new format) or cid (backward compatibility)
+      return response.data.filename || response.data.cid;
     } catch (error) {
       console.error('Logo upload failed:', error);
       return undefined;
@@ -985,33 +986,74 @@ export default function Builder() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white mb-6">Tokenomics & Curve Settings</h2>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-blue-300 mb-2">Understanding Tokenomics</h3>
+                    <div className="text-xs text-blue-200/80 space-y-2">
+                      <p><strong>Base Price:</strong> The starting price per token when your token launches. Lower prices (e.g., 0.0001) make tokens more accessible, while higher prices (e.g., 0.01) target premium buyers.</p>
+                      <p><strong>Slope:</strong> Controls how fast the price increases as more tokens are bought. Lower slopes (e.g., 0.00001) = slower price growth, higher slopes (e.g., 0.0001) = faster price growth.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Base Price (ETH/BNB/SOL)</label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-300">Starting Price</label>
+                    <div className="group relative">
+                      <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
+                      <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 border border-gray-600 rounded-lg text-xs text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                        The initial price per token. Example: 0.0001 means 1 token costs 0.0001 ETH/BNB/SOL at launch.
+                      </div>
+                    </div>
+                  </div>
                   <input
                     type="text"
                     value={formData.basePrice}
                     onChange={(e) => handleInputChange('basePrice', e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                     placeholder="0.0001"
                   />
+                  <p className="text-xs text-gray-400 mt-2">
+                    💡 Tip: Start low (0.0001-0.001) for memecoins, higher (0.01+) for utility tokens
+                  </p>
                   {formData.basePrice && (isNaN(parseFloat(formData.basePrice)) || parseFloat(formData.basePrice) <= 0) && (
                     <p className="text-xs text-red-400 mt-1">Must be a positive number</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Slope</label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-300">Price Growth Rate</label>
+                    <div className="group relative">
+                      <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
+                      <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 border border-gray-600 rounded-lg text-xs text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                        How quickly the price increases with each purchase. Lower = gradual growth, Higher = rapid price appreciation.
+                      </div>
+                    </div>
+                  </div>
                   <input
                     type="text"
                     value={formData.slope}
                     onChange={(e) => handleInputChange('slope', e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                     placeholder="0.00001"
                   />
+                  <p className="text-xs text-gray-400 mt-2">
+                    💡 Tip: 0.00001 = steady growth, 0.0001 = faster growth, 0.001 = very aggressive
+                  </p>
                   {formData.slope && (isNaN(parseFloat(formData.slope)) || parseFloat(formData.slope) < 0) && (
                     <p className="text-xs text-red-400 mt-1">Must be a non-negative number</p>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                <p className="text-xs text-gray-400">
+                  <strong>Quick Examples:</strong> Memecoin (Base: 0.0001, Slope: 0.00001) | Utility Token (Base: 0.01, Slope: 0.0001) | Premium Token (Base: 0.1, Slope: 0.001)
+                </p>
               </div>
 
 

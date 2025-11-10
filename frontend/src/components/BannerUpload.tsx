@@ -12,7 +12,15 @@ interface BannerUploadProps {
 
 export default function BannerUpload({ value, onChange, label = 'Banner Image (Optional)' }: BannerUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(value ? `https://ipfs.io/ipfs/${value}` : null);
+  // Construct preview URL - if value starts with http, use it; if it's a filename, use API; if mock, skip
+  const getPreviewUrl = (val: string | undefined | null): string | null => {
+    if (!val) return null;
+    if (val.startsWith('http')) return val;
+    if (val.startsWith('mock_')) return null; // Mock CIDs don't work
+    // It's a filename, construct API URL using /upload/file/:filename endpoint
+    return `${API_BASE.replace('/api', '')}/upload/file/${val}`;
+  };
+  const [preview, setPreview] = useState<string | null>(getPreviewUrl(value));
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,11 +55,17 @@ export default function BannerUpload({ value, onChange, label = 'Banner Image (O
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (response.data.cid) {
-        onChange(response.data.cid);
+      if (response.data.cid || response.data.filename) {
+        const fileId = response.data.filename || response.data.cid;
+        onChange(fileId);
+        // Update preview with the new URL
+        const previewUrl = getPreviewUrl(fileId);
+        if (previewUrl) {
+          setPreview(previewUrl);
+        }
         toast.success('Banner uploaded successfully');
       } else {
-        throw new Error('No CID returned');
+        throw new Error('No file ID returned');
       }
     } catch (error: any) {
       console.error('Banner upload failed:', error);

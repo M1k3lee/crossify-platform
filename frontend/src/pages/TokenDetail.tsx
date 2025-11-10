@@ -251,25 +251,66 @@ export default function TokenDetail() {
     }
   }, [customization?.accentColor, metadata?.accentColor]);
   
-  const bannerImageIpfs = useMemo(() => {
-    try {
-      const customBanner = customization?.bannerImageIpfs;
-      const metaBanner = metadata?.bannerUrl?.replace('https://ipfs.io/ipfs/', '');
-      return customBanner || metaBanner || null;
-    } catch (e) {
-      console.error('Error getting banner IPFS:', e);
-      return null;
-    }
-  }, [customization?.bannerImageIpfs, metadata?.bannerUrl]);
-  
+  // Helper function to construct image URL from filename or CID
+  const getImageUrl = useMemo(() => {
+    return (imageId: string | null | undefined): string | null => {
+      if (!imageId) return null;
+      // If it's already a full URL, return it
+      if (imageId.startsWith('http')) return imageId;
+      // If it's a mock CID (old format), skip it
+      if (imageId.startsWith('mock_')) return null;
+      // It's a filename, construct API URL
+      return `${API_BASE.replace('/api', '')}/upload/file/${imageId}`;
+    };
+  }, []);
+
+  // Get banner URL from multiple sources
   const bannerUrl = useMemo(() => {
     try {
-      return bannerImageIpfs ? `https://ipfs.io/ipfs/${bannerImageIpfs}` : null;
+      // Priority: metadata bannerUrl > customization bannerImageIpfs > token banner_image_ipfs
+      if (metadata?.bannerUrl) {
+        // If it's a full URL, use it; otherwise it might be a filename in the URL
+        if (metadata.bannerUrl.startsWith('http')) {
+          return metadata.bannerUrl;
+        }
+        // Extract filename from URL if needed
+        const filename = metadata.bannerUrl.split('/').pop();
+        return filename ? getImageUrl(filename) : null;
+      }
+      if (customization?.bannerImageIpfs) {
+        return getImageUrl(customization.bannerImageIpfs);
+      }
+      // Check token directly
+      if ((token as any)?.banner_image_ipfs) {
+        return getImageUrl((token as any).banner_image_ipfs);
+      }
+      return null;
     } catch (e) {
       console.error('Error constructing banner URL:', e);
       return null;
     }
-  }, [bannerImageIpfs]);
+  }, [metadata?.bannerUrl, customization?.bannerImageIpfs, token, getImageUrl]);
+
+  // Get logo URL from multiple sources
+  const logoUrl = useMemo(() => {
+    try {
+      if (metadata?.logoUrl) {
+        if (metadata.logoUrl.startsWith('http')) {
+          return metadata.logoUrl;
+        }
+        const filename = metadata.logoUrl.split('/').pop();
+        return filename ? getImageUrl(filename) : null;
+      }
+      // Check token directly for logo_ipfs
+      if ((token as any)?.logo_ipfs) {
+        return getImageUrl((token as any).logo_ipfs);
+      }
+      return null;
+    } catch (e) {
+      console.error('Error constructing logo URL:', e);
+      return null;
+    }
+  }, [metadata?.logoUrl, token, getImageUrl]);
   
   // Find selected deployment based on URL chain parameter or use first deployed chain
   const selectedDeployment = useMemo(() => {
@@ -540,12 +581,13 @@ export default function TokenDetail() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-6 flex-1">
               {/* Logo - Always show, but smaller/positioned when banner exists */}
-              {metadata?.logoUrl ? (
+              {logoUrl ? (
                 <img
-                  src={metadata.logoUrl}
+                  src={logoUrl}
                   alt={tokenName}
                   className={`${bannerUrl ? 'w-16 h-16' : 'w-20 h-20'} rounded-full border-2 border-gray-600 shadow-lg`}
                   onError={(e) => {
+                    console.error('Error loading logo:', logoUrl);
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
@@ -1435,17 +1477,24 @@ export default function TokenDetail() {
                   className="bg-gray-700/50 hover:bg-gray-700 rounded-lg p-4 transition group"
                 >
                   <div className="flex items-center gap-3 mb-2">
-                    {relatedToken.logoUrl ? (
-                      <img
-                        src={relatedToken.logoUrl}
-                        alt={relatedToken.name}
-                        className="w-10 h-10 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white font-bold">
-                        {relatedToken.symbol?.charAt(0) || 'T'}
-                      </div>
-                    )}
+                    {(() => {
+                      // Construct logo URL for related token - check logoUrl first, then logoIpfs
+                      const relatedLogoUrl = relatedToken.logoUrl || getImageUrl(relatedToken.logoIpfs);
+                      return relatedLogoUrl ? (
+                        <img
+                          src={relatedLogoUrl}
+                          alt={relatedToken.name}
+                          className="w-10 h-10 rounded-full"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                          {relatedToken.symbol?.charAt(0) || 'T'}
+                        </div>
+                      );
+                    })()}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-white truncate">{relatedToken.name}</h3>
