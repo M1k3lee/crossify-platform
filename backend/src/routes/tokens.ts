@@ -713,7 +713,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     // Note: We're using GROUP_CONCAT for backward compatibility, but deployments will be fetched separately
     let query = `
       SELECT 
-        t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
+        t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs, t.banner_image_ipfs,
         t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
         t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
         t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
@@ -738,7 +738,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     if (chain) {
       query = `
         SELECT 
-          t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
+          t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs, t.banner_image_ipfs,
           t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
           t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
           t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
@@ -767,7 +767,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     
     // Add GROUP BY clause - required for aggregate functions (GROUP_CONCAT/STRING_AGG)
     query += `
-      GROUP BY t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
+      GROUP BY t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs, t.banner_image_ipfs,
         t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
         t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
         t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
@@ -975,8 +975,10 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         symbol: token.symbol,
         decimals: token.decimals,
         initialSupply: token.initial_supply,
-        logoIpfs: token.logo_ipfs,
-        logoUrl: token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null,
+        logoIpfs: token.logo_ipfs || null,
+        logoUrl: token.logo_ipfs && (token.logo_ipfs.startsWith('http') || token.logo_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null, // Frontend will construct URL from filename if not mock
+        bannerImageIpfs: token.banner_image_ipfs || null,
+        bannerUrl: token.banner_image_ipfs && (token.banner_image_ipfs.startsWith('http') || token.banner_image_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null, // Frontend will construct URL from filename if not mock
         description: token.description,
         twitterUrl: token.twitter_url,
         discordUrl: token.discord_url,
@@ -1085,6 +1087,9 @@ router.get('/:id/status', async (req: Request, res: Response) => {
         decimals: token.decimals || 18,
         initialSupply: token.initial_supply || '0',
         logoIpfs: token.logo_ipfs || null,
+        logoUrl: token.logo_ipfs ? (token.logo_ipfs.startsWith('http') || token.logo_ipfs.startsWith('mock_') ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null) : null, // Frontend will construct URL
+        bannerImageIpfs: token.banner_image_ipfs || null,
+        bannerUrl: token.banner_image_ipfs ? (token.banner_image_ipfs.startsWith('http') || token.banner_image_ipfs.startsWith('mock_') ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null) : null, // Frontend will construct URL
         description: token.description || null,
         twitterUrl: token.twitter_url || null,
         discordUrl: token.discord_url || null,
@@ -1577,14 +1582,14 @@ router.get('/:id/related', async (req: Request, res: Response) => {
       id: t.id,
       name: t.name,
       symbol: t.symbol,
-      logoIpfs: t.logo_ipfs,
-      logoUrl: t.logo_ipfs ? `https://ipfs.io/ipfs/${t.logo_ipfs}` : null,
+      logoIpfs: t.logo_ipfs || null,
+      logoUrl: t.logo_ipfs && (t.logo_ipfs.startsWith('http') || t.logo_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${t.logo_ipfs}` : null, // Frontend will construct URL from filename if not mock
       description: t.description,
       basePrice: t.base_price,
-      verified: t.verified === 1,
+      verified: (t.verified ?? 0) === 1,
       deploymentCount: t.deployment_count || 0,
-      avgMarketCap: t.avg_market_cap || 0,
-      maxMarketCap: t.max_market_cap || 0,
+      avgMarketCap: parseFloat(t.avg_market_cap || '0') || 0,
+      maxMarketCap: parseFloat(t.max_market_cap || '0') || 0,
       createdAt: t.created_at,
     }));
     

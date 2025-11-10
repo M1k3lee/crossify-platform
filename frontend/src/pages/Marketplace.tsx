@@ -301,13 +301,19 @@ export default function Marketplace() {
 
                   <Link to={`/token/${token.id}`}>
                     <div className="flex items-start gap-4 mb-4">
-                      {token.logoUrl ? (
-                        <img
-                          src={token.logoUrl}
-                          alt={token.name}
-                          className="w-16 h-16 rounded-full"
-                        />
-                      ) : (
+                      {(() => {
+                        // Construct logo URL - check logoUrl first, then logoIpfs
+                        const logoUrl = token.logoUrl || getImageUrl(token.logoIpfs);
+                        return logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt={token.name}
+                            className="w-16 h-16 rounded-full"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center text-2xl font-bold text-white">
                           {token.symbol?.charAt(0) || 'T'}
                         </div>
