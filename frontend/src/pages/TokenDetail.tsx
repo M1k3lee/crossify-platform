@@ -47,33 +47,72 @@ export default function TokenDetail() {
   // Get chain from URL query parameter, default to first deployed chain
   const selectedChainFromUrl = searchParams.get('chain');
 
-  const { data: status, isLoading } = useQuery({
+  const { data: status, isLoading, error: statusError } = useQuery({
     queryKey: ['token-status', id],
     queryFn: async () => {
-      const response = await axios.get(`${API_BASE}/tokens/${id}/status`);
-      return response.data;
+      try {
+        const response = await axios.get(`${API_BASE}/tokens/${id}/status`);
+        return response.data;
+      } catch (error: any) {
+        console.error('Error fetching token status:', error);
+        if (error.response?.status === 404) {
+          console.error(`Token ${id} not found in database`);
+        }
+        throw error;
+      }
     },
     enabled: !!id,
     refetchInterval: 10000,
+    retry: false, // Don't retry on 404 errors
   });
 
-  const { data: priceSync } = useQuery({
+  const { data: priceSync, error: priceSyncError } = useQuery({
     queryKey: ['price-sync', id],
     queryFn: async () => {
-      const response = await axios.get(`${API_BASE}/tokens/${id}/price-sync`);
-      return response.data;
+      try {
+        const response = await axios.get(`${API_BASE}/tokens/${id}/price-sync`);
+        return response.data;
+      } catch (error: any) {
+        console.error('Error fetching price sync:', error);
+        // Return default values if price sync fails
+        return { prices: {}, variance: 0 };
+      }
     },
-    enabled: !!id,
+    enabled: !!id && !!status, // Only fetch if token exists
     refetchInterval: 10000,
+    retry: false,
   });
 
-  const { data: metadata } = useQuery({
+  const { data: metadata, error: metadataError } = useQuery({
     queryKey: ['token-metadata', id],
     queryFn: async () => {
-      const response = await axios.get(`${API_BASE}/tokens/${id}/metadata`);
-      return response.data;
+      try {
+        const response = await axios.get(`${API_BASE}/tokens/${id}/metadata`);
+        return response.data;
+      } catch (error: any) {
+        console.error('Error fetching metadata:', error);
+        // Return default metadata if fetch fails
+        return {
+          logoUrl: null,
+          bannerUrl: null,
+          description: null,
+          twitterUrl: null,
+          discordUrl: null,
+          telegramUrl: null,
+          websiteUrl: null,
+          githubUrl: null,
+          mediumUrl: null,
+          redditUrl: null,
+          youtubeUrl: null,
+          linkedinUrl: null,
+          primaryColor: '#3B82F6',
+          accentColor: '#8B5CF6',
+          backgroundColor: null,
+        };
+      }
     },
-    enabled: !!id,
+    enabled: !!id && !!status, // Only fetch if token exists
+    retry: false,
   });
 
   // Safely extract data with defaults - MUST be called before any conditional returns
@@ -159,17 +198,23 @@ export default function TokenDetail() {
           description="Loading token details..."
           url={`https://crossify.io/token/${id}`}
         />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-transparent">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-            <p className="mt-4 text-gray-400">Loading token details...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <p className="mt-4 text-white">Loading token details...</p>
           </div>
         </div>
       </>
     );
   }
 
-  if (!status || !token) {
+  // Handle error states
+  if (statusError || !status || !token) {
+    const is404 = (statusError as any)?.response?.status === 404;
+    const errorMessage = is404 
+      ? `Token not found. The token with ID "${id}" does not exist in the database.`
+      : `Error loading token: ${(statusError as any)?.message || 'Unknown error'}`;
+    
     return (
       <>
         <SEO
@@ -177,14 +222,46 @@ export default function TokenDetail() {
           description="The token you're looking for doesn't exist."
           url={`https://crossify.io/token/${id}`}
         />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <p className="text-xl text-gray-400">Token not found</p>
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-transparent">
+          <div className="text-center max-w-2xl mx-auto px-4">
+            <div className="mb-4">
+              <AlertCircle className="w-16 h-16 text-red-400 mx-auto" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-4">Token Not Found</h1>
+            <p className="text-lg text-gray-300 mb-2">{errorMessage}</p>
+            {is404 && (
+              <div className="mt-6 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
+                <p className="text-sm text-yellow-300 mb-2">
+                  This token may have been deployed on-chain but not saved to the database.
+                </p>
+                <p className="text-sm text-gray-400">
+                  Token ID: <code className="text-yellow-400">{id}</code>
+                </p>
+              </div>
+            )}
+            <div className="mt-6">
+              <Link
+                to="/marketplace"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
+              >
+                Go to Marketplace
+              </Link>
+            </div>
           </div>
         </div>
       </>
     );
   }
+
+  // Debug logging
+  console.log('TokenDetail render:', { 
+    id, 
+    hasToken: !!token, 
+    hasStatus: !!status, 
+    deploymentsCount: deployments?.length || 0,
+    isLoading,
+    statusError: statusError ? 'Error: ' + (statusError as any)?.message : null
+  });
 
   return (
     <>
@@ -195,7 +272,7 @@ export default function TokenDetail() {
         url={`https://crossify.io/token/${id}`}
         image={token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : 'https://crossify.io/og-image.png'}
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-transparent">
         {/* Banner */}
         {bannerUrl && (
           <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border border-gray-700/50">
