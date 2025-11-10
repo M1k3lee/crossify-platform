@@ -719,6 +719,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
         t.deleted,
         COALESCE(t.visible_in_marketplace, 1) as visible_in_marketplace,
+        COALESCE(t.verified, 0) as verified,
         GROUP_CONCAT(td.chain ORDER BY td.chain) as chains,
         GROUP_CONCAT(td.token_address ORDER BY td.chain) as token_addresses,
         GROUP_CONCAT(td.curve_address ORDER BY td.chain) as curve_addresses,
@@ -743,6 +744,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
           t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
           t.deleted,
           COALESCE(t.visible_in_marketplace, 1) as visible_in_marketplace,
+          COALESCE(t.verified, 0) as verified,
           GROUP_CONCAT(td.chain ORDER BY td.chain) as chains,
           GROUP_CONCAT(td.token_address ORDER BY td.chain) as token_addresses,
           GROUP_CONCAT(td.curve_address ORDER BY td.chain) as curve_addresses,
@@ -987,6 +989,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         sellFeePercent: token.sell_fee_percent,
         creatorAddress: token.creator_address || null,
         crossChainEnabled: token.cross_chain_enabled === 1,
+        verified: (token.verified ?? 0) === 1,
         advancedSettings: token.advanced_settings ? JSON.parse(token.advanced_settings) : {},
         createdAt: token.created_at,
         archived: (token.archived ?? 0) === 1,
@@ -1100,6 +1103,9 @@ router.get('/:id/status', async (req: Request, res: Response) => {
         creatorAddress: token.creator_address || null,
         crossChainEnabled: isCrossChainEnabled(token.cross_chain_enabled),
         advancedSettings,
+        verified: token.verified === 1,
+        verifiedAt: token.verified_at || null,
+        verifiedBy: token.verified_by || null,
         createdAt: token.created_at || null,
         customization: {
           bannerImageIpfs: token.banner_image_ipfs || null,
@@ -1121,6 +1127,8 @@ router.get('/:id/status', async (req: Request, res: Response) => {
         currentSupply: d.current_supply || '0',
         reserveBalance: d.reserve_balance || '0',
         marketCap: parseFloat(d.market_cap || '0') || 0,
+        holderCount: d.holder_count || 0,
+        holderCountUpdatedAt: d.holder_count_updated_at || null,
       })),
     });
   } catch (error) {
@@ -1480,6 +1488,113 @@ router.get('/:id/market-depth', async (req: Request, res: Response) => {
   }
 });
 
+// POST /tokens/:id/update-holder-count - Manually update holder count (must be before /:id route)
+router.post('/:id/update-holder-count', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { chain } = req.body;
+    
+    const { updateTokenHolderCount } = await import('../services/holderCount');
+    await updateTokenHolderCount(id, chain);
+    
+    res.json({ success: true, message: 'Holder count update initiated' });
+  } catch (error: any) {
+    console.error('Error updating holder count:', error);
+    res.status(500).json({ error: 'Failed to update holder count', details: error.message });
+  }
+});
+
+// GET /tokens/:id/related - Get related tokens (must be before /:id route)
+router.get('/:id/related', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { limit = 5 } = req.query;
+    
+    // Get the current token
+    const token = await dbGet('SELECT * FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+    
+    // Find related tokens based on:
+    // 1. Same creator (highest priority)
+    // 2. Similar base price range (within 50%)
+    // 3. Tokens created around the same time
+    
+    let relatedQuery = `
+      SELECT 
+        t.*,
+        COUNT(DISTINCT td.id) as deployment_count,
+        AVG(td.market_cap) as avg_market_cap,
+        MAX(td.market_cap) as max_market_cap
+      FROM tokens t
+      LEFT JOIN token_deployments td ON t.id = td.token_id AND td.status = 'deployed'
+      WHERE t.id != ?
+        AND (t.deleted IS NULL OR t.deleted = 0)
+        AND (t.visible_in_marketplace IS NULL OR t.visible_in_marketplace = 1)
+    `;
+    
+    const params: any[] = [id];
+    const conditions: string[] = [];
+    
+    // Same creator (highest priority)
+    if (token.creator_address) {
+      conditions.push('t.creator_address = ?');
+      params.push(token.creator_address);
+    }
+    
+    // Similar base price (within 50% range)
+    if (token.base_price && token.base_price > 0) {
+      const priceLower = token.base_price * 0.5;
+      const priceUpper = token.base_price * 1.5;
+      conditions.push('(t.base_price >= ? AND t.base_price <= ?)');
+      params.push(priceLower, priceUpper);
+    }
+    
+    // Build query
+    if (conditions.length > 0) {
+      relatedQuery += ` AND (${conditions.join(' OR ')})`;
+    } else {
+      // If no specific conditions, just get recent tokens
+      relatedQuery += ` AND t.created_at >= datetime('now', '-30 days')`;
+    }
+    
+    relatedQuery += `
+      GROUP BY t.id
+      ORDER BY 
+        CASE WHEN t.creator_address = ? THEN 1 ELSE 2 END,
+        CASE WHEN t.verified = 1 THEN 1 ELSE 2 END,
+        t.created_at DESC
+      LIMIT ?
+    `;
+    
+    params.push(token.creator_address || '', parseInt(limit as string));
+    
+    const relatedTokens = await dbAll(relatedQuery, params) as any[];
+    
+    // Format tokens
+    const formattedTokens = relatedTokens.map(t => ({
+      id: t.id,
+      name: t.name,
+      symbol: t.symbol,
+      logoIpfs: t.logo_ipfs,
+      logoUrl: t.logo_ipfs ? `https://ipfs.io/ipfs/${t.logo_ipfs}` : null,
+      description: t.description,
+      basePrice: t.base_price,
+      verified: t.verified === 1,
+      deploymentCount: t.deployment_count || 0,
+      avgMarketCap: t.avg_market_cap || 0,
+      maxMarketCap: t.max_market_cap || 0,
+      createdAt: t.created_at,
+    }));
+    
+    res.json({ relatedTokens: formattedTokens });
+  } catch (error) {
+    console.error('Error fetching related tokens:', error);
+    res.status(500).json({ error: 'Failed to fetch related tokens' });
+  }
+});
+
 // GET /tokens/:id/price-sync - Must be before /:id route
 router.get('/:id/price-sync', async (req: Request, res: Response) => {
   try {
@@ -1595,6 +1710,9 @@ router.get('/:id', async (req: Request, res: Response) => {
       pinned: toBoolean(token.pinned),
       deleted: toBoolean(token.deleted),
       visibleInMarketplace: token.visible_in_marketplace !== undefined ? toBoolean(token.visible_in_marketplace) : true,
+      verified: token.verified === 1,
+      verifiedAt: token.verified_at || null,
+      verifiedBy: token.verified_by || null,
       createdAt: token.created_at || null,
       deployments: deployments.map(d => ({
         chain: d.chain || null,
@@ -1607,12 +1725,120 @@ router.get('/:id', async (req: Request, res: Response) => {
         currentSupply: d.current_supply || '0',
         reserveBalance: d.reserve_balance || '0',
         marketCap: parseFloat(d.market_cap || '0') || 0,
+        holderCount: d.holder_count || 0,
+        holderCountUpdatedAt: d.holder_count_updated_at || null,
         paused: false, // TODO: Get actual pause status from contract
       })),
     });
   } catch (error) {
     console.error('Error fetching token:', error);
     res.status(500).json({ error: 'Failed to fetch token' });
+  }
+});
+
+// GET /tokens/:id/analytics - Get token analytics and statistics
+router.get('/:id/analytics', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { period = '7d' } = req.query; // 24h, 7d, 30d, all
+    
+    // Calculate date filter
+    let dateFilter = '';
+    const params: any[] = [id];
+    if (period === '24h') {
+      dateFilter = "AND created_at >= datetime('now', '-1 day')";
+    } else if (period === '7d') {
+      dateFilter = "AND created_at >= datetime('now', '-7 days')";
+    } else if (period === '30d') {
+      dateFilter = "AND created_at >= datetime('now', '-30 days')";
+    }
+    // 'all' means no date filter
+    
+    // Get transaction statistics
+    const txStats = await dbAll(`
+      SELECT 
+        type,
+        COUNT(*) as count,
+        SUM(CAST(amount AS REAL)) as total_amount,
+        AVG(CAST(price AS REAL)) as avg_price,
+        SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as total_volume
+      FROM transactions
+      WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
+      GROUP BY type
+    `, params) as any[];
+    
+    // Get volume by day
+    const volumeByDay = await dbAll(`
+      SELECT 
+        DATE(created_at) as date,
+        type,
+        COUNT(*) as count,
+        SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as volume
+      FROM transactions
+      WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
+      GROUP BY DATE(created_at), type
+      ORDER BY date DESC
+    `, params) as any[];
+    
+    // Get unique addresses
+    const uniqueAddresses = await dbAll(`
+      SELECT COUNT(DISTINCT from_address) + COUNT(DISTINCT to_address) as unique_count
+      FROM transactions
+      WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
+    `, params) as any[];
+    
+    // Calculate buy/sell ratio
+    const buyTxs = txStats.find((s: any) => s.type === 'buy');
+    const sellTxs = txStats.find((s: any) => s.type === 'sell');
+    const buyCount = buyTxs?.count || 0;
+    const sellCount = sellTxs?.count || 0;
+    const buySellRatio = sellCount > 0 ? buyCount / sellCount : buyCount;
+    
+    // Calculate total volume
+    const totalVolume = txStats.reduce((sum: number, s: any) => sum + (parseFloat(s.total_volume || '0') || 0), 0);
+    
+    // Get price change (first vs last transaction)
+    const priceChange = await dbAll(`
+      SELECT 
+        (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at DESC LIMIT 1) as last_price,
+        (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at ASC LIMIT 1) as first_price
+    `, [...params, ...params]) as any[];
+    
+    const firstPrice = parseFloat(priceChange[0]?.first_price || '0') || 0;
+    const lastPrice = parseFloat(priceChange[0]?.last_price || '0') || 0;
+    const priceChangePercent = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
+    
+    res.json({
+      period,
+      statistics: {
+        totalTransactions: txStats.reduce((sum: number, s: any) => sum + (parseInt(s.count || '0') || 0), 0),
+        buyTransactions: buyCount,
+        sellTransactions: sellCount,
+        buySellRatio: buySellRatio.toFixed(2),
+        totalVolume,
+        avgPrice: txStats.length > 0 ? txStats.reduce((sum: number, s: any) => sum + (parseFloat(s.avg_price || '0') || 0), 0) / txStats.length : 0,
+        uniqueAddresses: uniqueAddresses[0]?.unique_count || 0,
+        priceChange: priceChangePercent,
+        firstPrice,
+        lastPrice,
+      },
+      volumeByDay: volumeByDay.map((v: any) => ({
+        date: v.date,
+        type: v.type,
+        count: parseInt(v.count || '0') || 0,
+        volume: parseFloat(v.volume || '0') || 0,
+      })),
+      transactionsByType: txStats.map((s: any) => ({
+        type: s.type,
+        count: parseInt(s.count || '0') || 0,
+        totalAmount: parseFloat(s.total_amount || '0') || 0,
+        avgPrice: parseFloat(s.avg_price || '0') || 0,
+        totalVolume: parseFloat(s.total_volume || '0') || 0,
+      })),
+    });
+  } catch (error) {
+    console.error('Error fetching token analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch token analytics' });
   }
 });
 

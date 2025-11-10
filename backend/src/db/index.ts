@@ -63,6 +63,9 @@ export function initializeDatabase(): Promise<void> {
       pinned INTEGER NOT NULL DEFAULT 0,
       deleted INTEGER NOT NULL DEFAULT 0,
       visible_in_marketplace INTEGER NOT NULL DEFAULT 1,
+      verified INTEGER NOT NULL DEFAULT 0,
+      verified_at TEXT,
+      verified_by TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -80,6 +83,8 @@ export function initializeDatabase(): Promise<void> {
       current_supply TEXT NOT NULL DEFAULT '0',
       reserve_balance TEXT NOT NULL DEFAULT '0',
       market_cap REAL NOT NULL DEFAULT 0,
+      holder_count INTEGER NOT NULL DEFAULT 0,
+      holder_count_updated_at TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (token_id) REFERENCES tokens(id),

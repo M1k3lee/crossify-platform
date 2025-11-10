@@ -240,6 +240,94 @@ export async function migrateDatabase(): Promise<void> {
       }
     }
 
+    // Add verification fields
+    const verificationColumns = [
+      { name: 'verified', type: 'INTEGER', defaultValue: 0 },
+      { name: 'verified_at', type: 'TEXT', defaultValue: null },
+      { name: 'verified_by', type: 'TEXT', defaultValue: null },
+    ];
+
+    for (const column of verificationColumns) {
+      try {
+        await dbGet(`SELECT ${column.name} FROM tokens LIMIT 1`);
+        console.log(`✅ ${column.name} column already exists`);
+      } catch (error: any) {
+        if (error.message?.includes('no such column')) {
+          console.log(`➕ Adding ${column.name} column...`);
+          const defaultClause = column.defaultValue !== null 
+            ? `DEFAULT ${column.defaultValue}` 
+            : '';
+          await dbRun(`
+            ALTER TABLE tokens 
+            ADD COLUMN ${column.name} ${column.type} ${defaultClause}
+          `);
+          if (column.defaultValue !== null && column.defaultValue !== 0) {
+            await dbRun(`
+              UPDATE tokens 
+              SET ${column.name} = ${column.defaultValue} 
+              WHERE ${column.name} IS NULL
+            `);
+          }
+          console.log(`✅ Added ${column.name} column`);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // Add holder_count fields to token_deployments
+    const holderCountColumns = [
+      { name: 'holder_count', type: 'INTEGER', defaultValue: 0 },
+      { name: 'holder_count_updated_at', type: 'TEXT', defaultValue: null },
+    ];
+
+    for (const column of holderCountColumns) {
+      try {
+        await dbGet(`SELECT ${column.name} FROM token_deployments LIMIT 1`);
+        console.log(`✅ ${column.name} column already exists`);
+      } catch (error: any) {
+        if (error.message?.includes('no such column')) {
+          console.log(`➕ Adding ${column.name} column...`);
+          const defaultClause = column.defaultValue !== null 
+            ? `DEFAULT ${column.defaultValue}` 
+            : '';
+          await dbRun(`
+            ALTER TABLE token_deployments 
+            ADD COLUMN ${column.name} ${column.type} ${defaultClause}
+          `);
+          if (column.defaultValue !== null && column.defaultValue !== 0) {
+            await dbRun(`
+              UPDATE token_deployments 
+              SET ${column.name} = ${column.defaultValue} 
+              WHERE ${column.name} IS NULL
+            `);
+          }
+          console.log(`✅ Added ${column.name} column`);
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // Create indexes
+    try {
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_tokens_verified ON tokens(verified)');
+      console.log('✅ Created index for verified tokens');
+    } catch (error: any) {
+      if (!error.message?.includes('already exists')) {
+        console.log('ℹ️  Index for verified tokens may already exist');
+      }
+    }
+
+    try {
+      await dbRun('CREATE INDEX IF NOT EXISTS idx_token_deployments_holder_count ON token_deployments(holder_count)');
+      console.log('✅ Created index for holder counts');
+    } catch (error: any) {
+      if (!error.message?.includes('already exists')) {
+        console.log('ℹ️  Index for holder counts may already exist');
+      }
+    }
+
     console.log('✅ Database migrations completed successfully');
   } catch (error) {
     console.error('❌ Database migration error:', error);

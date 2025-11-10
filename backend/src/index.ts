@@ -19,6 +19,7 @@ import { startPriceSyncService } from './services/priceSync';
 import { startPriceMonitoring } from './services/unifiedLiquidity';
 import { getCrossChainRelayer } from './services/crossChainRelayer';
 import { startStartupSync } from './services/startupSync';
+import { startHolderCountService } from './services/holderCount';
 
 dotenv.config();
 
@@ -148,6 +149,10 @@ async function start() {
     // Start startup sync (syncs all tokens from blockchain on startup)
     startStartupSync();
     console.log('✅ Startup sync service started (will sync tokens from blockchain)');
+
+    // Start holder count service
+    startHolderCountService();
+    console.log('✅ Holder count service started');
 
     // Start server
     app.listen(PORT, () => {
