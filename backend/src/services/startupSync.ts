@@ -225,6 +225,22 @@ async function syncTokenToDatabase(
           console.log(`    ✅ Updated curve address for ${name} (${symbol}) on ${chain}`);
         }
       }
+      
+      // Ensure token is visible in marketplace (even if deployment already exists)
+      try {
+        const updateResult = await dbRun(
+          'UPDATE tokens SET visible_in_marketplace = 1 WHERE id = ? AND (visible_in_marketplace = 0 OR visible_in_marketplace IS NULL)',
+          [existingDeployment.token_id]
+        );
+        const updated = (updateResult as any)?.changes ?? (updateResult as any)?.rowCount ?? 0;
+        if (updated > 0) {
+          console.log(`    ✅ Made token ${existingDeployment.token_id} visible in marketplace`);
+        }
+      } catch (updateError) {
+        // Non-critical error - log but don't fail
+        console.warn(`    ⚠️  Could not update token visibility for ${existingDeployment.token_id}:`, updateError);
+      }
+      
       return false; // Already exists
     }
 
