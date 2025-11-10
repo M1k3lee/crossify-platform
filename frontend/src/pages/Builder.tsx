@@ -326,15 +326,26 @@ export default function Builder() {
         crossChainEnabled: actualCrossChainEnabled,
       };
 
-      const tokenResponse = await axios.post(
-        `${API_BASE}/tokens/create`,
-        tokenDataWithAdvanced,
-        {
-          headers: {
-            'x-creator-address': address || '',
-          },
-        }
-      ).catch((error) => {
+      let tokenResponse;
+      try {
+        console.log('📝 Creating token in backend...', { 
+          name: tokenData.name, 
+          symbol: tokenData.symbol,
+          address: address || 'no address'
+        });
+        
+        tokenResponse = await axios.post(
+          `${API_BASE}/tokens/create`,
+          tokenDataWithAdvanced,
+          {
+            headers: {
+              'x-creator-address': address || '',
+            },
+          }
+        );
+        
+        console.log('✅ Token created successfully:', tokenResponse.data);
+      } catch (error: any) {
         console.error('❌ Token creation API error:', error);
         
         // Log full error details for debugging
@@ -345,12 +356,36 @@ export default function Builder() {
           // Log validation errors if present
           if (error.response.data?.details) {
             console.error('Validation errors:', error.response.data.details);
+            const errorMessages = error.response.data.details.map((d: any) => `${d.path}: ${d.message}`).join(', ');
+            toast.error(`Token creation failed: ${errorMessages}`, { duration: 10000 });
+          } else if (error.response.data?.message) {
+            toast.error(`Token creation failed: ${error.response.data.message}`, { duration: 10000 });
+          } else {
+            toast.error(`Token creation failed: ${error.response.status} ${error.response.statusText}`, { duration: 10000 });
           }
+        } else if (error.request) {
+          console.error('No response received:', error.request);
+          toast.error('Token creation failed: No response from server. Please check your connection.', { duration: 10000 });
+        } else {
+          console.error('Error setting up request:', error.message);
+          toast.error(`Token creation failed: ${error.message}`, { duration: 10000 });
         }
         
+        setLoading(false);
+        setDeploying(false);
         throw error;
-      });
+      }
+      
+      if (!tokenResponse || !tokenResponse.data || !tokenResponse.data.tokenId) {
+        console.error('❌ Invalid token response:', tokenResponse);
+        toast.error('Token creation failed: Invalid response from server', { duration: 10000 });
+        setLoading(false);
+        setDeploying(false);
+        return;
+      }
+      
       const tokenId = tokenResponse.data.tokenId;
+      console.log('✅ Token ID received:', tokenId);
       
       // Track token creation
       trackTokenCreation({
@@ -477,19 +512,45 @@ export default function Builder() {
       // Save deployments to backend
       try {
         console.log('💾 Saving deployments to backend...', { tokenId, deployments });
+        console.log('📋 Deployment data:', JSON.stringify({ tokenId, chains: formData.chains, deployments }, null, 2));
+        
         const deployResponse = await axios.post(`${API_BASE}/tokens/${tokenId}/deploy`, {
           chains: formData.chains,
           deployments,
         });
-        console.log('✅ Deployments saved:', deployResponse.data);
+        
+        console.log('✅ Deployments saved successfully:', deployResponse.data);
+        
+        // Verify token exists after saving deployments
+        try {
+          const verifyResponse = await axios.get(`${API_BASE}/tokens/${tokenId}/status`);
+          console.log('✅ Token verified in database:', verifyResponse.data);
+        } catch (verifyError: any) {
+          console.error('⚠️ Warning: Could not verify token after deployment save:', verifyError);
+          if (verifyError.response?.status === 404) {
+            console.error('❌ CRITICAL: Token not found in database after deployment save!');
+            toast.error('Token deployed but not found in database. Token ID: ' + tokenId, { duration: 15000 });
+          }
+        }
       } catch (error: any) {
         console.error('❌ Error saving deployments:', error);
         if (error.response) {
           console.error('Response status:', error.response.status);
-          console.error('Response data:', error.response.data);
+          console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+          
+          if (error.response.status === 404) {
+            console.error('❌ CRITICAL: Token not found when saving deployments!');
+            console.error('Token ID:', tokenId);
+            console.error('This means the token creation failed but the error was not caught properly.');
+            toast.error(`Token not found in database. Token ID: ${tokenId}. Please check backend logs.`, { duration: 15000 });
+          } else {
+            toast.error(`Failed to save deployments: ${error.response.data?.error || error.response.statusText}`, { duration: 10000 });
+          }
+        } else {
+          toast.error('Failed to save deployments: ' + (error.message || 'Unknown error'), { duration: 10000 });
         }
-        // Don't fail the whole process if deployment save fails - token is already created
-        toast.error('Deployment succeeded but failed to save details. Token ID: ' + tokenId);
+        // Don't fail the whole process if deployment save fails - deployments are on-chain
+        // But log the error so we can investigate
       }
 
       toast.success('Deployment complete!', { duration: 3000 });
