@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { dbAll, dbRun } from '../db';
+import { dbAll, dbRun, dbGet } from '../db/adapter';
 
 export const router = Router();
 
@@ -81,6 +81,65 @@ router.post('/', async (req: Request, res: Response) => {
     );
     
     console.log(`✅ Recorded ${type} transaction for token ${tokenId} on ${chain}: ${txHash}`);
+    
+    // Update supply and trigger price sync for buy/sell transactions
+    if (status === 'confirmed' && (type === 'buy' || type === 'sell') && amount && price) {
+      try {
+        // Get current deployment state
+        const deployment = await dbGet(
+          `SELECT current_supply, reserve_balance FROM token_deployments WHERE token_id = ? AND chain = ?`,
+          [tokenId, chain]
+        ) as any;
+        
+        if (deployment) {
+          const currentSupply = parseFloat(deployment.current_supply || '0');
+          const currentReserve = parseFloat(deployment.reserve_balance || '0');
+          const transactionAmount = parseFloat(amount);
+          const transactionPrice = parseFloat(price);
+          
+          // Calculate new supply and reserve
+          let newSupply: number;
+          let newReserve: number;
+          
+          if (type === 'buy') {
+            // Buy: supply increases, reserve increases
+            newSupply = currentSupply + transactionAmount;
+            newReserve = currentReserve + (transactionPrice * transactionAmount);
+          } else {
+            // Sell: supply decreases, reserve decreases
+            newSupply = Math.max(0, currentSupply - transactionAmount);
+            newReserve = Math.max(0, currentReserve - (transactionPrice * transactionAmount));
+          }
+          
+          // Update deployment
+          await dbRun(
+            `UPDATE token_deployments 
+             SET current_supply = ?, reserve_balance = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE token_id = ? AND chain = ?`,
+            [newSupply.toString(), newReserve.toString(), tokenId, chain]
+          );
+          
+          console.log(`✅ Updated supply for ${tokenId} on ${chain}: ${currentSupply} → ${newSupply}`);
+          console.log(`✅ Updated reserve for ${tokenId} on ${chain}: ${currentReserve} → ${newReserve}`);
+          
+          // Trigger global supply update and price sync
+          try {
+            const { updateGlobalSupply, syncPriceAcrossChains } = await import('../services/globalSupply');
+            await updateGlobalSupply(tokenId, chain, newSupply.toString());
+            await syncPriceAcrossChains(tokenId);
+            console.log(`✅ Triggered price sync for ${tokenId} across all chains`);
+          } catch (syncError) {
+            console.error('⚠️ Error syncing prices (non-critical):', syncError);
+            // Don't fail transaction recording if sync fails
+          }
+        } else {
+          console.warn(`⚠️ Deployment not found for token ${tokenId} on ${chain}, skipping supply update`);
+        }
+      } catch (updateError) {
+        console.error('⚠️ Error updating supply (non-critical):', updateError);
+        // Don't fail transaction recording if supply update fails
+      }
+    }
     
     res.json({
       success: true,

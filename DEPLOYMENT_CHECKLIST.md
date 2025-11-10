@@ -1,164 +1,133 @@
-# TokenFactory Deployment Checklist
+# Deployment Checklist
 
-## ✅ Pre-Deployment Checklist
+## Changes Made (All Committed & Pushed)
 
-Before deploying, ensure you have:
+### Frontend Changes (Vercel)
+- ✅ TokenDetail page error handling fixes
+- ✅ ErrorBoundary component
+- ✅ Footer social links (X, Discord, GitHub)
+- ✅ Chain name normalization
+- ✅ Safe property access
+- ✅ All TypeScript errors fixed
 
-- [ ] **Private Key** - Wallet private key with testnet tokens
-- [ ] **Testnet Tokens** - Enough ETH/BNB for gas fees (0.1+ recommended)
-- [ ] **Environment File** - `.env` file in `contracts/` directory
-- [ ] **RPC URLs** - Working RPC endpoints for each network
-- [ ] **Contract Addresses** - CrossChainSync and GlobalSupplyTracker addresses
+### Backend Changes (Railway)
+- ✅ Decimals NOT NULL constraint fix
+- ✅ RPC URL fixes (Sepolia, Base Sepolia, BSC Testnet)
+- ✅ Safe JSON parsing
+- ✅ Boolean handling for PostgreSQL
+- ✅ Token visibility management
 
-## 📋 Step-by-Step Deployment
+## Deployment Status
 
-### 1. Prepare Environment
+### Vercel (Frontend)
+**Status**: Should auto-deploy, but check deployment limit
 
-Create `contracts/.env` file with:
-```env
-PRIVATE_KEY=your_private_key_here
-SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
-BSC_TESTNET_RPC_URL=https://bsc-testnet.publicnode.com
-BASE_SEPOLIA_RPC_URL=https://base-sepolia-rpc.publicnode.com
-```
+**Action Required**:
+1. Check if Vercel deployment limit has reset
+2. If limit reset: Vercel will auto-deploy from GitHub
+3. If limit not reset: Wait for limit to reset, or manually trigger deployment
+4. Verify `VITE_API_BASE` environment variable is set in Vercel
 
-### 2. Verify Wallet Balance
+**Environment Variables** (Verify in Vercel):
+- `VITE_API_BASE`: Should be set to Railway backend URL
+  - Example: `https://crossify-platform-production.up.railway.app`
 
-Check you have testnet tokens:
-- **Sepolia ETH**: Get from https://sepoliafaucet.com/
-- **BSC Testnet BNB**: Get from https://testnet.bnbchain.org/faucet-smart
-- **Base Sepolia ETH**: Get from https://www.coinbase.com/faucets/base-ethereum-goerli-faucet
+### Railway (Backend)
+**Status**: Should auto-deploy from GitHub
 
-### 3. Compile Contracts
+**Action Required**:
+1. Check Railway deployment status
+2. Verify Railway auto-deployed latest changes
+3. If not auto-deployed: Manually trigger deployment
+4. Verify `DATABASE_URL` is set (PostgreSQL)
 
+**Environment Variables** (Verify in Railway):
+- `DATABASE_URL`: PostgreSQL connection string
+- All RPC URLs (optional, will use defaults if not set)
+- Factory addresses for each chain
+
+## Deployment Steps
+
+### Option 1: Auto-Deploy (Recommended)
+1. **Vercel**: Check if deployment limit reset, then wait for auto-deploy
+2. **Railway**: Check if auto-deployed, verify in logs
+3. If both auto-deployed: ✅ Done!
+4. If not: Use Option 2
+
+### Option 2: Manual Deploy
+1. **Vercel**:
+   - Go to Vercel dashboard
+   - Select your project
+   - Click "Redeploy" or trigger new deployment
+   - Verify `VITE_API_BASE` environment variable is set
+
+2. **Railway**:
+   - Go to Railway dashboard
+   - Select your project
+   - Click "Redeploy" or trigger new deployment
+   - Verify `DATABASE_URL` is set
+   - Check deployment logs
+
+## Verification After Deployment
+
+### Frontend (Vercel)
+1. ✅ Check token detail page loads
+2. ✅ Verify social links in footer
+3. ✅ Test token creation with metadata
+4. ✅ Verify charts load
+5. ✅ Check no console errors
+
+### Backend (Railway)
+1. ✅ Check backend logs for startup
+2. ✅ Verify PostgreSQL connection
+3. ✅ Check token sync working
+4. ✅ Test API endpoints
+5. ✅ Verify no errors in logs
+
+## Recommended Action
+
+**Deploy Both** (Vercel + Railway):
+- Both have changes that need to be deployed
+- Frontend: UI fixes, error handling, social links
+- Backend: Database fixes, RPC URLs, decimals handling
+
+**Deployment Order**:
+1. **Railway first** (Backend): Deploy backend changes
+2. **Vercel second** (Frontend): Deploy frontend changes after backend is ready
+
+**Check Before Deploying**:
+- ✅ All code committed and pushed to GitHub
+- ✅ Vercel deployment limit reset (if it was hit)
+- ✅ Railway auto-deploy enabled (should be by default)
+- ✅ Environment variables set in both platforms
+
+## Quick Check Commands
+
+### Check Recent Commits
 ```bash
-cd contracts
-npx hardhat compile
+git log --oneline -5
 ```
 
-Expected output: `Compiled successfully`
-
-### 4. Deploy to Sepolia
-
+### Check if Changes are Pushed
 ```bash
-npx hardhat run scripts/deploy.ts --network sepolia
+git status
 ```
 
-**Copy the factory address from output:**
-```
-✅ TokenFactory deployed successfully!
-📍 Address: 0x...
-```
+### Verify Environment Variables
+- **Vercel**: Check dashboard → Settings → Environment Variables
+- **Railway**: Check dashboard → Variables tab
 
-### 5. Deploy to BSC Testnet
+## Summary
 
-```bash
-npx hardhat run scripts/deploy.ts --network bscTestnet
-```
+**Answer: Deploy Both (Vercel + Railway)**
 
-**Copy the factory address from output**
+1. **Railway**: Deploy backend changes (decimals fix, RPC URLs)
+2. **Vercel**: Deploy frontend changes (error handling, social links)
 
-### 6. Deploy to Base Sepolia
+**Deployment Method**:
+- If auto-deploy enabled: Wait for auto-deploy, then verify
+- If auto-deploy not working: Manually trigger deployment in both platforms
 
-```bash
-npx hardhat run scripts/deploy.ts --network baseSepolia
-```
-
-**Copy the factory address from output**
-
-### 7. Update Frontend Environment Variables
-
-**For Vercel:**
-1. Go to Project Settings → Environment Variables
-2. Add/Update:
-   - `VITE_ETH_FACTORY` = (Sepolia factory address)
-   - `VITE_BSC_FACTORY` = (BSC Testnet factory address)
-   - `VITE_BASE_FACTORY` = (Base Sepolia factory address)
-3. Redeploy frontend
-
-**For Local:**
-Update `frontend/.env`:
-```env
-VITE_ETH_FACTORY=0x... (Sepolia factory address)
-VITE_BSC_FACTORY=0x... (BSC Testnet factory address)
-VITE_BASE_FACTORY=0x... (Base Sepolia factory address)
-```
-
-### 8. Test Token Creation
-
-1. Go to Builder page
-2. Create a test token
-3. Select all chains (Sepolia, BSC, Base)
-4. Deploy token
-5. Verify it deploys successfully without errors
-
-## 🔍 Verification
-
-After deployment, verify:
-
-- [ ] TokenFactory deployed on all networks
-- [ ] Factory addresses copied correctly
-- [ ] Frontend environment variables updated
-- [ ] Token creation works without errors
-- [ ] Cross-chain sync is working (if enabled)
-
-## 📝 Current Contract Addresses
-
-### Cross-Chain Infrastructure (Already Deployed)
-
-**Base Sepolia:**
-- CrossChainSync: `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
-- GlobalSupplyTracker: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
-
-**BSC Testnet:**
-- CrossChainSync: `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
-- GlobalSupplyTracker: `0xe84Ae64735261F441e0bcB12bCf60630c5239ef4`
-
-**Sepolia:**
-- CrossChainSync: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
-- GlobalSupplyTracker: `0x130195A8D09dfd99c36D5903B94088EDBD66533e`
-
-### TokenFactory Addresses (To Be Deployed)
-
-- Sepolia: `TBD` (will be generated after deployment)
-- BSC Testnet: `TBD` (will be generated after deployment)
-- Base Sepolia: `TBD` (will be generated after deployment)
-
-## ⚠️ Important Notes
-
-1. **Private Key Security**: Never commit your `.env` file with real private keys
-2. **Testnet Only**: These deployments are for testnets only
-3. **Gas Fees**: Ensure you have enough testnet tokens for gas fees
-4. **Backup Addresses**: Save all factory addresses for future reference
-
-## 🆘 Troubleshooting
-
-### "Private key not found"
-- Check `.env` file exists in `contracts/` directory
-- Verify `PRIVATE_KEY=...` is set (no quotes)
-
-### "Insufficient funds"
-- Get testnet tokens from faucets
-- Check wallet balance on block explorers
-
-### "RPC connection failed"
-- Check RPC URLs in `.env` file
-- Try public RPC endpoints
-
-### "Transaction reverted"
-- Verify contract addresses are correct
-- Check network configuration
-
-## ✅ Success Criteria
-
-After deployment, you should be able to:
-1. Create tokens on all networks without errors
-2. See tokens in the marketplace
-3. Buy/sell tokens successfully
-4. See cross-chain price synchronization (if enabled)
-
----
-
-**Status:** Ready for deployment
-**Estimated Time:** 15-30 minutes
-**Priority:** High (blocks token creation)
+**Priority**: 
+- Railway first (backend must be ready)
+- Vercel second (frontend depends on backend)

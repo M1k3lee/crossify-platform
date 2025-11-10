@@ -862,6 +862,7 @@ export default function BuyWidget({
           Buy
         </button>
         <button
+          data-sell-tab
           onClick={() => {
             setTab('sell');
             setAmount('');
