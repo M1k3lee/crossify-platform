@@ -366,12 +366,56 @@ router.get('/statistics', verifyAdmin, async (req: Request, res: Response) => {
       deployments: await dbGet('SELECT COUNT(*) as count FROM token_deployments WHERE status = "deployed"') as any,
       totalFees: await dbGet('SELECT SUM(amount_usd) as total FROM platform_fees WHERE status = "confirmed"') as any,
       activeUsers: await dbGet('SELECT COUNT(DISTINCT creator_address) as count FROM tokens WHERE creator_address IS NOT NULL') as any,
+      verifiedTokens: await dbGet('SELECT COUNT(*) as count FROM tokens WHERE verified = 1') as any,
     };
     
     res.json(stats);
   } catch (error) {
     console.error('Error fetching statistics:', error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
+
+// POST /admin/tokens/:id/verify - Verify a token
+router.post('/tokens/:id/verify', verifyAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { verified = true } = req.body;
+    const adminUser = (req as any).user;
+    
+    // Check if token exists
+    const token = await dbGet('SELECT id, name, symbol FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+    
+    // Update verification status
+    if (verified) {
+      await dbRun(
+        `UPDATE tokens 
+         SET verified = 1, verified_at = CURRENT_TIMESTAMP, verified_by = ?
+         WHERE id = ?`,
+        [adminUser.username || adminUser.role || 'admin', id]
+      );
+      console.log(`✅ Token ${id} (${token.name}) verified by admin`);
+    } else {
+      await dbRun(
+        `UPDATE tokens 
+         SET verified = 0, verified_at = NULL, verified_by = NULL
+         WHERE id = ?`,
+        [id]
+      );
+      console.log(`✅ Token ${id} (${token.name}) verification removed by admin`);
+    }
+    
+    res.json({ 
+      success: true, 
+      verified,
+      message: verified ? 'Token verified successfully' : 'Token verification removed'
+    });
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    res.status(500).json({ error: 'Failed to verify token' });
   }
 });
 

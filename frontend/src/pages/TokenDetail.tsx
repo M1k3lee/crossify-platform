@@ -5,7 +5,8 @@ import {
   AlertCircle, Copy, CheckCircle, 
   Zap, Twitter, MessageCircle,
   TrendingUp, TrendingDown, ExternalLink, Settings,
-  Github, BookOpen, MessageSquare, Youtube, Linkedin, Loader2
+  Github, BookOpen, MessageSquare, Youtube, Linkedin, Loader2,
+  Share2, Users, Activity, Clock
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -123,6 +124,62 @@ export default function TokenDetail() {
     },
     enabled: !!id && !!status, // Only fetch if token exists
     retry: false,
+  });
+
+  // Fetch recent transactions
+  const { data: transactionsData } = useQuery({
+    queryKey: ['token-transactions', id, selectedChain],
+    queryFn: async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/transactions`, {
+          params: {
+            tokenId: id,
+            chain: selectedChain,
+            limit: 10,
+          },
+        });
+        return response.data;
+      } catch (error: any) {
+        console.error('Error fetching transactions:', error);
+        return { transactions: [], count: 0 };
+      }
+    },
+    enabled: !!id && !!selectedChain,
+    refetchInterval: 15000,
+  });
+
+  // Fetch related tokens
+  const { data: relatedTokensData } = useQuery({
+    queryKey: ['related-tokens', id],
+    queryFn: async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/tokens/${id}/related`, {
+          params: { limit: 6 },
+        });
+        return response.data;
+      } catch (error: any) {
+        console.error('Error fetching related tokens:', error);
+        return { relatedTokens: [] };
+      }
+    },
+    enabled: !!id,
+  });
+
+  // Fetch token analytics
+  const { data: analyticsData } = useQuery({
+    queryKey: ['token-analytics', id, '7d'],
+    queryFn: async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/tokens/${id}/analytics`, {
+          params: { period: '7d' },
+        });
+        return response.data;
+      } catch (error: any) {
+        console.error('Error fetching token analytics:', error);
+        return null;
+      }
+    },
+    enabled: !!id,
   });
 
   // Safely extract data with defaults - MUST be called before any conditional returns
@@ -401,40 +458,100 @@ export default function TokenDetail() {
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-transparent">
         {/* Banner */}
-        {bannerUrl && (
-          <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border border-gray-700/50">
-            <img
-              src={bannerUrl}
-              alt={`${tokenName} banner`}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
+        <div className="relative w-full h-64 mb-6 rounded-2xl overflow-hidden border border-gray-700/50">
+          {bannerUrl ? (
+            <>
+              <img
+                src={bannerUrl}
+                alt={`${tokenName} banner`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Hide image and show gradient fallback
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLImageElement).parentElement;
+                  if (parent) {
+                    parent.classList.add('bg-gradient-to-br');
+                    parent.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)`;
+                  }
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+            </>
+          ) : (
+            <div 
+              className="w-full h-full bg-gradient-to-br"
+              style={{
+                background: `linear-gradient(135deg, ${primaryColor}40 0%, ${accentColor}40 100%)`,
               }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <div className="absolute bottom-6 left-6 right-6">
-              <h1 className="text-4xl font-bold text-white mb-2">{tokenName}</h1>
-              <p className="text-xl text-gray-200">{tokenSymbol}</p>
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+            </div>
+          )}
+          <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-4xl font-bold text-white drop-shadow-lg">{tokenName}</h1>
+                  {token?.verified && (
+                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 border border-blue-500/50 rounded-lg">
+                      <CheckCircle className="w-4 h-4 text-blue-300" />
+                      <span className="text-xs text-blue-300 font-medium">Verified</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xl text-gray-200 drop-shadow-lg">{tokenSymbol}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Share Button */}
+              <button
+                onClick={async () => {
+                  const url = window.location.href;
+                  try {
+                    if (navigator.share) {
+                      await navigator.share({
+                        title: `${tokenName} (${tokenSymbol})`,
+                        text: `Check out ${tokenName} on Crossify!`,
+                        url: url,
+                      });
+                    } else {
+                      await navigator.clipboard.writeText(url);
+                      toast.success('Link copied to clipboard!');
+                    }
+                  } catch (error) {
+                    // User cancelled or error occurred
+                    if ((error as Error).name !== 'AbortError') {
+                      await navigator.clipboard.writeText(url);
+                      toast.success('Link copied to clipboard!');
+                    }
+                  }
+                }}
+                className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-colors"
+                title="Share token"
+              >
+                <Share2 className="w-5 h-5 text-white" />
+              </button>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Token Header Card */}
+        {/* Token Header Card - Simplified when banner is present */}
         <div className="bg-gradient-to-r from-gray-800/90 to-gray-800/70 backdrop-blur-sm rounded-2xl p-8 mb-6 border border-gray-700/50">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 flex-1">
+              {/* Logo - Always show, but smaller/positioned when banner exists */}
               {metadata?.logoUrl ? (
                 <img
                   src={metadata.logoUrl}
                   alt={tokenName}
-                  className={`w-20 h-20 rounded-full border-2 ${bannerUrl ? 'border-gray-500/50' : 'border-gray-600'}`}
+                  className={`${bannerUrl ? 'w-16 h-16' : 'w-20 h-20'} rounded-full border-2 border-gray-600 shadow-lg`}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
               ) : (
                 <div 
-                  className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold border-2 border-gray-600"
+                  className={`${bannerUrl ? 'w-16 h-16' : 'w-20 h-20'} rounded-full flex items-center justify-center ${bannerUrl ? 'text-2xl' : 'text-3xl'} font-bold border-2 border-gray-600 shadow-lg`}
                   style={{ 
                     background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)` 
                   }}
@@ -442,17 +559,12 @@ export default function TokenDetail() {
                   {tokenSymbol?.charAt(0) || 'T'}
                 </div>
               )}
-              <div>
-                {!bannerUrl && (
-                  <>
-                    <h1 className="text-4xl font-bold text-white mb-2">{tokenName}</h1>
-                    <p className="text-xl text-gray-400">{tokenSymbol}</p>
-                  </>
-                )}
-                {metadata?.description && (
-                  <p className="text-gray-400 mt-3 max-w-2xl">{metadata.description}</p>
-                )}
-              </div>
+              {!bannerUrl && (
+                <div>
+                  <h1 className="text-4xl font-bold text-white mb-2">{tokenName}</h1>
+                  <p className="text-xl text-gray-400">{tokenSymbol}</p>
+                </div>
+              )}
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-400 mb-1">Total Market Cap</p>
@@ -462,25 +574,33 @@ export default function TokenDetail() {
               >
                 ${(totalMarketCap / 1e6).toFixed(2)}M
               </p>
-              {allGraduated ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
-                  <CheckCircle className="w-4 h-4" />
-                  Fully Graduated
-                </div>
-              ) : someGraduated ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
-                  <Zap className="w-4 h-4" />
-                  Partially Graduated
-                </div>
-              ) : (
-                <div 
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm text-white"
-                  style={{ backgroundColor: `${primaryColor}40` }}
-                >
-                  <Zap className="w-4 h-4" />
-                  Active on Curve
-                </div>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {token?.verified && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm border border-blue-500/30">
+                    <CheckCircle className="w-4 h-4" />
+                    Verified
+                  </div>
+                )}
+                {allGraduated ? (
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
+                    <CheckCircle className="w-4 h-4" />
+                    Fully Graduated
+                  </div>
+                ) : someGraduated ? (
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
+                    <Zap className="w-4 h-4" />
+                    Partially Graduated
+                  </div>
+                ) : (
+                  <div 
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm text-white"
+                    style={{ backgroundColor: `${primaryColor}40` }}
+                  >
+                    <Zap className="w-4 h-4" />
+                    Active on Curve
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -507,109 +627,121 @@ export default function TokenDetail() {
             </div>
           )}
 
-          {/* Social Links */}
+          {/* Social Links - More Prominent */}
           {(metadata?.twitterUrl || metadata?.discordUrl || metadata?.telegramUrl || metadata?.websiteUrl || 
             metadata?.githubUrl || metadata?.mediumUrl || metadata?.redditUrl || metadata?.youtubeUrl || metadata?.linkedinUrl) && (
-            <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-700 flex-wrap">
-              {metadata.twitterUrl && (
-                <a
-                  href={metadata.twitterUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <Twitter className="w-4 h-4" />
-                  <span className="text-sm">Twitter</span>
-                </a>
-              )}
-              {metadata.discordUrl && (
-                <a
-                  href={metadata.discordUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span className="text-sm">Discord</span>
-                </a>
-              )}
-              {metadata.telegramUrl && (
-                <a
-                  href={metadata.telegramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span className="text-sm">Telegram</span>
-                </a>
-              )}
-              {metadata.websiteUrl && (
-                <a
-                  href={metadata.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span className="text-sm">Website</span>
-                </a>
-              )}
-              {metadata.githubUrl && (
-                <a
-                  href={metadata.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <Github className="w-4 h-4" />
-                  <span className="text-sm">GitHub</span>
-                </a>
-              )}
-              {metadata.mediumUrl && (
-                <a
-                  href={metadata.mediumUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span className="text-sm">Medium</span>
-                </a>
-              )}
-              {metadata.redditUrl && (
-                <a
-                  href={metadata.redditUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span className="text-sm">Reddit</span>
-                </a>
-              )}
-              {metadata.youtubeUrl && (
-                <a
-                  href={metadata.youtubeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <Youtube className="w-4 h-4" />
-                  <span className="text-sm">YouTube</span>
-                </a>
-              )}
-              {metadata.linkedinUrl && (
-                <a
-                  href={metadata.linkedinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <Linkedin className="w-4 h-4" />
-                  <span className="text-sm">LinkedIn</span>
-                </a>
-              )}
+            <div className="mt-6 pt-6 border-t border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-400 mb-3">Connect & Follow</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                {metadata.twitterUrl && (
+                  <a
+                    href={metadata.twitterUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition group"
+                    title="Twitter"
+                  >
+                    <Twitter className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-blue-300">Twitter</span>
+                  </a>
+                )}
+                {metadata.discordUrl && (
+                  <a
+                    href={metadata.discordUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition group"
+                    title="Discord"
+                  >
+                    <MessageCircle className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-indigo-300">Discord</span>
+                  </a>
+                )}
+                {metadata.telegramUrl && (
+                  <a
+                    href={metadata.telegramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg transition group"
+                    title="Telegram"
+                  >
+                    <MessageCircle className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-cyan-300">Telegram</span>
+                  </a>
+                )}
+                {metadata.websiteUrl && (
+                  <a
+                    href={metadata.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gray-500/10 hover:bg-gray-500/20 border border-gray-500/30 rounded-lg transition group"
+                    title="Website"
+                  >
+                    <ExternalLink className="w-4 h-4 text-gray-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-gray-300">Website</span>
+                  </a>
+                )}
+                {metadata.githubUrl && (
+                  <a
+                    href={metadata.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gray-700/50 hover:bg-gray-700 border border-gray-600/30 rounded-lg transition group"
+                    title="GitHub"
+                  >
+                    <Github className="w-4 h-4 text-gray-300 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-gray-300">GitHub</span>
+                  </a>
+                )}
+                {metadata.mediumUrl && (
+                  <a
+                    href={metadata.mediumUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 rounded-lg transition group"
+                    title="Medium"
+                  >
+                    <BookOpen className="w-4 h-4 text-green-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-green-300">Medium</span>
+                  </a>
+                )}
+                {metadata.redditUrl && (
+                  <a
+                    href={metadata.redditUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg transition group"
+                    title="Reddit"
+                  >
+                    <MessageSquare className="w-4 h-4 text-orange-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-orange-300">Reddit</span>
+                  </a>
+                )}
+                {metadata.youtubeUrl && (
+                  <a
+                    href={metadata.youtubeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition group"
+                    title="YouTube"
+                  >
+                    <Youtube className="w-4 h-4 text-red-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-red-300">YouTube</span>
+                  </a>
+                )}
+                {metadata.linkedinUrl && (
+                  <a
+                    href={metadata.linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/30 rounded-lg transition group"
+                    title="LinkedIn"
+                  >
+                    <Linkedin className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm text-blue-300">LinkedIn</span>
+                  </a>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -962,6 +1094,384 @@ export default function TokenDetail() {
             })}
           </div>
         </div>
+
+        {/* Token Description Section */}
+        {metadata?.description && (
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-700/50">
+            <h2 className="text-xl font-bold text-white mb-4">About {tokenName}</h2>
+            <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{metadata.description}</p>
+          </div>
+        )}
+
+        {/* Contract Addresses Section - Show all deployed chains */}
+        {deployments && deployments.some((d: any) => d.tokenAddress || d.curveAddress) && (
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-700/50">
+            <h2 className="text-xl font-bold text-white mb-4">Contract Addresses</h2>
+            <div className="space-y-4">
+              {deployments.map((dep: any) => {
+                if (!dep || (!dep.tokenAddress && !dep.curveAddress)) return null;
+                const chainName = dep.chain?.toLowerCase() || '';
+                const normalizedChainName = chainName.includes('base-sepolia') ? 'base-sepolia' :
+                                          chainName.includes('bsc-testnet') ? 'bsc-testnet' :
+                                          chainName.includes('sepolia') && !chainName.includes('base') ? 'sepolia' :
+                                          chainName.includes('base') ? 'base' :
+                                          chainName.includes('bsc') ? 'bsc' :
+                                          chainName.includes('ethereum') ? 'ethereum' : chainName;
+                const chainDisplayName = CHAIN_NAMES[normalizedChainName] || CHAIN_NAMES[chainName] || dep.chain;
+                const chainColor = CHAIN_COLORS[normalizedChainName] || CHAIN_COLORS[chainName] || '#FFFFFF';
+                const explorer = getTestnetInfo(normalizedChainName as any)?.explorer;
+
+                return (
+                  <div key={dep.chain} className="border border-gray-700/50 rounded-lg p-4 bg-gray-700/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: chainColor }}
+                      />
+                      <h3 className="text-sm font-semibold text-white">{chainDisplayName}</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {dep.tokenAddress && (
+                        <div className="flex items-center justify-between p-2.5 bg-gray-700/50 rounded-lg">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Copy className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-400">Token</p>
+                              <p className="text-xs font-mono text-white truncate">{dep.tokenAddress}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {explorer && (
+                              <a
+                                href={`${explorer}/address/${dep.tokenAddress}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 hover:bg-gray-600 rounded transition"
+                                title="View on explorer"
+                              >
+                                <ExternalLink className="w-4 h-4 text-gray-400" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => copyToClipboard(dep.tokenAddress, 'Token contract')}
+                              className="p-1.5 hover:bg-gray-600 rounded transition"
+                            >
+                              {copiedAddress === dep.tokenAddress ? (
+                                <CheckCircle className="w-4 h-4 text-green-400" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-gray-400" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {dep.curveAddress && (
+                        <div className="flex items-center justify-between p-2.5 bg-gray-700/50 rounded-lg">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Zap className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-gray-400">Bonding Curve</p>
+                              <p className="text-xs font-mono text-white truncate">{dep.curveAddress}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {explorer && (
+                              <a
+                                href={`${explorer}/address/${dep.curveAddress}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 hover:bg-gray-600 rounded transition"
+                                title="View on explorer"
+                              >
+                                <ExternalLink className="w-4 h-4 text-gray-400" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => copyToClipboard(dep.curveAddress, 'Curve contract')}
+                              className="p-1.5 hover:bg-gray-600 rounded transition"
+                            >
+                              {copiedAddress === dep.curveAddress ? (
+                                <CheckCircle className="w-4 h-4 text-green-400" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-gray-400" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Transactions */}
+        {transactionsData?.transactions && transactionsData.transactions.length > 0 && (
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-700/50">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Recent Transactions
+              </h2>
+            </div>
+            <div className="space-y-2">
+              {transactionsData.transactions.slice(0, 5).map((tx: any) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      tx.type === 'buy' ? 'bg-green-500/20' : 'bg-red-500/20'
+                    }`}>
+                      {tx.type === 'buy' ? (
+                        <TrendingUp className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-red-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white capitalize">{tx.type}</p>
+                      <p className="text-xs text-gray-400">
+                        {tx.amount ? `${parseFloat(tx.amount).toLocaleString()} ${tokenSymbol}` : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-white">
+                      {tx.price ? `$${parseFloat(tx.price).toFixed(6)}` : 'N/A'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
+                  {tx.txHash && getTestnetInfo(selectedChain as any)?.explorer && (
+                    <a
+                      href={`${getTestnetInfo(selectedChain as any)?.explorer}/tx/${tx.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 p-1 hover:bg-gray-600 rounded transition"
+                      title="View on explorer"
+                    >
+                      <ExternalLink className="w-4 h-4 text-gray-400" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Token Details & Statistics Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Token Parameters */}
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <h2 className="text-xl font-bold text-white mb-4">Token Parameters</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Initial Supply</p>
+                <p className="text-lg font-semibold text-white">
+                  {token?.initialSupply || token?.initial_supply ? 
+                    `${(parseFloat(token.initialSupply || token.initial_supply) / 1e9).toFixed(2)}B` : 
+                    'N/A'
+                  }
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Decimals</p>
+                <p className="text-lg font-semibold text-white">{token?.decimals || 18}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Base Price</p>
+                <p className="text-lg font-semibold text-white">
+                  ${((token as any)?.basePrice || (token as any)?.base_price || 0).toFixed(6)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Slope</p>
+                <p className="text-lg font-semibold text-white">
+                  {((token as any)?.slope || 0).toFixed(8)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Buy Fee</p>
+                <p className="text-lg font-semibold text-white">
+                  {((token as any)?.buyFeePercent || (token as any)?.buy_fee_percent || 0) / 100}%
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 mb-1">Sell Fee</p>
+                <p className="text-lg font-semibold text-white">
+                  {((token as any)?.sellFeePercent || (token as any)?.sell_fee_percent || 0) / 100}%
+                </p>
+              </div>
+            </div>
+            {(token as any)?.crossChainEnabled && (
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-gray-300">Cross-chain price sync enabled</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Token Statistics */}
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+            <h2 className="text-xl font-bold text-white mb-4">Statistics</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm text-gray-400">Total Transactions</span>
+                </div>
+                <span className="text-lg font-semibold text-white">{transactionsData?.count || 0}</span>
+              </div>
+              {analyticsData?.statistics && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-green-400" />
+                      <span className="text-sm text-gray-400">Buy/Sell Ratio</span>
+                    </div>
+                    <span className="text-lg font-semibold text-white">
+                      {analyticsData.statistics.buySellRatio}:1
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-purple-400" />
+                      <span className="text-sm text-gray-400">Volume (7d)</span>
+                    </div>
+                    <span className="text-lg font-semibold text-white">
+                      ${(analyticsData.statistics.totalVolume / 1e3).toFixed(1)}K
+                    </span>
+                  </div>
+                  {analyticsData.statistics.priceChange !== 0 && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {analyticsData.statistics.priceChange >= 0 ? (
+                          <TrendingUp className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4 text-red-400" />
+                        )}
+                        <span className="text-sm text-gray-400">Price Change (7d)</span>
+                      </div>
+                      <span className={`text-lg font-semibold ${
+                        analyticsData.statistics.priceChange >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {analyticsData.statistics.priceChange >= 0 ? '+' : ''}
+                        {analyticsData.statistics.priceChange.toFixed(2)}%
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm text-gray-400">Created</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-lg font-semibold text-white">
+                    {token?.createdAt ? new Date(token.createdAt).toLocaleDateString() : 'N/A'}
+                  </span>
+                  <p className="text-xs text-gray-500">
+                    {token?.createdAt ? `${Math.floor((Date.now() - new Date(token.createdAt).getTime()) / (1000 * 60 * 60 * 24))} days ago` : ''}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-green-400" />
+                  <span className="text-sm text-gray-400">Active Chains</span>
+                </div>
+                <span className="text-lg font-semibold text-white">
+                  {deployments?.filter((d: any) => d.tokenAddress && d.curveAddress).length || 0}
+                </span>
+              </div>
+              {selectedDeployment?.holderCount !== undefined && selectedDeployment.holderCount > 0 && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-400" />
+                    <span className="text-sm text-gray-400">Holders ({selectedChain})</span>
+                  </div>
+                  <span className="text-lg font-semibold text-white">
+                    {selectedDeployment.holderCount.toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {token?.creatorAddress && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                  <span className="text-sm text-gray-400">Creator</span>
+                  <button
+                    onClick={() => copyToClipboard(token.creatorAddress, 'Creator address')}
+                    className="flex items-center gap-2 text-sm font-mono text-white hover:text-primary-400 transition"
+                  >
+                    {token.creatorAddress.slice(0, 6)}...{token.creatorAddress.slice(-4)}
+                    {copiedAddress === token.creatorAddress ? (
+                      <CheckCircle className="w-3 h-3 text-green-400" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Related Tokens */}
+        {relatedTokensData?.relatedTokens && relatedTokensData.relatedTokens.length > 0 && (
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-700/50">
+            <h2 className="text-xl font-bold text-white mb-4">Related Tokens</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {relatedTokensData.relatedTokens.map((relatedToken: any) => (
+                <Link
+                  key={relatedToken.id}
+                  to={`/token/${relatedToken.id}`}
+                  className="bg-gray-700/50 hover:bg-gray-700 rounded-lg p-4 transition group"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    {relatedToken.logoUrl ? (
+                      <img
+                        src={relatedToken.logoUrl}
+                        alt={relatedToken.name}
+                        className="w-10 h-10 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                        {relatedToken.symbol?.charAt(0) || 'T'}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-white truncate">{relatedToken.name}</h3>
+                        {relatedToken.verified && (
+                          <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-400">{relatedToken.symbol}</p>
+                    </div>
+                  </div>
+                  {relatedToken.description && (
+                    <p className="text-xs text-gray-500 line-clamp-2 mb-2">
+                      {relatedToken.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>{relatedToken.deploymentCount || 0} chains</span>
+                    {relatedToken.avgMarketCap > 0 && (
+                      <span>${(relatedToken.avgMarketCap / 1e6).toFixed(2)}M</span>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Market Depth Chart */}
         {selectedDeployment && !allGraduated && (

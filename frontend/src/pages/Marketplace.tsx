@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Network, Globe, Layers, Sparkles, Zap } from 'lucide-react';
+import { Search, Filter, Network, Globe, Layers, Sparkles, Zap, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import axios from 'axios';
@@ -18,6 +18,7 @@ export default function Marketplace() {
     chains: [] as string[],
     status: [] as string[],
     crossChain: false,
+    verified: false,
   });
 
   const { data: marketplace, isLoading } = useQuery({
@@ -58,6 +59,11 @@ export default function Marketplace() {
 
     // Cross-chain filter
     if (filters.crossChain && !token.crossChainEnabled) {
+      return false;
+    }
+
+    // Verified filter
+    if (filters.verified && !token.verified) {
       return false;
     }
 
@@ -199,21 +205,35 @@ export default function Marketplace() {
               {/* Cross-Chain Filter */}
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Features</label>
-                <label className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded cursor-pointer transition">
-                  <input
-                    type="checkbox"
-                    checked={filters.crossChain}
-                    onChange={(e) => setFilters(prev => ({ ...prev, crossChain: e.target.checked }))}
-                    className="w-4 h-4 text-primary-600 rounded"
-                  />
-                  <span className="text-sm text-gray-300">Cross-Chain Sync Only</span>
-                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded cursor-pointer transition">
+                    <input
+                      type="checkbox"
+                      checked={filters.crossChain}
+                      onChange={(e) => setFilters(prev => ({ ...prev, crossChain: e.target.checked }))}
+                      className="w-4 h-4 text-primary-600 rounded"
+                    />
+                    <span className="text-sm text-gray-300">Cross-Chain Sync Only</span>
+                  </label>
+                  <label className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded cursor-pointer transition">
+                    <input
+                      type="checkbox"
+                      checked={filters.verified}
+                      onChange={(e) => setFilters(prev => ({ ...prev, verified: e.target.checked }))}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm text-gray-300">Verified Tokens Only</span>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               {/* Clear Filters */}
               <div className="flex items-end">
                 <button
-                  onClick={() => setFilters({ chains: [], status: [], crossChain: false })}
+                  onClick={() => setFilters({ chains: [], status: [], crossChain: false, verified: false })}
                   className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
                 >
                   Clear Filters
@@ -228,6 +248,7 @@ export default function Marketplace() {
           <p className="text-gray-400">
             Showing <span className="text-white font-semibold">{filteredTokens.length}</span> token{filteredTokens.length !== 1 ? 's' : ''}
             {filters.crossChain && ' with cross-chain sync'}
+            {filters.verified && ' (verified only)'}
           </p>
         </div>
 
@@ -258,15 +279,25 @@ export default function Marketplace() {
                   transition={{ delay: idx * 0.05 }}
                   className="group relative bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-primary-500/50 transition-all hover:shadow-lg hover:shadow-primary-500/20"
                 >
-                  {/* Cross-Chain Badge */}
-                  {crossChainEnabled && (
-                    <div className="absolute top-4 right-4 px-2 py-1 bg-primary-500/20 border border-primary-500/50 rounded-full">
-                      <div className="flex items-center gap-1">
-                        <Network className="w-3 h-3 text-primary-400" />
-                        <span className="text-xs text-primary-400 font-semibold">Cross-Chain</span>
+                  {/* Badges */}
+                  <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+                    {token.verified && (
+                      <div className="px-2 py-1 bg-blue-500/20 border border-blue-500/50 rounded-full">
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-blue-400" />
+                          <span className="text-xs text-blue-400 font-semibold">Verified</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {crossChainEnabled && (
+                      <div className="px-2 py-1 bg-primary-500/20 border border-primary-500/50 rounded-full">
+                        <div className="flex items-center gap-1">
+                          <Network className="w-3 h-3 text-primary-400" />
+                          <span className="text-xs text-primary-400 font-semibold">Cross-Chain</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <Link to={`/token/${token.id}`}>
                     <div className="flex items-start gap-4 mb-4">
@@ -282,7 +313,12 @@ export default function Marketplace() {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-semibold text-white mb-1 truncate">{token.name}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-xl font-semibold text-white truncate">{token.name}</h3>
+                          {token.verified && (
+                            <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0" title="Verified Token" />
+                          )}
+                        </div>
                         <p className="text-sm text-gray-400">{token.symbol}</p>
                       </div>
                     </div>

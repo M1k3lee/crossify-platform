@@ -213,6 +213,9 @@ export async function initializePostgreSQLSchema(): Promise<void> {
         pinned INTEGER NOT NULL DEFAULT 0,
         deleted INTEGER NOT NULL DEFAULT 0,
         visible_in_marketplace INTEGER NOT NULL DEFAULT 1,
+        verified INTEGER NOT NULL DEFAULT 0,
+        verified_at TIMESTAMP,
+        verified_by TEXT,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
@@ -230,6 +233,8 @@ export async function initializePostgreSQLSchema(): Promise<void> {
         current_supply TEXT NOT NULL DEFAULT '0',
         reserve_balance TEXT NOT NULL DEFAULT '0',
         market_cap DOUBLE PRECISION NOT NULL DEFAULT 0,
+        holder_count INTEGER NOT NULL DEFAULT 0,
+        holder_count_updated_at TIMESTAMP,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE,
