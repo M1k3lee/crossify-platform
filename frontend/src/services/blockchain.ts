@@ -161,7 +161,8 @@ export async function deployTokenOnEVM(
   const factoryAddress = FACTORY_ADDRESSES[chain];
   if (!factoryAddress || factoryAddress === '') {
     const envVarName = chain === 'ethereum' ? 'VITE_ETH_FACTORY or VITE_ETHEREUM_FACTORY' : `VITE_${chain.toUpperCase()}_FACTORY`;
-    throw new Error(`Factory contract not deployed on ${chain}. Please deploy factory contracts first. Add ${envVarName} to your Vercel environment variables.`);
+    const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : 'Base Sepolia';
+    throw new Error(`Factory contract address not configured for ${chainName} (${chain}).\n\nPlease add ${envVarName} to your Netlify environment variables.\n\nFactory addresses:\n- Sepolia: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n- BSC Testnet: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n- Base Sepolia: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n\nSee NETLIFY_FACTORY_SETUP.md for setup instructions.`);
   }
 
   console.log(`📋 Factory address: ${factoryAddress}`);
