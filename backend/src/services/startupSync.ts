@@ -380,6 +380,7 @@ async function syncChain(config: ChainConfig): Promise<number> {
 
 /**
  * Sync all tokens from all configured chains
+ * This is critical for Railway deployments where the database is ephemeral
  */
 export async function syncAllTokensFromBlockchain(): Promise<{
   totalSynced: number;
@@ -387,6 +388,7 @@ export async function syncAllTokensFromBlockchain(): Promise<{
 }> {
   console.log('\n🚀 Starting startup token sync...');
   console.log('   This will sync all tokens from blockchain to database');
+  console.log('   ⚠️  IMPORTANT: On Railway, database is ephemeral - sync repopulates tokens from blockchain');
 
   const chains = getChainConfigs();
 
