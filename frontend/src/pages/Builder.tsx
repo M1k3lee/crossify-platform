@@ -497,10 +497,18 @@ export default function Builder() {
             } catch (deployError: any) {
               console.error(`❌ Deployment error for ${chain}:`, deployError);
               
-              if (deployError.message?.includes('Factory contract not deployed')) {
+              if (deployError.message?.includes('Factory contract') || deployError.message?.includes('factory') || deployError.message?.includes('Factory address not configured')) {
+                const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : 'Base Sepolia';
+                const envVarName = chain === 'ethereum' ? 'VITE_ETH_FACTORY' : `VITE_${chain.toUpperCase()}_FACTORY`;
+                const correctAddresses = {
+                  ethereum: '0x8eF1A74d477448630282EFC130ac9D17f495Bca4',
+                  bsc: '0xFF8c690B5b65905da20D8de87Cd6298c223a40B6',
+                  base: '0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58',
+                };
+                
                 toast.error(
-                  `Factory not deployed on ${chain}. Please deploy factory contracts first.`,
-                  { id: `deploy-${chain}`, duration: 10000 }
+                  `Factory address not configured for ${chainName}.\n\nCheck Netlify environment variable: ${envVarName}\nExpected: ${correctAddresses[chain as keyof typeof correctAddresses]}\n\nAfter updating, trigger a new deploy in Netlify.`,
+                  { id: `deploy-${chain}`, duration: 15000 }
                 );
                 deployments.push({
                   chain,
