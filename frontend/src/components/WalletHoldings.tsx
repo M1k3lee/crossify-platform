@@ -5,7 +5,6 @@ import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { API_BASE } from '../config/api';
-import toast from 'react-hot-toast';
 
 interface WalletHoldingsProps {
   tokenId: string;
@@ -13,7 +12,7 @@ interface WalletHoldingsProps {
   tokenAddress: string;
   tokenSymbol: string;
   currentPrice: number;
-  curveAddress: string; // Kept for future use, but currently unused
+  curveAddress?: string; // Optional - kept for future use
   onSell?: () => void;
 }
 
@@ -30,7 +29,6 @@ export default function WalletHoldings({
   tokenAddress,
   tokenSymbol,
   currentPrice,
-  curveAddress: _curveAddress, // Prefix with underscore to indicate intentionally unused
   onSell,
 }: WalletHoldingsProps) {
   const { isConnected, address } = useAccount();
@@ -186,7 +184,6 @@ export default function WalletHoldings({
   // Handle quick sell
   const handleQuickSell = () => {
     if (parseFloat(balance) === 0) {
-      toast.error('No tokens to sell');
       return;
     }
     // Trigger sell in parent component
