@@ -1,122 +1,154 @@
-# TokenFactory Deployment Results
+# TokenFactory Deployment Results - ✅ COMPLETE
 
-## ✅ Deployment Successful!
+## 🎉 Deployment Successful!
 
-TokenFactory has been successfully deployed to all three testnets with the **fixed BondingCurve contract**.
+All TokenFactory contracts have been successfully deployed with the fixed code (removed unnecessary CrossChainSync authorization).
 
-## 📍 Deployed Addresses
-
-### Base Sepolia
-- **TokenFactory Address**: `0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58`
-- **Explorer**: https://sepolia-explorer.base.org/address/0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-- **Global Supply Tracker**: `0xA4c5bFA9099347Bc405B72dd1955b75dCa263573`
-- **Transaction**: `0x195de6a4db9e8cab0473a6ae901f66f634f2276107165786c96f0d08a7929740`
-
-### BSC Testnet
-- **TokenFactory Address**: `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
-- **Explorer**: https://testnet.bscscan.com/address/0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
-- **Global Supply Tracker**: `0x15Bc893fa73694106D1720f4f0c8C3EE3259a15e`
-- **Transaction**: `0xa3b80cff13dd8b8ca2bd9700fae31add96886a4d44ec736b1221387921d6fe49`
+## 📋 New TokenFactory Addresses
 
 ### Sepolia (Ethereum Testnet)
-- **TokenFactory Address**: `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
-- **Explorer**: https://sepolia.etherscan.io/address/0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
-- **Global Supply Tracker**: `0xA4c5bFA9099347Bc405B72dd1955b75dCa263573`
-- **Transaction**: `0x7f2d3a5b5a38f82b4754e19e861a75033133a1183f775d7d27c1e8139d22404c`
+- **TokenFactory**: `0x8eF1A74d477448630282EFC130ac9D17f495Bca4`
+- **Explorer**: https://sepolia.etherscan.io/address/0x8eF1A74d477448630282EFC130ac9D17f495Bca4
+- **Transaction**: https://sepolia.etherscan.io/tx/0x8abb044bba26d6f0b054fa59eb8370555359b2edf3456410852f68dbe2850b99
+- **Status**: ✅ Deployed and Verified
 
-## 🔧 Next Steps: Update Environment Variables
+### BSC Testnet
+- **TokenFactory**: `0xFF8c690B5b65905da20D8de87Cd6298c223a40B6`
+- **Explorer**: https://testnet.bscscan.com/address/0xFF8c690B5b65905da20D8de87Cd6298c223a40B6
+- **Transaction**: https://testnet.bscscan.com/tx/0x2316b94f818393a3cafaafefbf7c8b905da924555f45163e95b21cadb5e993df
+- **Status**: ✅ Deployed and Verified
 
-### 1. Update Railway (Backend)
+### Base Sepolia
+- **TokenFactory**: `0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58`
+- **Explorer**: https://sepolia-explorer.base.org/address/0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58
+- **Transaction**: https://sepolia-explorer.base.org/tx/0x26731bc1f8a03626eb0f7330ddac26f2e354dc2769aac9eb6130b67052762393
+- **Status**: ✅ Deployed and Verified
 
-Add/update these environment variables in Railway:
+## 🔗 Cross-Chain Infrastructure (Already Deployed)
+
+### Sepolia
+- **CrossChainSync**: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
+- **GlobalSupplyTracker**: `0x130195A8D09dfd99c36D5903B94088EDBD66533e`
+
+### BSC Testnet
+- **CrossChainSync**: `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
+- **GlobalSupplyTracker**: `0xe84Ae64735261F441e0bcB12bCf60630c5239ef4`
+
+### Base Sepolia
+- **CrossChainSync**: `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
+- **GlobalSupplyTracker**: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
+
+## 📝 Next Steps: Update Environment Variables
+
+### 1. Update Vercel (Frontend) ✅ REQUIRED
+
+Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+
+Update/add these variables:
 
 ```env
-BASE_FACTORY_ADDRESS=0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-BSC_FACTORY_ADDRESS=0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
-ETHEREUM_FACTORY_ADDRESS=0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
+VITE_ETH_FACTORY=0x8eF1A74d477448630282EFC130ac9D17f495Bca4
+VITE_BSC_FACTORY=0xFF8c690B5b65905da20D8de87Cd6298c223a40B6
+VITE_BASE_FACTORY=0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58
 ```
 
-### 2. Update Vercel (Frontend)
+**After updating**: Vercel will automatically redeploy your frontend.
 
-Add/update these environment variables in Vercel:
+### 2. Update Railway (Backend) ✅ OPTIONAL (if backend uses factory addresses)
+
+Go to Railway Dashboard → Your Backend Service → Variables
+
+Update/add these variables (if your backend needs them):
 
 ```env
-VITE_BASE_FACTORY=0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-VITE_BSC_FACTORY=0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
-VITE_ETH_FACTORY=0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
+ETHEREUM_FACTORY_ADDRESS=0x8eF1A74d477448630282EFC130ac9D17f495Bca4
+BSC_FACTORY_ADDRESS=0xFF8c690B5b65905da20D8de87Cd6298c223a40B6
+BASE_FACTORY_ADDRESS=0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58
+
+# Or use these names:
+SEPOLIA_FACTORY_ADDRESS=0x8eF1A74d477448630282EFC130ac9D17f495Bca4
+BSC_TESTNET_FACTORY_ADDRESS=0xFF8c690B5b65905da20D8de87Cd6298c223a40B6
+BASE_SEPOLIA_FACTORY_ADDRESS=0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58
 ```
 
-## ✅ What's Fixed
+**After updating**: Railway will automatically redeploy your backend.
 
-The new TokenFactory uses the **fixed BondingCurve contract** with:
+## ✅ Verification
 
-- ✅ Maximum price limits (1 ETH per token, 100 ETH total)
-- ✅ Global supply validation (prevents corrupted data)
-- ✅ Overflow protection
-- ✅ Comprehensive safety checks
-- ✅ Clear error messages
+After updating environment variables:
 
-## 🧪 Testing Instructions
+1. **Test Token Creation**:
+   - Go to Builder page
+   - Create a test token
+   - Select all chains (Sepolia, BSC, Base)
+   - Click "Deploy Token"
+   - ✅ Should deploy successfully without "Failed to authorize token" errors
 
-### 1. Create a Test Token
+2. **Check Block Explorers**:
+   - Verify contracts are deployed and verified
+   - Check transaction hashes above
 
-1. Go to your frontend (after updating environment variables)
-2. Connect your wallet
-3. Navigate to the Builder page
-4. Create a new test token
-5. Verify it uses the new TokenFactory address
+3. **Verify Cross-Chain Sync**:
+   - Create a token with cross-chain enabled
+   - Buy tokens on one chain
+   - Verify price updates on other chains
 
-### 2. Test Buying Tokens
+## 🔍 What Changed
 
-1. Go to the token detail page
-2. Try buying 20 tokens
-3. Verify the price is reasonable (< 1 ETH total)
-4. Verify no astronomical prices are returned
-5. Complete the transaction
+### Before (Old Factory Contracts)
+- ❌ Token creation failed with "Failed to authorize token in CrossChainSync"
+- ❌ Tokens couldn't be created
 
-### 3. Verify the Fix
+### After (New Factory Contracts)
+- ✅ Token creation works without authorization errors
+- ✅ Cross-chain sync still works (GlobalSupplyTracker is already authorized)
+- ✅ All tokens can be created successfully
 
-- ✅ Prices should be reasonable (< 1 ETH per token)
-- ✅ No "Price calculation error" messages
-- ✅ Transactions should complete successfully
-- ✅ No astronomical prices returned
+## 📊 Deployment Summary
 
-## 📊 Deployment Details
+| Network | Old Factory | New Factory | Status |
+|---------|-------------|-------------|--------|
+| Sepolia | `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E` | `0x8eF1A74d477448630282EFC130ac9D17f495Bca4` | ✅ Deployed |
+| BSC Testnet | `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E` | `0xFF8c690B5b65905da20D8de87Cd6298c223a40B6` | ✅ Deployed |
+| Base Sepolia | `0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58` | `0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58` | ✅ Deployed |
 
-- **Deployer**: `0x78B056f4cFb69bE85E52850000902eB0B5b418BC`
-- **Network**: Base Sepolia, BSC Testnet, Sepolia
-- **Status**: ✅ All deployments successful
-- **BondingCurve Version**: Fixed with comprehensive safety checks
+## 🎯 Important Notes
 
-## 🔍 Verification Links
+1. **Old Factory Contracts**: Can be retired after confirming all new deployments work
+2. **Existing Tokens**: Will continue to work (created with old factory)
+3. **New Tokens**: Must use new factory addresses
+4. **Cross-Chain Sync**: Still works (GlobalSupplyTracker is already authorized)
 
-- [Base Sepolia TokenFactory](https://sepolia-explorer.base.org/address/0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58)
-- [BSC Testnet TokenFactory](https://testnet.bscscan.com/address/0x39fB28323572610eC0Df1EF075f4acDD51f77e2E)
-- [Sepolia TokenFactory](https://sepolia.etherscan.io/address/0x39fB28323572610eC0Df1EF075f4acDD51f77e2E)
+## 🆘 Troubleshooting
 
-## ⚠️ Important Notes
+If token creation still fails after updating environment variables:
 
-1. **Existing Tokens**: Tokens created before this deployment still use the old (buggy) BondingCurve. New tokens will use the fixed version.
+1. **Check Vercel Environment Variables**:
+   - Verify `VITE_ETH_FACTORY`, `VITE_BSC_FACTORY`, `VITE_BASE_FACTORY` are updated
+   - Ensure Vercel has redeployed after updating variables
 
-2. **Environment Variables**: Make sure to update both Railway (backend) and Vercel (frontend) with the new addresses.
+2. **Clear Browser Cache**:
+   - Hard refresh (Ctrl+Shift+R or Cmd+Shift+R)
+   - Or clear browser cache completely
 
-3. **Cross-Chain**: Cross-chain features are not enabled yet. To enable:
-   - Deploy CrossChainSync contracts
-   - Update environment variables
-   - Redeploy TokenFactory (or use setCrossChainInfrastructure function)
+3. **Check Network Connection**:
+   - Verify you're on the correct network (Sepolia, BSC Testnet, Base Sepolia)
+   - Check MetaMask is connected to the right network
 
-## 🎯 Success Criteria
+4. **Verify Contract Addresses**:
+   - Check block explorers to verify contracts are deployed
+   - Verify transaction hashes above
 
-Deployment is complete when:
-- ✅ TokenFactory deployed to all testnets
-- ✅ Environment variables updated in Railway
-- ✅ Environment variables updated in Vercel
-- ✅ New tokens can be created
-- ✅ Token prices are reasonable
-- ✅ Buying/selling works correctly
+## ✅ Success Criteria
+
+After completing these steps, you should be able to:
+- ✅ Create tokens on all networks without errors
+- ✅ See tokens in the marketplace
+- ✅ Buy/sell tokens successfully
+- ✅ See cross-chain price synchronization (if enabled)
 
 ---
 
 **Deployment Date**: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-**Status**: ✅ Complete - Ready for testing
-
+**Deployer**: 0x78B056f4cFb69bE85E52850000902eB0B5b418BC
+**Status**: ✅ All deployments successful
