@@ -116,13 +116,21 @@ export default function TokenDetail() {
   });
 
   // Safely extract data with defaults - MUST be called before any conditional returns
-  const token = status?.token;
-  const deployments = status?.deployments || [];
+  const token = status?.token || null;
+  const deployments = (status?.deployments || []).filter((d: any) => d && typeof d === 'object');
   
   // Calculate values safely - ALL HOOKS MUST BE CALLED UNCONDITIONALLY
   const totalMarketCap = useMemo(() => {
     if (!deployments || deployments.length === 0) return 0;
-    return deployments.reduce((sum: number, dep: any) => sum + (dep.marketCap || 0), 0);
+    try {
+      return deployments.reduce((sum: number, dep: any) => {
+        const marketCap = typeof dep?.marketCap === 'number' ? dep.marketCap : parseFloat(dep?.marketCap || '0') || 0;
+        return sum + marketCap;
+      }, 0);
+    } catch (e) {
+      console.error('Error calculating total market cap:', e);
+      return 0;
+    }
   }, [deployments]);
   
   const totalLiquidity = useMemo(() => totalMarketCap * 0.7, [totalMarketCap]);
@@ -130,32 +138,71 @@ export default function TokenDetail() {
 
   const allGraduated = useMemo(() => {
     if (!deployments || deployments.length === 0) return false;
-    return deployments.every((dep: any) => dep.isGraduated);
+    try {
+      return deployments.every((dep: any) => dep?.isGraduated === true);
+    } catch (e) {
+      console.error('Error checking graduated status:', e);
+      return false;
+    }
   }, [deployments]);
   
   const someGraduated = useMemo(() => {
     if (!deployments || deployments.length === 0) return false;
-    return deployments.some((dep: any) => dep.isGraduated);
+    try {
+      return deployments.some((dep: any) => dep?.isGraduated === true);
+    } catch (e) {
+      console.error('Error checking graduated status:', e);
+      return false;
+    }
   }, [deployments]);
 
-  // Extract customization data
-  const customization = useMemo(() => token?.customization || {}, [token?.customization]);
-  const primaryColor = useMemo(() => 
-    customization.primaryColor || metadata?.primaryColor || '#3B82F6',
-    [customization.primaryColor, metadata?.primaryColor]
-  );
-  const accentColor = useMemo(() => 
-    customization.accentColor || metadata?.accentColor || '#8B5CF6',
-    [customization.accentColor, metadata?.accentColor]
-  );
-  const bannerImageIpfs = useMemo(() => 
-    customization.bannerImageIpfs || metadata?.bannerUrl?.replace('https://ipfs.io/ipfs/', ''),
-    [customization.bannerImageIpfs, metadata?.bannerUrl]
-  );
-  const bannerUrl = useMemo(() => 
-    bannerImageIpfs ? `https://ipfs.io/ipfs/${bannerImageIpfs}` : null,
-    [bannerImageIpfs]
-  );
+  // Extract customization data with safe fallbacks
+  const customization = useMemo(() => {
+    try {
+      return token?.customization || {};
+    } catch (e) {
+      console.error('Error extracting customization:', e);
+      return {};
+    }
+  }, [token?.customization]);
+  
+  const primaryColor = useMemo(() => {
+    try {
+      return customization?.primaryColor || metadata?.primaryColor || '#3B82F6';
+    } catch (e) {
+      console.error('Error getting primary color:', e);
+      return '#3B82F6';
+    }
+  }, [customization?.primaryColor, metadata?.primaryColor]);
+  
+  const accentColor = useMemo(() => {
+    try {
+      return customization?.accentColor || metadata?.accentColor || '#8B5CF6';
+    } catch (e) {
+      console.error('Error getting accent color:', e);
+      return '#8B5CF6';
+    }
+  }, [customization?.accentColor, metadata?.accentColor]);
+  
+  const bannerImageIpfs = useMemo(() => {
+    try {
+      const customBanner = customization?.bannerImageIpfs;
+      const metaBanner = metadata?.bannerUrl?.replace('https://ipfs.io/ipfs/', '');
+      return customBanner || metaBanner || null;
+    } catch (e) {
+      console.error('Error getting banner IPFS:', e);
+      return null;
+    }
+  }, [customization?.bannerImageIpfs, metadata?.bannerUrl]);
+  
+  const bannerUrl = useMemo(() => {
+    try {
+      return bannerImageIpfs ? `https://ipfs.io/ipfs/${bannerImageIpfs}` : null;
+    } catch (e) {
+      console.error('Error constructing banner URL:', e);
+      return null;
+    }
+  }, [bannerImageIpfs]);
   
   // Find selected deployment based on URL chain parameter or use first deployed chain
   const selectedDeployment = useMemo(() => {
