@@ -1,5 +1,5 @@
 import { getRedisClient, cachePrice, getAllPrices } from './redis';
-import { dbAll } from '../db';
+import { dbAll } from '../db/adapter';
 
 const PRICE_SYNC_INTERVAL = 10000; // 10 seconds
 const MAX_VARIANCE = 0.005; // 0.5%

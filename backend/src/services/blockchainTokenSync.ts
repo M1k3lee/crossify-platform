@@ -2,7 +2,7 @@
 // Queries TokenFactory contracts to find tokens created by a user
 
 import { ethers } from 'ethers';
-import { dbRun, dbGet, dbAll } from '../db';
+import { dbRun, dbGet, dbAll } from '../db/adapter';
 import { v4 as uuidv4 } from 'uuid';
 
 // TokenFactory ABI (simplified - only what we need)

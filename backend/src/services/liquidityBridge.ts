@@ -1,5 +1,5 @@
 // Backend service for cross-chain liquidity bridging and rebalancing
-import { dbGet, dbAll, dbRun } from '../db';
+import { dbGet, dbAll, dbRun } from '../db/adapter';
 
 interface ChainReserve {
   chain: string;

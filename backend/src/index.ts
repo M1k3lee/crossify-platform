@@ -12,7 +12,7 @@ import { router as contactRouter } from './routes/contact';
 import { router as crosschainRouter } from './routes/crosschain';
 import { router as adminRouter } from './routes/admin';
 import { router as debugRouter } from './routes/debug';
-import { initializeDatabase } from './db';
+import { initializeDatabase } from './db/adapter';
 import { initializeRedis } from './services/redis';
 import { startPriceSyncService } from './services/priceSync';
 import { startPriceMonitoring } from './services/unifiedLiquidity';
