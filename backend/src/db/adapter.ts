@@ -82,10 +82,19 @@ function convertToPostgreSQL(sql: string): string {
   let pgSQL = sql;
   
   // Handle GROUP_CONCAT -> STRING_AGG (PostgreSQL equivalent)
-  // GROUP_CONCAT(DISTINCT column) -> STRING_AGG(DISTINCT column, ',')
-  // GROUP_CONCAT(column) -> STRING_AGG(column, ',')
+  // PostgreSQL STRING_AGG requires TEXT type, so we need to cast values
+  // GROUP_CONCAT(DISTINCT column) -> STRING_AGG(DISTINCT CAST(column AS TEXT), ',')
+  // GROUP_CONCAT(column) -> STRING_AGG(CAST(column AS TEXT), ',')
+  
+  // Handle GROUP_CONCAT(DISTINCT ...) first
   pgSQL = pgSQL.replace(/GROUP_CONCAT\s*\(\s*DISTINCT\s+([^)]+)\s*\)/gi, (match, column) => {
-    return `STRING_AGG(DISTINCT ${column.trim()}, ',')`;
+    const col = column.trim();
+    // If it's already cast or is a string literal, use as-is
+    if (col.toUpperCase().includes('CAST') || col.toUpperCase().includes('AS TEXT') || col.startsWith("'")) {
+      return `STRING_AGG(DISTINCT ${col}, ',')`;
+    }
+    // Cast to TEXT for STRING_AGG
+    return `STRING_AGG(DISTINCT CAST(${col} AS TEXT), ',')`;
   });
   
   // Handle GROUP_CONCAT without DISTINCT
@@ -94,7 +103,13 @@ function convertToPostgreSQL(sql: string): string {
     if (column.toUpperCase().includes('DISTINCT')) {
       return match; // Already handled
     }
-    return `STRING_AGG(${column.trim()}, ',')`;
+    const col = column.trim();
+    // If it's already cast or is a string literal, use as-is
+    if (col.toUpperCase().includes('CAST') || col.toUpperCase().includes('AS TEXT') || col.startsWith("'")) {
+      return `STRING_AGG(${col}, ',')`;
+    }
+    // Cast to TEXT for STRING_AGG (handles boolean, integer, etc.)
+    return `STRING_AGG(CAST(${col} AS TEXT), ',')`;
   });
 
   // Replace ? placeholders with $1, $2, etc.
