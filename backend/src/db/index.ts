@@ -17,9 +17,13 @@ if (useSQLite && !fs.existsSync(dbDir)) {
 export const db = useSQLite ? new sqlite3.Database(dbPath) : null as any;
 
 export function initializeDatabase(): Promise<void> {
+  if (!db) {
+    throw new Error('SQLite database not initialized');
+  }
+  
   return new Promise(async (resolve, reject) => {
     // Enable foreign keys
-    db.run('PRAGMA foreign_keys = ON', async (err) => {
+    db!.run('PRAGMA foreign_keys = ON', async (err: Error | null) => {
       if (err) return reject(err);
       
       // Create tables
