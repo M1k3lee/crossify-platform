@@ -791,21 +791,23 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     }
     
     const formattedTokens = tokens.map(token => {
-      const chains = token.chains ? token.chains.split(',') : [];
-      const tokenAddresses = token.token_addresses ? token.token_addresses.split(',') : [];
-      const curveAddresses = token.curve_addresses ? token.curve_addresses.split(',') : [];
-      const statuses = token.deployment_statuses ? token.deployment_statuses.split(',') : [];
-      const graduations = token.graduation_statuses ? token.graduation_statuses.split(',') : [];
+      // Handle NULL/empty GROUP_CONCAT results - filter out null/empty strings
+      const chains = token.chains ? token.chains.split(',').filter((c: string) => c && c !== 'null' && c.trim() !== '') : [];
+      const tokenAddresses = token.token_addresses ? token.token_addresses.split(',').filter((a: string) => a && a !== 'null' && a.trim() !== '') : [];
+      const curveAddresses = token.curve_addresses ? token.curve_addresses.split(',').filter((a: string) => a && a !== 'null' && a.trim() !== '') : [];
+      const statuses = token.deployment_statuses ? token.deployment_statuses.split(',').filter((s: string) => s && s !== 'null' && s.trim() !== '') : [];
+      const graduations = token.graduation_statuses ? token.graduation_statuses.split(',').filter((g: string) => g && g !== 'null' && g.trim() !== '') : [];
+      const marketCaps = token.market_caps ? token.market_caps.split(',').filter((m: string) => m && m !== 'null' && m.trim() !== '') : [];
       
-      const marketCaps = token.market_caps ? token.market_caps.split(',') : [];
-      const deployments = chains.map((chain: string, idx: number) => ({
+      // Create deployments array - handle tokens with no deployments
+      const deployments = chains.length > 0 ? chains.map((chain: string, idx: number) => ({
         chain,
         tokenAddress: tokenAddresses[idx] || null,
         curveAddress: curveAddresses[idx] || null,
         status: statuses[idx] || 'pending',
         isGraduated: graduations[idx] === '1',
         marketCap: parseFloat(marketCaps[idx] || '0') || 0,
-      }));
+      })) : [];
       
       return {
         id: token.id,
@@ -814,6 +816,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         decimals: token.decimals,
         initialSupply: token.initial_supply,
         logoIpfs: token.logo_ipfs,
+        logoUrl: token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null,
         description: token.description,
         twitterUrl: token.twitter_url,
         discordUrl: token.discord_url,
@@ -828,9 +831,9 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         crossChainEnabled: token.cross_chain_enabled === 1,
         advancedSettings: token.advanced_settings ? JSON.parse(token.advanced_settings) : {},
         createdAt: token.created_at,
-        archived: token.archived === 1,
-        pinned: token.pinned === 1,
-        deleted: token.deleted === 1,
+        archived: (token.archived ?? 0) === 1,
+        pinned: (token.pinned ?? 0) === 1,
+        deleted: (token.deleted ?? 0) === 1,
         visibleInMarketplace: (token.visible_in_marketplace ?? 1) === 1,
         deployments,
       };
