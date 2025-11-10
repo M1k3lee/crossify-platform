@@ -681,12 +681,18 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     
     console.log(`📊 Marketplace: Querying tokens (chain: ${chain || 'all'}, search: ${search || 'none'})`);
     
+    // First, check if there are any tokens at all
+    const tokenCount = await dbAll('SELECT COUNT(*) as count FROM tokens WHERE (deleted IS NULL OR deleted = 0)', []) as any[];
+    const totalTokens = tokenCount[0]?.count || 0;
+    console.log(`📊 Marketplace: Total tokens in database (not deleted): ${totalTokens}`);
+    
     let query = `
       SELECT 
         t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
         t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
         t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
         t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
+        t.deleted, t.visible_in_marketplace,
         COALESCE(t.visible_in_marketplace, 1) as visible_in_marketplace,
         GROUP_CONCAT(td.chain) as chains,
         GROUP_CONCAT(td.token_address) as token_addresses,
@@ -702,8 +708,29 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     
     const params: any[] = [];
     
+    // Chain filter - only filter by deployment chain if specified
+    // Note: This will only show tokens that have deployments on the specified chain
     if (chain) {
-      query += ` AND td.chain = ?`;
+      // Use a subquery or INNER JOIN for chain filtering to ensure we only get tokens with deployments on that chain
+      query = `
+        SELECT 
+          t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
+          t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
+          t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
+          t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
+          t.deleted, t.visible_in_marketplace,
+          COALESCE(t.visible_in_marketplace, 1) as visible_in_marketplace,
+          GROUP_CONCAT(td.chain) as chains,
+          GROUP_CONCAT(td.token_address) as token_addresses,
+          GROUP_CONCAT(td.curve_address) as curve_addresses,
+          GROUP_CONCAT(td.status) as deployment_statuses,
+          GROUP_CONCAT(td.is_graduated) as graduation_statuses,
+          GROUP_CONCAT(td.market_cap) as market_caps
+        FROM tokens t
+        INNER JOIN token_deployments td ON t.id = td.token_id AND td.chain = ?
+        WHERE (t.deleted IS NULL OR t.deleted = 0)
+          AND (t.visible_in_marketplace IS NULL OR t.visible_in_marketplace = 1)
+      `;
       params.push(chain);
     }
     
@@ -730,16 +757,37 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     
     const tokens = await dbAll(query, params) as any[];
     
-    console.log(`📊 Marketplace: Found ${tokens.length} tokens in database`);
+    console.log(`📊 Marketplace: Found ${tokens.length} tokens after query`);
     
-    // Debug: Log first few tokens if any
+    // Debug: Log detailed information
     if (tokens.length > 0) {
-      console.log(`📊 Marketplace: First token: ${tokens[0].name} (${tokens[0].symbol}) - chains: ${tokens[0].chains || 'none'}`);
+      console.log(`📊 Marketplace: First token: ${tokens[0].name} (${tokens[0].symbol}) - ID: ${tokens[0].id} - chains: ${tokens[0].chains || 'none'}`);
+      console.log(`📊 Marketplace: Token deleted: ${tokens[0].deleted}, visible: ${tokens[0].visible_in_marketplace}`);
     } else {
       // Check if there are any tokens at all in the database
-      const allTokens = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
-      const allDeployments = await dbAll('SELECT COUNT(*) as count FROM token_deployments', []) as any[];
-      console.log(`📊 Marketplace: Database has ${allTokens[0]?.count || 0} tokens total, ${allDeployments[0]?.count || 0} deployments`);
+      const allTokensResult = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
+      const allDeploymentsResult = await dbAll('SELECT COUNT(*) as count FROM token_deployments', []) as any[];
+      const deletedTokensResult = await dbAll('SELECT COUNT(*) as count FROM tokens WHERE deleted = 1', []) as any[];
+      const hiddenTokensResult = await dbAll('SELECT COUNT(*) as count FROM tokens WHERE visible_in_marketplace = 0', []) as any[];
+      
+      console.log(`📊 Marketplace: Database statistics:`);
+      console.log(`   - Total tokens: ${allTokensResult[0]?.count || 0}`);
+      console.log(`   - Total deployments: ${allDeploymentsResult[0]?.count || 0}`);
+      console.log(`   - Deleted tokens: ${deletedTokensResult[0]?.count || 0}`);
+      console.log(`   - Hidden tokens (visible_in_marketplace=0): ${hiddenTokensResult[0]?.count || 0}`);
+      console.log(`   - Visible tokens (not deleted, visible=1): ${totalTokens}`);
+      
+      // Show sample tokens for debugging
+      const sampleTokens = await dbAll('SELECT id, name, symbol, deleted, visible_in_marketplace FROM tokens LIMIT 5', []) as any[];
+      if (sampleTokens.length > 0) {
+        console.log(`📊 Marketplace: Sample tokens:`, sampleTokens.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          symbol: t.symbol,
+          deleted: t.deleted,
+          visible: t.visible_in_marketplace
+        })));
+      }
     }
     
     const formattedTokens = tokens.map(token => {
