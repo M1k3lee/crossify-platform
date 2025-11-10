@@ -807,16 +807,30 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     
     let tokens: any[] = [];
     try {
+      // Log the full query for debugging (truncated to first 1000 chars)
+      console.log(`📊 Marketplace: Full query (first 1000 chars):`, query.substring(0, 1000));
+      console.log(`📊 Marketplace: Query params:`, JSON.stringify(params));
+      
       tokens = await dbAll(query, params) as any[];
       console.log(`📊 Marketplace: Query executed successfully, found ${tokens.length} tokens`);
     } catch (queryError: any) {
       console.error(`❌ Marketplace: Query failed:`, queryError.message);
       console.error(`❌ Marketplace: Query error code:`, queryError.code);
-      console.error(`❌ Marketplace: Query error stack:`, queryError.stack);
+      console.error(`❌ Marketplace: Query error details:`, JSON.stringify(queryError, null, 2));
+      if (queryError.stack) {
+        console.error(`❌ Marketplace: Query error stack:`, queryError.stack);
+      }
+      
+      // Log the problematic query
+      console.error(`❌ Marketplace: Failed query (first 2000 chars):`, query.substring(0, 2000));
       
       // Check if there are any tokens at all in the database
-      const allTokensResult = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
-      console.log(`📊 Marketplace: Total tokens in database: ${allTokensResult[0]?.count || 0}`);
+      try {
+        const allTokensResult = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
+        console.log(`📊 Marketplace: Total tokens in database: ${allTokensResult[0]?.count || 0}`);
+      } catch (countError) {
+        console.error(`❌ Marketplace: Could not count tokens:`, countError);
+      }
       
       throw queryError; // Re-throw to trigger error handler
     }
