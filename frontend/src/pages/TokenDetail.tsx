@@ -76,63 +76,47 @@ export default function TokenDetail() {
     enabled: !!id,
   });
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedAddress(text);
-    toast.success(`${label} copied!`);
-    setTimeout(() => setCopiedAddress(null), 2000);
-  };
-
-  if (isLoading) {
-    return (
-      <>
-        <SEO
-          title="Loading Token - Crossify.io"
-          description="Loading token details..."
-          url={`https://crossify.io/token/${id}`}
-        />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-            <p className="mt-4 text-gray-400">Loading token details...</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (!status) {
-    return (
-      <>
-        <SEO
-          title="Token Not Found - Crossify.io"
-          description="The token you're looking for doesn't exist."
-          url={`https://crossify.io/token/${id}`}
-        />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-          <div className="text-center">
-            <p className="text-xl text-gray-400">Token not found</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  const token = status.token;
-  const deployments = status.deployments || [];
-  const totalMarketCap = deployments.reduce((sum: number, dep: any) => sum + (dep.marketCap || 0), 0);
-  const totalLiquidity = totalMarketCap * 0.7;
+  // Safely extract data with defaults - MUST be called before any conditional returns
+  const token = status?.token;
+  const deployments = status?.deployments || [];
+  
+  // Calculate values safely - ALL HOOKS MUST BE CALLED UNCONDITIONALLY
+  const totalMarketCap = useMemo(() => {
+    if (!deployments || deployments.length === 0) return 0;
+    return deployments.reduce((sum: number, dep: any) => sum + (dep.marketCap || 0), 0);
+  }, [deployments]);
+  
+  const totalLiquidity = useMemo(() => totalMarketCap * 0.7, [totalMarketCap]);
   const liquidityChange24h = 2.1;
 
-  const allGraduated = deployments.every((dep: any) => dep.isGraduated) || false;
-  const someGraduated = deployments.some((dep: any) => dep.isGraduated) || false;
+  const allGraduated = useMemo(() => {
+    if (!deployments || deployments.length === 0) return false;
+    return deployments.every((dep: any) => dep.isGraduated);
+  }, [deployments]);
+  
+  const someGraduated = useMemo(() => {
+    if (!deployments || deployments.length === 0) return false;
+    return deployments.some((dep: any) => dep.isGraduated);
+  }, [deployments]);
 
   // Extract customization data
-  const customization = token?.customization || {};
-  const primaryColor = customization.primaryColor || metadata?.primaryColor || '#3B82F6';
-  const accentColor = customization.accentColor || metadata?.accentColor || '#8B5CF6';
-  const bannerImageIpfs = customization.bannerImageIpfs || metadata?.bannerUrl?.replace('https://ipfs.io/ipfs/', '');
-  const bannerUrl = bannerImageIpfs ? `https://ipfs.io/ipfs/${bannerImageIpfs}` : null;
+  const customization = useMemo(() => token?.customization || {}, [token?.customization]);
+  const primaryColor = useMemo(() => 
+    customization.primaryColor || metadata?.primaryColor || '#3B82F6',
+    [customization.primaryColor, metadata?.primaryColor]
+  );
+  const accentColor = useMemo(() => 
+    customization.accentColor || metadata?.accentColor || '#8B5CF6',
+    [customization.accentColor, metadata?.accentColor]
+  );
+  const bannerImageIpfs = useMemo(() => 
+    customization.bannerImageIpfs || metadata?.bannerUrl?.replace('https://ipfs.io/ipfs/', ''),
+    [customization.bannerImageIpfs, metadata?.bannerUrl]
+  );
+  const bannerUrl = useMemo(() => 
+    bannerImageIpfs ? `https://ipfs.io/ipfs/${bannerImageIpfs}` : null,
+    [bannerImageIpfs]
+  );
   
   // Find selected deployment based on URL chain parameter or use first deployed chain
   const selectedDeployment = useMemo(() => {
@@ -154,7 +138,53 @@ export default function TokenDetail() {
     ) || deployments[0] || null;
   }, [deployments, selectedChainFromUrl]);
   
-  const selectedChain = selectedDeployment?.chain || 'ethereum';
+  const selectedChain = useMemo(() => 
+    selectedDeployment?.chain || 'ethereum',
+    [selectedDeployment?.chain]
+  );
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedAddress(text);
+    toast.success(`${label} copied!`);
+    setTimeout(() => setCopiedAddress(null), 2000);
+  };
+
+  // Now we can do conditional returns AFTER all hooks are called
+  if (isLoading) {
+    return (
+      <>
+        <SEO
+          title="Loading Token - Crossify.io"
+          description="Loading token details..."
+          url={`https://crossify.io/token/${id}`}
+        />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+            <p className="mt-4 text-gray-400">Loading token details...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!status || !token) {
+    return (
+      <>
+        <SEO
+          title="Token Not Found - Crossify.io"
+          description="The token you're looking for doesn't exist."
+          url={`https://crossify.io/token/${id}`}
+        />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <p className="text-xl text-gray-400">Token not found</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
