@@ -15,7 +15,9 @@ import { motion } from 'framer-motion';
 import { deployTokenOnEVM, getTestnetInfo } from '../services/blockchain';
 import SEO, { generateHowToSchema } from '../components/SEO';
 import { API_BASE } from '../config/api';
-import { trackEvent, trackTokenCreation, trackButtonClick } from '../components/GoogleAnalytics';
+import { trackTokenCreation, trackButtonClick } from '../components/GoogleAnalytics';
+import BannerUpload from '../components/BannerUpload';
+import ColorPicker from '../components/ColorPicker';
 
 interface TokenData {
   name: string;
@@ -170,19 +172,6 @@ export default function Builder() {
     }
   };
 
-  const uploadBanner = async (file: File): Promise<string | undefined> => {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await axios.post(`${API_BASE}/upload/banner`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      return response.data.cid;
-    } catch (error) {
-      console.error('Banner upload failed:', error);
-      return undefined;
-    }
-  };
 
   const handleSubmit = async () => {
     // Validate required fields
@@ -868,7 +857,7 @@ export default function Builder() {
                 <div className="mb-6">
                   <BannerUpload
                     value={formData.bannerImageIpfs}
-                    onChange={(cid) => handleInputChange('bannerImageIpfs', cid || '')}
+                    onChange={(cid: string | null) => handleInputChange('bannerImageIpfs', cid || '')}
                   />
                 </div>
 
@@ -877,13 +866,13 @@ export default function Builder() {
                   <ColorPicker
                     label="Primary Color"
                     value={formData.primaryColor || '#3B82F6'}
-                    onChange={(color) => handleInputChange('primaryColor', color)}
+                    onChange={(color: string) => handleInputChange('primaryColor', color)}
                     defaultValue="#3B82F6"
                   />
                   <ColorPicker
                     label="Accent Color"
                     value={formData.accentColor || '#8B5CF6'}
-                    onChange={(color) => handleInputChange('accentColor', color)}
+                    onChange={(color: string) => handleInputChange('accentColor', color)}
                     defaultValue="#8B5CF6"
                   />
                 </div>

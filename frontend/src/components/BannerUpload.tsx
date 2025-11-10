@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { X, Image as ImageIcon } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_BASE } from '../config/api';

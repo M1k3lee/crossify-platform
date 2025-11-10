@@ -5,7 +5,7 @@ import {
   AlertCircle, Copy, CheckCircle, 
   Zap, Twitter, MessageCircle,
   TrendingUp, TrendingDown, ExternalLink, Settings,
-  Github, BookOpen, Reddit, Youtube, Linkedin
+  Github, BookOpen, MessageSquare, Youtube, Linkedin
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -350,7 +350,7 @@ export default function TokenDetail() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg transition"
                 >
-                  <Reddit className="w-4 h-4" />
+                  <MessageSquare className="w-4 h-4" />
                   <span className="text-sm">Reddit</span>
                 </a>
               )}
