@@ -4,7 +4,6 @@ import { ethers } from 'ethers';
 import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { getPreferredEVMProvider, getTestnetInfo } from '../services/blockchain';
 import { API_BASE } from '../config/api';
 import toast from 'react-hot-toast';
 
@@ -14,7 +13,7 @@ interface WalletHoldingsProps {
   tokenAddress: string;
   tokenSymbol: string;
   currentPrice: number;
-  curveAddress: string;
+  curveAddress: string; // Kept for future use, but currently unused
   onSell?: () => void;
 }
 
@@ -31,17 +30,13 @@ export default function WalletHoldings({
   tokenAddress,
   tokenSymbol,
   currentPrice,
-  curveAddress,
+  curveAddress: _curveAddress, // Prefix with underscore to indicate intentionally unused
   onSell,
 }: WalletHoldingsProps) {
   const { isConnected, address } = useAccount();
   const [balance, setBalance] = useState<string>('0');
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [averageCost, setAverageCost] = useState<number>(0);
-  const [totalCost, setTotalCost] = useState<number>(0);
-  const [showSellModal, setShowSellModal] = useState(false);
-  const [sellAmount, setSellAmount] = useState('');
 
   // Get RPC URL for the chain
   const getRpcUrl = (chainName: string): string => {
@@ -141,7 +136,8 @@ export default function WalletHoldings({
 
   // Calculate average cost and profit/loss
   const holdings = useMemo(() => {
-    if (transactions.length === 0 || parseFloat(balance) === 0) {
+    // If no transactions, return zeros
+    if (transactions.length === 0) {
       return {
         averageCost: 0,
         totalCost: 0,
@@ -178,9 +174,6 @@ export default function WalletHoldings({
     const profit = currentValue - costBasis;
     const profitPercent = costBasis > 0 ? (profit / costBasis) * 100 : 0;
 
-    setAverageCost(avgCost);
-    setTotalCost(costBasis);
-
     return {
       averageCost: avgCost,
       totalCost: costBasis,
@@ -196,8 +189,6 @@ export default function WalletHoldings({
       toast.error('No tokens to sell');
       return;
     }
-    setSellAmount(balance);
-    setShowSellModal(true);
     // Trigger sell in parent component
     if (onSell) {
       onSell();
