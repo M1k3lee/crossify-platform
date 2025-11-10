@@ -1,149 +1,164 @@
-# Quick Deployment Checklist for Crossify.io
+# TokenFactory Deployment Checklist
 
-## ✅ Pre-Deployment Steps
+## ✅ Pre-Deployment Checklist
 
-### 1. Code Preparation
-- [ ] All code committed to GitHub
-- [ ] No sensitive data in code (use environment variables)
-- [ ] `.gitignore` is properly configured
-- [ ] Build commands work locally
+Before deploying, ensure you have:
 
-### 2. Environment Variables Ready
-Prepare these values:
-- [ ] WalletConnect Project ID (get from https://cloud.walletconnect.com)
-- [ ] Backend deployment URL (Railway/Render)
-- [ ] Admin password hash
-- [ ] JWT secret
-- [ ] RPC URLs for all chains
-- [ ] Private keys (for backend only, never in frontend)
+- [ ] **Private Key** - Wallet private key with testnet tokens
+- [ ] **Testnet Tokens** - Enough ETH/BNB for gas fees (0.1+ recommended)
+- [ ] **Environment File** - `.env` file in `contracts/` directory
+- [ ] **RPC URLs** - Working RPC endpoints for each network
+- [ ] **Contract Addresses** - CrossChainSync and GlobalSupplyTracker addresses
 
-## 🚀 Deployment Steps
+## 📋 Step-by-Step Deployment
 
-### Step 1: Deploy Backend First (Railway or Render)
+### 1. Prepare Environment
 
-**Railway (Recommended):**
-1. [ ] Go to https://railway.app
-2. [ ] Create new project
-3. [ ] Add service from GitHub repo
-4. [ ] Set root directory to `backend`
-5. [ ] Set build command: `npm install && npm run build`
-6. [ ] Set start command: `npm start`
-7. [ ] Add environment variables (see VERCEL_DEPLOYMENT.md)
-8. [ ] Deploy and get URL (e.g., `https://crossify-backend.railway.app`)
-9. [ ] Test backend URL is accessible
-10. [ ] Update CORS_ORIGIN to allow crossify.io
+Create `contracts/.env` file with:
+```env
+PRIVATE_KEY=your_private_key_here
+SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+BSC_TESTNET_RPC_URL=https://bsc-testnet.publicnode.com
+BASE_SEPOLIA_RPC_URL=https://base-sepolia-rpc.publicnode.com
+```
 
-**Render:**
-1. [ ] Go to https://render.com
-2. [ ] Create new Web Service
-3. [ ] Connect GitHub repo
-4. [ ] Set root directory to `backend`
-5. [ ] Configure build/start commands
-6. [ ] Add environment variables
-7. [ ] Deploy and get URL
+### 2. Verify Wallet Balance
 
-### Step 2: Deploy Frontend to Vercel
+Check you have testnet tokens:
+- **Sepolia ETH**: Get from https://sepoliafaucet.com/
+- **BSC Testnet BNB**: Get from https://testnet.bnbchain.org/faucet-smart
+- **Base Sepolia ETH**: Get from https://www.coinbase.com/faucets/base-ethereum-goerli-faucet
 
-1. [ ] Go to https://vercel.com/dashboard
-2. [ ] Click "Add New Project"
-3. [ ] Import `crossify-platform` repository
-4. [ ] Configure project:
-   - Framework: Vite
-   - Root Directory: `frontend`
-   - Build Command: `npm install && npm run build`
-   - Output Directory: `dist`
-5. [ ] Add environment variables:
-   - `VITE_API_BASE` = your backend URL (e.g., `https://crossify-backend.railway.app/api`)
-   - `VITE_WALLETCONNECT_PROJECT_ID` = your project ID
-6. [ ] Click "Deploy"
-7. [ ] Wait for deployment to complete
-8. [ ] Test preview URL
+### 3. Compile Contracts
 
-### Step 3: Configure Domain (crossify.io)
+```bash
+cd contracts
+npx hardhat compile
+```
 
-1. [ ] In Vercel project, go to Settings → Domains
-2. [ ] Click "Add Domain"
-3. [ ] Enter: `crossify.io`
-4. [ ] Choose configuration method:
+Expected output: `Compiled successfully`
 
-   **Option A: Vercel Nameservers (Easiest)**
-   - [ ] Copy nameservers from Vercel
-   - [ ] Go to domain registrar
-   - [ ] Update nameservers
-   - [ ] Wait 24-48 hours for propagation
+### 4. Deploy to Sepolia
 
-   **Option B: DNS Records (If keeping current nameservers)**
-   - [ ] Add A record: `@` → `76.76.21.21`
-   - [ ] Add CNAME: `www` → `cname.vercel-dns.com`
-   - [ ] Wait for DNS propagation
+```bash
+npx hardhat run scripts/deploy.ts --network sepolia
+```
 
-5. [ ] Verify DNS propagation at https://www.whatsmydns.net
-6. [ ] Wait for SSL certificate (automatic)
-7. [ ] Test https://crossify.io
+**Copy the factory address from output:**
+```
+✅ TokenFactory deployed successfully!
+📍 Address: 0x...
+```
 
-### Step 4: Post-Deployment Verification
+### 5. Deploy to BSC Testnet
 
-#### Frontend Checks
-- [ ] Site loads at https://crossify.io
-- [ ] All pages accessible (Home, Builder, Marketplace, etc.)
-- [ ] Wallet connections work (MetaMask, Phantom)
-- [ ] API calls work (check browser console)
-- [ ] Images and assets load
-- [ ] No console errors
+```bash
+npx hardhat run scripts/deploy.ts --network bscTestnet
+```
 
-#### Backend Checks
-- [ ] Backend URL is accessible
-- [ ] API endpoints respond (test with Postman/curl)
-- [ ] CORS allows crossify.io domain
-- [ ] Database is initialized
-- [ ] Admin dashboard accessible at `/admin`
+**Copy the factory address from output**
 
-#### Domain Checks
-- [ ] Domain resolves correctly
-- [ ] SSL certificate active (green lock in browser)
-- [ ] www.crossify.io works (optional redirect)
-- [ ] No mixed content warnings
+### 6. Deploy to Base Sepolia
 
-## 🔧 Common Issues & Solutions
+```bash
+npx hardhat run scripts/deploy.ts --network baseSepolia
+```
 
-### Issue: 404 on page refresh
-**Fix**: Verify `vercel.json` has proper rewrites
+**Copy the factory address from output**
 
-### Issue: API calls failing (CORS error)
-**Fix**: 
-- Check `CORS_ORIGIN` in backend includes `https://crossify.io`
-- Verify `VITE_API_BASE` is correct in Vercel
+### 7. Update Frontend Environment Variables
 
-### Issue: Build fails
-**Fix**:
-- Check build logs in Vercel
-- Ensure all dependencies in package.json
-- Try clearing Vercel build cache
+**For Vercel:**
+1. Go to Project Settings → Environment Variables
+2. Add/Update:
+   - `VITE_ETH_FACTORY` = (Sepolia factory address)
+   - `VITE_BSC_FACTORY` = (BSC Testnet factory address)
+   - `VITE_BASE_FACTORY` = (Base Sepolia factory address)
+3. Redeploy frontend
 
-### Issue: Domain not working
-**Fix**:
-- Verify DNS records are correct
-- Wait for propagation (can take 24-48 hours)
-- Check domain is added in Vercel dashboard
+**For Local:**
+Update `frontend/.env`:
+```env
+VITE_ETH_FACTORY=0x... (Sepolia factory address)
+VITE_BSC_FACTORY=0x... (BSC Testnet factory address)
+VITE_BASE_FACTORY=0x... (Base Sepolia factory address)
+```
 
-## 📝 Post-Deployment Tasks
+### 8. Test Token Creation
 
-- [ ] Set up Vercel Analytics
-- [ ] Configure error tracking (Sentry)
-- [ ] Set up monitoring alerts
-- [ ] Configure database backups
-- [ ] Test all features end-to-end
-- [ ] Update social media with live URL
-- [ ] Submit to blockchain directories
+1. Go to Builder page
+2. Create a test token
+3. Select all chains (Sepolia, BSC, Base)
+4. Deploy token
+5. Verify it deploys successfully without errors
 
-## 🎉 You're Live!
+## 🔍 Verification
 
-Once all checks pass, your site is live at https://crossify.io!
+After deployment, verify:
 
-**Next Steps:**
-1. Share the launch on social media
-2. Start building community
-3. Gather user feedback
-4. Plan presale/launch campaign
+- [ ] TokenFactory deployed on all networks
+- [ ] Factory addresses copied correctly
+- [ ] Frontend environment variables updated
+- [ ] Token creation works without errors
+- [ ] Cross-chain sync is working (if enabled)
 
+## 📝 Current Contract Addresses
 
+### Cross-Chain Infrastructure (Already Deployed)
+
+**Base Sepolia:**
+- CrossChainSync: `0x39fB28323572610eC0Df1EF075f4acDD51f77e2E`
+- GlobalSupplyTracker: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
+
+**BSC Testnet:**
+- CrossChainSync: `0xf5446E2690B2eb161231fB647476A98e1b6b7736`
+- GlobalSupplyTracker: `0xe84Ae64735261F441e0bcB12bCf60630c5239ef4`
+
+**Sepolia:**
+- CrossChainSync: `0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65`
+- GlobalSupplyTracker: `0x130195A8D09dfd99c36D5903B94088EDBD66533e`
+
+### TokenFactory Addresses (To Be Deployed)
+
+- Sepolia: `TBD` (will be generated after deployment)
+- BSC Testnet: `TBD` (will be generated after deployment)
+- Base Sepolia: `TBD` (will be generated after deployment)
+
+## ⚠️ Important Notes
+
+1. **Private Key Security**: Never commit your `.env` file with real private keys
+2. **Testnet Only**: These deployments are for testnets only
+3. **Gas Fees**: Ensure you have enough testnet tokens for gas fees
+4. **Backup Addresses**: Save all factory addresses for future reference
+
+## 🆘 Troubleshooting
+
+### "Private key not found"
+- Check `.env` file exists in `contracts/` directory
+- Verify `PRIVATE_KEY=...` is set (no quotes)
+
+### "Insufficient funds"
+- Get testnet tokens from faucets
+- Check wallet balance on block explorers
+
+### "RPC connection failed"
+- Check RPC URLs in `.env` file
+- Try public RPC endpoints
+
+### "Transaction reverted"
+- Verify contract addresses are correct
+- Check network configuration
+
+## ✅ Success Criteria
+
+After deployment, you should be able to:
+1. Create tokens on all networks without errors
+2. See tokens in the marketplace
+3. Buy/sell tokens successfully
+4. See cross-chain price synchronization (if enabled)
+
+---
+
+**Status:** Ready for deployment
+**Estimated Time:** 15-30 minutes
+**Priority:** High (blocks token creation)
