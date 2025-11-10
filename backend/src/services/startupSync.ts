@@ -247,20 +247,44 @@ async function syncTokenToDatabase(
     // Check if token exists by token address (across all chains)
     // If token exists in another chain, reuse the same token ID
     let tokenId: string;
-    const existingToken = await dbGet(
+    const existingTokenByAddress = await dbGet(
       `SELECT DISTINCT t.id FROM tokens t 
        JOIN token_deployments td ON t.id = td.token_id 
        WHERE td.token_address = ? LIMIT 1`,
       [normalizedTokenAddress]
     ) as any;
 
-    if (existingToken) {
+    if (existingTokenByAddress) {
       // Token exists in another chain - reuse the token ID
-      tokenId = existingToken.id;
-      console.log(`    🔄 Token ${name} (${symbol}) exists in another chain, reusing token ID: ${tokenId}`);
+      tokenId = existingTokenByAddress.id;
+      console.log(`    🔄 Token ${name} (${symbol}) exists by address in another chain, reusing token ID: ${tokenId}`);
     } else {
-      // Generate new token ID
-      tokenId = uuidv4();
+      // Try to match by name + symbol + creator (for cross-chain tokens with different addresses)
+      // Only match if creator is available and tokens were created within a reasonable time window (1 hour)
+      const normalizedCreator = creator.toLowerCase();
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      
+      const existingTokenByMetadata = await dbGet(
+        `SELECT t.id, t.created_at FROM tokens t 
+         WHERE LOWER(t.name) = LOWER(?) 
+           AND LOWER(t.symbol) = LOWER(?)
+           AND LOWER(t.creator_address) = ?
+           AND t.created_at >= ?
+         ORDER BY t.created_at DESC
+         LIMIT 1`,
+        [name, symbol, normalizedCreator, oneHourAgo]
+      ) as any;
+
+      if (existingTokenByMetadata) {
+        // Found token by name+symbol+creator - reuse the token ID
+        tokenId = existingTokenByMetadata.id;
+        console.log(`    🔄 Token ${name} (${symbol}) exists by metadata (name+symbol+creator), reusing token ID: ${tokenId}`);
+        console.log(`       Created at: ${existingTokenByMetadata.created_at}, matching deployment on ${chain}`);
+      } else {
+        // No matching token found - generate new token ID
+        tokenId = uuidv4();
+        console.log(`    ✨ Creating new token record for ${name} (${symbol}) on ${chain}`);
+      }
     }
 
     // Fetch token details
