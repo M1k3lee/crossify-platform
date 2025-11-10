@@ -9,6 +9,15 @@ import { useNavigate } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { API_BASE } from '../config/api';
 
+// Helper to construct image URL from filename or CID
+const getImageUrl = (imageId: string | null | undefined): string | null => {
+  if (!imageId) return null;
+  if (imageId.startsWith('http')) return imageId;
+  if (imageId.startsWith('mock_')) return null; // Mock CIDs don't work
+  // It's a filename, construct API URL
+  return `${API_BASE.replace('/api', '')}/upload/file/${imageId}`;
+};
+
 export default function Marketplace() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
