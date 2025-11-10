@@ -393,6 +393,8 @@ export default function BuyWidget({
         'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
         'function getCurrentPrice() external view returns (uint256)',
         'function isGraduated() external view returns (bool)',
+        'function buyFeePercent() external view returns (uint256)',
+        'function sellFeePercent() external view returns (uint256)',
       ];
 
       const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
@@ -418,7 +420,18 @@ export default function BuyWidget({
       
       // Get price estimate with detailed logging and validation
       let priceEstimateWei: bigint;
+      let buyFeePercent: bigint = BigInt(0); // Declare outside try block so it's accessible for fee calculation
+      
       try {
+        // First get buy fee percent from contract (needed for accurate total cost calculation)
+        try {
+          buyFeePercent = await curveContract.buyFeePercent();
+          console.log(`💰 Buy fee percent: ${buyFeePercent.toString()} (${Number(buyFeePercent) / 100}%)`);
+        } catch (feeErr) {
+          console.warn('⚠️ Could not fetch buy fee percent, assuming 0%');
+          buyFeePercent = BigInt(0);
+        }
+        
         // First get current price to validate
         const currentPriceWei = await curveContract.getCurrentPrice();
         const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
@@ -452,7 +465,7 @@ export default function BuyWidget({
         if (currentPriceEth > 0.00001) {
           console.warn(`⚠️ Current price seems high for testnet: ${currentPriceEth} ${chainSymbol} per token`);
         }
-        
+
         // Try to get price for amount
         try {
           const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
@@ -490,52 +503,52 @@ export default function BuyWidget({
             throw new Error('Invalid price from contract - using fallback');
           }
           
-          // Calculate expected price range
-          const expectedPrice = currentPriceEth * parseFloat(amount);
-          const expectedMaxPrice = expectedPrice * 10; // Allow 10x buffer for bonding curve
-          const absoluteMaxPrice = Math.max(1, parseFloat(amount) * 1); // Absolute max: 1 ETH/BNB per token
+          // TRUST THE CONTRACT: Only reject if price is clearly wrong (astronomical values)
+          // The contract's getPriceForAmount() is the source of truth, so we should use it
+          // Bonding curves can have prices that are much higher than a simple linear estimate
+          // Absolute maximum safety check: 0.1 ETH/BNB total (this is our hard limit)
+          const absoluteMaxPrice = 0.1; // 0.1 ETH/BNB absolute max
           
-          // Check 1: Absolute maximum - if price is > 100 ETH/BNB or > absoluteMaxPrice, use fallback
-          if (priceEth > 100 || priceEth > absoluteMaxPrice) {
-            console.warn(`⚠️ Price from contract is too high: ${priceEth} ${chainSymbol} (expected max: ${absoluteMaxPrice} ${chainSymbol}).`);
-            console.warn(`   This indicates a bug in the bonding curve contract (likely old version).`);
-            console.warn(`   Using fallback calculation based on current price.`);
-            throw new Error('Contract price too high - using fallback');
+          // Only reject if price is clearly wrong (exceeds absolute max)
+          // Don't reject based on comparison to linear estimate - bonding curves are non-linear
+          if (priceEth > absoluteMaxPrice) {
+            console.error(`❌ Price from contract exceeds absolute maximum: ${priceEth} ${chainSymbol} (max: ${absoluteMaxPrice} ${chainSymbol}).`);
+            console.error(`   This exceeds our safety limit. Please try a smaller amount.`);
+            throw new Error(`Price exceeds maximum allowed: ${priceEth.toFixed(6)} ${chainSymbol} (max: ${absoluteMaxPrice} ${chainSymbol}). Please try a smaller amount.`);
           }
           
-          // Check 2: Compare against expected price (currentPrice * amount)
-          // If contract price is 100x+ higher than expected, use fallback
-          if (expectedPrice > 0 && priceEth > expectedMaxPrice) {
-            console.warn(`⚠️ Price from contract (${priceEth} ${chainSymbol}) is much higher than expected (${expectedPrice} ${chainSymbol}, max: ${expectedMaxPrice} ${chainSymbol}).`);
-            console.warn(`   Using fallback calculation.`);
-            throw new Error('Price validation failed - using fallback');
+          // Additional safety: Reject if price is astronomically high (likely a bug)
+          // This catches cases where the contract returns values like 1e30 wei
+          if (priceEth > 100) {
+            console.error(`❌ Price from contract is astronomically high: ${priceEth} ${chainSymbol}.`);
+            console.error(`   This likely indicates a bug in the contract.`);
+            throw new Error(`Price is too high: ${priceEth.toFixed(6)} ${chainSymbol}. This likely indicates a contract issue. Please contact support.`);
           }
           
-          // Check 3: For small amounts, price should be reasonable
-          // Buying tokens should cost a reasonable amount
-          if (parseFloat(amount) <= 100 && priceEth > 5) {
-            console.warn(`⚠️ Price too high for ${amount} tokens: ${priceEth} ${chainSymbol}. Using fallback.`);
-            throw new Error('Price validation failed - using fallback');
-          }
-          
-          // All validations passed - use contract price
+          // All validations passed - trust and use contract price
           priceEstimateWei = priceFromContract;
           console.log(`✅ Using contract price: ${priceEth} ${chainSymbol}`);
         } catch (priceErr: any) {
-          // Fallback: use currentPrice * amount (simple linear calculation)
-          console.warn('⚠️ Using fallback price calculation (currentPrice * amount)');
+          // Fallback: use improved approximation that accounts for bonding curve
+          console.warn('⚠️ Contract price call failed, using fallback calculation');
           console.warn(`   Reason: ${priceErr.message || 'Contract price validation failed'}`);
-          console.warn('   This happens when the bonding curve contract has calculation issues.');
-          console.warn('   Fallback uses a simple linear approximation: price = currentPrice * amount');
+          console.warn('   WARNING: Fallback is an approximation and may not match contract exactly.');
+          console.warn('   The transaction may fail if the estimate is too low.');
           
-          // At this point, currentPriceEth has already been validated to be <= 0.01 ETH/BNB per token
-          // Use currentPrice * amount with proper wei calculation
-          // currentPriceWei is in wei per token, tokenAmount is in wei (with 18 decimals)
-          // Multiply and divide by 1e18 to get total price in wei
+          // Improved fallback: For bonding curves, price increases with supply
+          // The contract uses: price = basePrice + slope * (supply + amount/2) for average price
+          // Our fallback: Use currentPrice * amount, but add a generous buffer (50%) to account for curve
+          // This is a conservative estimate that's more likely to succeed than fail
           try {
-            priceEstimateWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
+            // Linear approximation: currentPrice * amount
+            const linearPriceWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
+            
+            // Add 50% buffer to account for bonding curve (price increases with supply)
+            // This is conservative - the actual price could be even higher
+            priceEstimateWei = (linearPriceWei * BigInt(150)) / BigInt(100);
+            
             const fallbackPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
-            console.log(`💰 Fallback price estimate: ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ${chainSymbol})`);
+            console.log(`💰 Fallback price estimate (with 50% curve buffer): ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ${chainSymbol})`);
             
             // Validate fallback is reasonable
             if (isNaN(fallbackPriceEth) || !isFinite(fallbackPriceEth) || fallbackPriceEth <= 0) {
@@ -543,13 +556,13 @@ export default function BuyWidget({
             }
             
             // Calculate maximum reasonable fallback price
-            // Use a very conservative limit: 0.1 ETH/BNB total for any transaction
-            const maxFallbackPrice = 0.1; // 0.1 ETH/BNB absolute max for fallback
+            const maxFallbackPrice = 0.1; // 0.1 ETH/BNB absolute max
             if (fallbackPriceEth > maxFallbackPrice) {
-              throw new Error(`Fallback price too high: ${fallbackPriceEth.toFixed(6)} ${chainSymbol} for ${amount} tokens. Current price per token: ${currentPriceEth.toFixed(6)} ${chainSymbol}. This suggests the contract has corrupted data. Please try a much smaller amount (e.g., ${Math.floor(parseFloat(amount) * maxFallbackPrice / fallbackPriceEth)} tokens) or contact support.`);
+              throw new Error(`Fallback price too high: ${fallbackPriceEth.toFixed(6)} ${chainSymbol} for ${amount} tokens. Current price per token: ${currentPriceEth.toFixed(6)} ${chainSymbol}. Please try a much smaller amount (e.g., ${Math.floor(parseFloat(amount) * maxFallbackPrice / fallbackPriceEth)} tokens) or contact support.`);
             }
             
             console.log(`✅ Using fallback price: ${fallbackPriceEth} ${chainSymbol}`);
+            console.warn(`⚠️ WARNING: This is an approximation. The transaction may still fail if the actual price is higher.`);
           } catch (fallbackErr: any) {
             console.error('❌ Fallback calculation failed:', fallbackErr);
             throw new Error(`Failed to calculate price: ${fallbackErr.message}. Please try a much smaller amount (e.g., 100 tokens) or contact support.`);
@@ -560,7 +573,7 @@ export default function BuyWidget({
         throw new Error(`Failed to get price estimate: ${err.message}. Please try again or contact support.`);
       }
       
-      // Final validation: price should be reasonable
+      // Final validation: price should be reasonable (before fees)
       const finalPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
       const maxFinalPrice = 0.1; // 0.1 ETH/BNB absolute max
       
@@ -568,20 +581,42 @@ export default function BuyWidget({
         throw new Error(`Invalid price estimate: ${finalPriceEth.toFixed(6)} ${chainSymbol} (max allowed: ${maxFinalPrice} ${chainSymbol}). This suggests an issue with the bonding curve. Please try a much smaller amount or contact support.`);
       }
       
-      // Add 10% buffer for safety (contract will refund excess)
-      const priceWithFee = (priceEstimateWei * BigInt(110)) / BigInt(100);
-      const priceWithFeeEth = parseFloat(ethers.formatEther(priceWithFee));
-      console.log(`💰 Price with 10% buffer: ${priceWithFee.toString()} wei (${priceWithFeeEth.toFixed(6)} ${chainSymbol})`);
+      // Calculate total cost: price + fee (matching contract logic exactly)
+      // Contract: fee = (price * buyFeePercent) / 10000, totalCost = price + fee
+      // Then requires: msg.value >= totalCost
+      // CRITICAL: The contract will revert if msg.value < totalCost, so we must calculate this accurately
+      
+      // Calculate fee: (price * buyFeePercent) / 10000 (matches contract exactly)
+      // buyFeePercent is in basis points (e.g., 100 = 1%)
+      const feeWei = (priceEstimateWei * buyFeePercent) / BigInt(10000);
+      let totalCostWei = priceEstimateWei + feeWei;
+      
+      const priceEth = parseFloat(ethers.formatEther(priceEstimateWei));
+      const feeEth = parseFloat(ethers.formatEther(feeWei));
+      let totalCostEth = parseFloat(ethers.formatEther(totalCostWei));
+      
+      console.log(`💰 Price (before fee): ${priceEth.toFixed(6)} ${chainSymbol}`);
+      console.log(`💰 Fee (${Number(buyFeePercent) / 100}%): ${feeEth.toFixed(6)} ${chainSymbol}`);
+      console.log(`💰 Total cost (price + fee): ${totalCostEth.toFixed(6)} ${chainSymbol}`);
+      
+      // Add a small buffer (2%) to account for any rounding differences or price changes between estimate and execution
+      // The contract will refund any excess, but we need to ensure msg.value >= totalCost
+      // This buffer helps prevent transaction reverts due to minor price fluctuations
+      const bufferPercent = BigInt(102); // 2% buffer
+      totalCostWei = (totalCostWei * bufferPercent) / BigInt(100);
+      totalCostEth = parseFloat(ethers.formatEther(totalCostWei));
+      console.log(`💰 Total cost with 2% buffer: ${totalCostEth.toFixed(6)} ${chainSymbol}`);
       
       // Final validation before sending - must be within reasonable limits
-      if (priceWithFeeEth > maxFinalPrice || isNaN(priceWithFeeEth) || !isFinite(priceWithFeeEth)) {
-        throw new Error(`Price validation failed: ${priceWithFeeEth.toFixed(6)} ${chainSymbol} (max allowed: ${maxFinalPrice} ${chainSymbol}). Please try a much smaller amount or contact support.`);
+      const maxFinalPriceWithFee = 0.1; // 0.1 ETH/BNB absolute max (including fees)
+      if (totalCostEth > maxFinalPriceWithFee || isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
+        throw new Error(`Total cost too high: ${totalCostEth.toFixed(6)} ${chainSymbol} (max allowed: ${maxFinalPriceWithFee} ${chainSymbol}). Please try a much smaller amount or contact support.`);
       }
       
-      console.log(`🚀 Sending buy transaction with value: ${priceWithFee.toString()} wei`);
+      console.log(`🚀 Sending buy transaction with value: ${totalCostWei.toString()} wei (${totalCostEth.toFixed(6)} ${chainSymbol})`);
       
       const tx = await curveContract.buy(tokenAmount, {
-        value: priceWithFee,
+        value: totalCostWei,
         gasLimit: 500000,
       });
 
@@ -589,8 +624,8 @@ export default function BuyWidget({
       
       const receipt = await tx.wait();
       
-      // Calculate price per token from the transaction
-      const pricePerToken = finalPriceEth / parseFloat(amount);
+      // Calculate price per token from the transaction (use priceEstimateWei, not totalCostWei which includes fees)
+      const pricePerToken = parseFloat(ethers.formatEther(priceEstimateWei)) / parseFloat(amount);
       
       // Record transaction in backend for chart display
       try {
