@@ -686,6 +686,8 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     const totalTokens = tokenCount[0]?.count || 0;
     console.log(`📊 Marketplace: Total tokens in database (not deleted): ${totalTokens}`);
     
+    // IMPORTANT: Show ALL tokens that are not deleted and visible, even if they have no deployments
+    // This ensures tokens appear in marketplace immediately after creation, before sync completes
     let query = `
       SELECT 
         t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
@@ -694,12 +696,12 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
         t.deleted, t.visible_in_marketplace,
         COALESCE(t.visible_in_marketplace, 1) as visible_in_marketplace,
-        GROUP_CONCAT(td.chain) as chains,
-        GROUP_CONCAT(td.token_address) as token_addresses,
-        GROUP_CONCAT(td.curve_address) as curve_addresses,
-        GROUP_CONCAT(td.status) as deployment_statuses,
-        GROUP_CONCAT(td.is_graduated) as graduation_statuses,
-        GROUP_CONCAT(td.market_cap) as market_caps
+        GROUP_CONCAT(DISTINCT td.chain) as chains,
+        GROUP_CONCAT(DISTINCT td.token_address) as token_addresses,
+        GROUP_CONCAT(DISTINCT td.curve_address) as curve_addresses,
+        GROUP_CONCAT(DISTINCT td.status) as deployment_statuses,
+        GROUP_CONCAT(DISTINCT td.is_graduated) as graduation_statuses,
+        GROUP_CONCAT(DISTINCT td.market_cap) as market_caps
       FROM tokens t
       LEFT JOIN token_deployments td ON t.id = td.token_id
       WHERE (t.deleted IS NULL OR t.deleted = 0)

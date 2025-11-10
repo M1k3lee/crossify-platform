@@ -161,20 +161,65 @@ export default function TokenDetail() {
   const selectedDeployment = useMemo(() => {
     if (!deployments || deployments.length === 0) return null;
     
+    console.log('🔍 Finding selected deployment:', { 
+      deploymentsCount: deployments.length,
+      selectedChainFromUrl,
+      deployments: deployments.map((d: any) => ({
+        chain: d.chain,
+        status: d.status,
+        hasCurveAddress: !!d.curveAddress,
+        hasTokenAddress: !!d.tokenAddress
+      }))
+    });
+    
     // If chain is specified in URL, find matching deployment
     if (selectedChainFromUrl) {
-      const found = deployments.find((dep: any) => 
-        dep.chain?.toLowerCase() === selectedChainFromUrl.toLowerCase() && 
-        dep.status === 'deployed' &&
-        dep.curveAddress
-      );
-      if (found) return found;
+      // Try exact match first
+      let found = deployments.find((dep: any) => {
+        const depChain = dep.chain?.toLowerCase().trim();
+        const urlChain = selectedChainFromUrl.toLowerCase().trim();
+        return depChain === urlChain && dep.curveAddress && dep.tokenAddress;
+      });
+      
+      // If not found, try partial match (e.g., "base" matches "base-sepolia")
+      if (!found) {
+        found = deployments.find((dep: any) => {
+          const depChain = dep.chain?.toLowerCase().trim();
+          const urlChain = selectedChainFromUrl.toLowerCase().trim();
+          return (depChain.includes(urlChain) || urlChain.includes(depChain)) && 
+                 dep.curveAddress && dep.tokenAddress;
+        });
+      }
+      
+      if (found) {
+        console.log('✅ Found deployment for URL chain:', found.chain);
+        return found;
+      }
     }
     
-    // Otherwise, use first deployed chain with curve address
-    return deployments.find((dep: any) => 
-      dep.status === 'deployed' && dep.curveAddress
-    ) || deployments[0] || null;
+    // Otherwise, use first deployment with both curve and token addresses
+    const firstValid = deployments.find((dep: any) => 
+      dep.curveAddress && dep.tokenAddress && (dep.status === 'deployed' || !dep.status)
+    );
+    
+    if (firstValid) {
+      console.log('✅ Using first valid deployment:', firstValid.chain);
+      return firstValid;
+    }
+    
+    // Fallback to any deployment with addresses
+    const anyWithAddresses = deployments.find((dep: any) => 
+      dep.curveAddress && dep.tokenAddress
+    );
+    
+    if (anyWithAddresses) {
+      console.log('✅ Using deployment with addresses:', anyWithAddresses.chain);
+      return anyWithAddresses;
+    }
+    
+    // Last resort: return first deployment
+    console.log('⚠️ Using first deployment (may not have addresses):', deployments[0]?.chain);
+    return deployments[0] || null;
   }, [deployments, selectedChainFromUrl]);
   
   const selectedChain = useMemo(() => 
@@ -551,8 +596,19 @@ export default function TokenDetail() {
             />
           ) : status.deployments && status.deployments.length > 0 && !allGraduated ? (
             <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
-              <p className="text-yellow-400 text-sm">
-                No deployed bonding curve found for selected chain. Please deploy the token first.
+              <p className="text-yellow-400 text-sm mb-2">
+                ⚠️ Cannot buy on selected chain
+              </p>
+              <p className="text-yellow-300 text-xs mb-2">
+                Selected chain: {selectedChain}
+              </p>
+              <p className="text-yellow-300 text-xs mb-2">
+                Deployment: {selectedDeployment ? `${selectedDeployment.chain} (curve: ${selectedDeployment.curveAddress ? 'yes' : 'no'}, token: ${selectedDeployment.tokenAddress ? 'yes' : 'no'})` : 'none'}
+              </p>
+              <p className="text-yellow-400 text-xs">
+                Available chains: {status.deployments.map((d: any) => 
+                  d.curveAddress && d.tokenAddress ? d.chain : null
+                ).filter(Boolean).join(', ') || 'none'}
               </p>
             </div>
           ) : null}
