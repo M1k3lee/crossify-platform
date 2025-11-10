@@ -80,6 +80,7 @@ export async function dbAll<T = any>(sql: string, params?: any[]): Promise<T[]> 
  */
 function convertToPostgreSQL(sql: string): string {
   let pgSQL = sql;
+  const originalSQL = sql; // Keep original for logging
   
   // Handle GROUP_CONCAT -> STRING_AGG (PostgreSQL equivalent)
   // PostgreSQL STRING_AGG requires TEXT type, so we need to cast values
@@ -94,7 +95,11 @@ function convertToPostgreSQL(sql: string): string {
       return `STRING_AGG(DISTINCT ${col}, ',')`;
     }
     // Cast to TEXT for STRING_AGG
-    return `STRING_AGG(DISTINCT CAST(${col} AS TEXT), ',')`;
+    const converted = `STRING_AGG(DISTINCT CAST(${col} AS TEXT), ',')`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 Converted: ${match} → ${converted}`);
+    }
+    return converted;
   });
   
   // Handle GROUP_CONCAT without DISTINCT
@@ -109,7 +114,11 @@ function convertToPostgreSQL(sql: string): string {
       return `STRING_AGG(${col}, ',')`;
     }
     // Cast to TEXT for STRING_AGG (handles boolean, integer, etc.)
-    return `STRING_AGG(CAST(${col} AS TEXT), ',')`;
+    const converted = `STRING_AGG(CAST(${col} AS TEXT), ',')`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 Converted: ${match} → ${converted}`);
+    }
+    return converted;
   });
 
   // Replace ? placeholders with $1, $2, etc.
