@@ -24,6 +24,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy - REQUIRED for Railway and other cloud platforms
+// This allows Express to correctly identify client IPs when behind a proxy
+app.set('trust proxy', true);
+
 // Middleware
 app.use(helmet());
 

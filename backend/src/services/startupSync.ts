@@ -76,6 +76,50 @@ function getChainConfigs(): ChainConfig[] {
 /**
  * Query all TokenCreated events from a factory
  */
+/**
+ * Query events in batches to avoid RPC block range limits
+ */
+async function queryEventsInBatches(
+  factoryContract: ethers.Contract,
+  fromBlock: number,
+  toBlock: number,
+  batchSize: number = 45000 // Use 45k to be safe (RPC limit is usually 50k)
+): Promise<ethers.EventLog[]> {
+  const allEvents: ethers.EventLog[] = [];
+  let currentFrom = fromBlock;
+  
+  while (currentFrom < toBlock) {
+    const currentTo = Math.min(currentFrom + batchSize, toBlock);
+    
+    try {
+      console.log(`  📦 Querying events from block ${currentFrom} to ${currentTo}...`);
+      const filter = factoryContract.filters.TokenCreated();
+      const batchEvents = await factoryContract.queryFilter(filter, currentFrom, currentTo);
+      
+      const eventLogs = batchEvents.filter((event): event is ethers.EventLog => 'args' in event);
+      allEvents.push(...eventLogs);
+      
+      console.log(`  ✅ Found ${eventLogs.length} events in this batch (total: ${allEvents.length})`);
+      
+      currentFrom = currentTo + 1;
+    } catch (error: any) {
+      console.error(`  ❌ Error querying batch ${currentFrom}-${currentTo}: ${error.message}`);
+      // If batch fails, try smaller batches
+      if (batchSize > 10000) {
+        batchSize = Math.floor(batchSize / 2);
+        console.log(`  🔄 Retrying with smaller batch size: ${batchSize}`);
+        continue;
+      } else {
+        // Skip this batch and continue
+        console.warn(`  ⚠️ Skipping batch ${currentFrom}-${currentTo}`);
+        currentFrom = currentTo + 1;
+      }
+    }
+  }
+  
+  return allEvents;
+}
+
 async function queryAllTokens(
   provider: ethers.JsonRpcProvider,
   factoryAddress: string,
@@ -92,18 +136,22 @@ async function queryAllTokens(
   
   try {
     const currentBlock = await provider.getBlockNumber();
-    // Query from block 0 to ensure we find all tokens (testnets don't have that many blocks)
-    // For mainnet, you might want to limit this, but for testnets it's fine
-    const startBlock = 0;
+    
+    // Query from a reasonable starting point to avoid huge queries
+    // For testnets, query from last 100k blocks (about 2 weeks) or from block 0 if current block is small
+    const maxLookbackBlocks = 100000;
+    const startBlock = currentBlock > maxLookbackBlocks 
+      ? Math.max(0, currentBlock - maxLookbackBlocks)
+      : 0;
     
     console.log(`  📊 Current block: ${currentBlock}`);
     console.log(`  📊 Querying TokenCreated events from block ${startBlock} to ${currentBlock}...`);
     console.log(`  📊 Block range: ${currentBlock - startBlock} blocks`);
     
-    const filter = factoryContract.filters.TokenCreated();
-    const events = await factoryContract.queryFilter(filter, startBlock, currentBlock);
+    // Use batch querying to avoid RPC limits (45k blocks per batch)
+    const events = await queryEventsInBatches(factoryContract, startBlock, currentBlock);
     
-    console.log(`  ✅ Found ${events.length} TokenCreated events`);
+    console.log(`  ✅ Found ${events.length} TokenCreated events total`);
     
     if (events.length > 0) {
       console.log(`  📋 Sample events:`);
@@ -112,20 +160,28 @@ async function queryAllTokens(
           console.log(`     ${idx + 1}. ${event.args.name} (${event.args.symbol}) at block ${event.blockNumber}`);
         }
       });
+    } else {
+      console.log(`  💡 No tokens found. This could mean:`);
+      console.log(`     - No tokens have been created yet`);
+      console.log(`     - Factory address is incorrect (verify on block explorer)`);
+      console.log(`     - Tokens were created with a different factory`);
+      console.log(`  🔍 Verify on block explorer:`);
+      console.log(`     - Check TokenCreated events for factory ${factoryAddress}`);
     }
     
-    return events
-      .filter((event): event is ethers.EventLog => 'args' in event)
-      .map((event) => ({
-        tokenAddress: event.args.tokenAddress as string,
-        creator: event.args.creator as string,
-        curveAddress: event.args.curveAddress as string,
-        name: event.args.name as string,
-        symbol: event.args.symbol as string,
-        blockNumber: event.blockNumber,
-      }));
+    return events.map((event) => ({
+      tokenAddress: event.args.tokenAddress as string,
+      creator: event.args.creator as string,
+      curveAddress: event.args.curveAddress as string,
+      name: event.args.name as string,
+      symbol: event.args.symbol as string,
+      blockNumber: event.blockNumber,
+    }));
   } catch (error: any) {
     console.error(`  ❌ Error querying events: ${error.message}`);
+    if (error.stack) {
+      console.error(`  Stack: ${error.stack}`);
+    }
     return [];
   }
 }
