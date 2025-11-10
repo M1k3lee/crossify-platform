@@ -315,6 +315,14 @@ export default function TokenDetail() {
     );
   }
 
+  // Safe token properties with fallbacks - MUST be defined before conditional returns
+  // These need to be defined even if token is null to prevent undefined errors
+  const tokenName = token?.name || status?.token?.name || 'Unknown Token';
+  const tokenSymbol = token?.symbol || status?.token?.symbol || 'UNKNOWN';
+  const tokenDescription = token?.description || status?.token?.description || `View ${tokenName} (${tokenSymbol}) token details, price charts, market depth, and trading information. Trade ${tokenSymbol} on Ethereum, BSC, Base, and Solana.`;
+  const tokenLogoIpfs = token?.logoIpfs || status?.token?.logoIpfs || null;
+  const tokenImage = tokenLogoIpfs ? `https://ipfs.io/ipfs/${tokenLogoIpfs}` : 'https://crossify.io/og-image.png';
+
   // Handle error states
   if (statusError || !status || !token) {
     const is404 = (statusError as any)?.response?.status === 404;
@@ -359,13 +367,6 @@ export default function TokenDetail() {
       </>
     );
   }
-
-  // Safe token properties with fallbacks - MUST be defined before rendering
-  const tokenName = token?.name || 'Unknown Token';
-  const tokenSymbol = token?.symbol || 'UNKNOWN';
-  const tokenDescription = token?.description || `View ${tokenName} (${tokenSymbol}) token details, price charts, market depth, and trading information. Trade ${tokenSymbol} on Ethereum, BSC, Base, and Solana.`;
-  const tokenLogoIpfs = token?.logoIpfs || null;
-  const tokenImage = tokenLogoIpfs ? `https://ipfs.io/ipfs/${tokenLogoIpfs}` : 'https://crossify.io/og-image.png';
 
   // Debug logging
   console.log('TokenDetail render:', { 
