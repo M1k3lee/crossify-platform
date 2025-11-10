@@ -182,12 +182,14 @@ contract TokenFactory is Ownable {
         // Transfer all tokens from factory to the bonding curve (factory owns them temporarily)
         require(token.transfer(curveAddress, token.totalSupply()), "Failed to transfer tokens to bonding curve");
         
-        // If using CrossChainToken, set bonding curve address (must do this before transferring ownership)
+        // If using CrossChainToken, set bonding curve address (must do BEFORE transferring ownership)
+        // Factory is still the owner at this point, so it can call setBondingCurve
         if (crossChainEnabled && tokenAddress != address(0)) {
             try CrossChainToken(tokenAddress).setBondingCurve(curveAddress) {
                 // Successfully set bonding curve
             } catch {
                 // Not a CrossChainToken or already set, continue
+                // This is not critical - bonding curve can work without this
             }
         }
         
@@ -196,18 +198,16 @@ contract TokenFactory is Ownable {
         Ownable(tokenAddress).transferOwnership(msg.sender);
 
         // Authorize bonding curve in GlobalSupplyTracker if using global supply
-        // Note: We use a low-level call to avoid import conflicts
+        // Note: We use a low-level call with limited gas to avoid excessive gas usage on failure
+        // This is optional - tokens can be created even if authorization fails
         if (useGlobalSupply && globalSupplyTracker != address(0)) {
-            (bool success, ) = globalSupplyTracker.call(
+            // Use limited gas for authorization call to prevent out-of-gas issues
+            // 50k gas should be enough for a simple authorization call
+            (bool success, ) = globalSupplyTracker.call{gas: 50000}(
                 abi.encodeWithSignature("authorizeUpdater(address)", curveAddress)
             );
-            if (success) {
-                // Successfully authorized - bonding curve can now update global supply and trigger cross-chain sync
-            } else {
-                // Authorization failed (e.g., not owner) - log but don't revert
-                // This allows tokens to be created even if authorization fails
-                // Admin can manually authorize later if needed
-            }
+            // Authorization is optional - don't revert if it fails
+            // Admin can manually authorize later if needed
         }
 
         // Track token
