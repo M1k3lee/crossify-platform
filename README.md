@@ -63,6 +63,11 @@ See the `docs/` directory for detailed documentation on:
 - Frontend components
 - Deployment guide
 
+## Repository
+
+- **GitHub**: https://github.com/M1k3lee/crossify-platform
+- **Live Site**: https://www.crossify.io
+
 ## License
 
 MIT
