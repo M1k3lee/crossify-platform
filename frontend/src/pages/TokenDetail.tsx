@@ -1,11 +1,11 @@
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   AlertCircle, Copy, CheckCircle, 
   Zap, Twitter, MessageCircle,
   TrendingUp, TrendingDown, ExternalLink, Settings,
-  Github, BookOpen, MessageSquare, Youtube, Linkedin
+  Github, BookOpen, MessageSquare, Youtube, Linkedin, Loader2
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import SEO from '../components/SEO';
 import { API_BASE } from '../config/api';
+import { deployTokenOnEVM, getTestnetInfo } from '../services/blockchain';
 
 const CHAIN_COLORS: Record<string, string> = {
   ethereum: '#627EEA',
@@ -43,13 +44,15 @@ const CHAIN_NAMES: Record<string, string> = {
 export default function TokenDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+  const queryClient = useQueryClient();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [liquidityModal, setLiquidityModal] = useState<{
     chain: string;
     curveAddress: string;
     tokenAddress: string;
   } | null>(null);
+  const [deploying, setDeploying] = useState<string | null>(null);
   
   // Get chain from URL query parameter, default to first deployed chain
   const selectedChainFromUrl = searchParams.get('chain');
@@ -715,11 +718,122 @@ export default function TokenDetail() {
               <p className="text-yellow-300 text-xs mb-2">
                 Deployment: {selectedDeployment ? `${selectedDeployment.chain} (curve: ${selectedDeployment.curveAddress ? 'yes' : 'no'}, token: ${selectedDeployment.tokenAddress ? 'yes' : 'no'})` : 'none'}
               </p>
-              <p className="text-yellow-400 text-xs">
+              <p className="text-yellow-400 text-xs mb-3">
                 Available chains: {deployments.map((d: any) => 
                   d && d.curveAddress && d.tokenAddress ? d.chain : null
                 ).filter(Boolean).join(', ') || 'none'}
               </p>
+              {!selectedDeployment?.curveAddress || !selectedDeployment?.tokenAddress ? (
+                <button
+                  onClick={async () => {
+                    if (!isConnected || !address) {
+                      toast.error('Please connect your wallet first');
+                      return;
+                    }
+                    if (!token) {
+                      toast.error('Token data not loaded');
+                      return;
+                    }
+                    if (!selectedDeployment) {
+                      toast.error('No deployment selected');
+                      return;
+                    }
+
+                    const chain = selectedDeployment.chain.toLowerCase();
+                    const evmChain = chain.includes('sepolia') && !chain.includes('base') ? 'ethereum' :
+                                    chain.includes('base') ? 'base' :
+                                    chain.includes('bsc') ? 'bsc' : null;
+
+                    if (!evmChain) {
+                      toast.error('Solana deployment is not yet supported');
+                      return;
+                    }
+
+                    try {
+                      setDeploying(selectedDeployment.chain);
+                      toast.loading(`Deploying to ${selectedDeployment.chain}...`, { id: 'deploy-token' });
+
+                      // Get token data
+                      // Try to get logo IPFS from multiple sources
+                      let logoIpfs = '';
+                      if (metadata?.logoUrl) {
+                        logoIpfs = metadata.logoUrl.replace('https://ipfs.io/ipfs/', '').replace('ipfs://', '');
+                      } else if ((token as any).logoIpfs) {
+                        logoIpfs = (token as any).logoIpfs;
+                      } else if ((token as any).logo_ipfs) {
+                        logoIpfs = (token as any).logo_ipfs;
+                      }
+                      
+                      const tokenData = {
+                        name: token.name,
+                        symbol: token.symbol,
+                        decimals: token.decimals || 18,
+                        initialSupply: token.initialSupply || token.initial_supply || '1000000000',
+                        metadataUri: logoIpfs,
+                      };
+
+                      const curveData = {
+                        basePrice: ((token as any).basePrice || (token as any).base_price || 0.001).toString(),
+                        slope: ((token as any).slope || 0.000001).toString(),
+                        graduationThreshold: '0',
+                        buyFeePercent: ((token as any).buyFeePercent || (token as any).buy_fee_percent || 0).toString(),
+                        sellFeePercent: ((token as any).sellFeePercent || (token as any).sell_fee_percent || 0).toString(),
+                      };
+
+                      // Deploy to blockchain
+                      const result = await deployTokenOnEVM(evmChain as 'ethereum' | 'bsc' | 'base', {
+                        chain: evmChain as any,
+                        tokenData,
+                        curveData,
+                      });
+
+                      // Save deployment to backend
+                      await axios.post(`${API_BASE}/tokens/${id}/deploy`, {
+                        chains: [evmChain],
+                        deployments: [{
+                          chain: selectedDeployment.chain,
+                          tokenAddress: result.tokenAddress,
+                          curveAddress: result.curveAddress,
+                          status: 'deployed',
+                          txHash: result.txHash,
+                        }],
+                      });
+
+                      toast.success(`✅ Deployed to ${selectedDeployment.chain}!`, { id: 'deploy-token' });
+                      
+                      // Refresh token data
+                      queryClient.invalidateQueries({ queryKey: ['token-status', id] });
+                      
+                      // Reload page after a short delay
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 2000);
+                    } catch (error: any) {
+                      console.error('Deployment error:', error);
+                      toast.error(error.message || `Failed to deploy to ${selectedDeployment.chain}`, { 
+                        id: 'deploy-token',
+                        duration: 10000 
+                      });
+                    } finally {
+                      setDeploying(null);
+                    }
+                  }}
+                  disabled={deploying !== null || !isConnected || !token}
+                  className="w-full mt-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  {deploying === selectedDeployment?.chain ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Deploying...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      Deploy to {selectedDeployment?.chain || selectedChain}
+                    </>
+                  )}
+                </button>
+              ) : null}
             </div>
           ) : null}
           
