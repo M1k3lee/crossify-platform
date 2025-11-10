@@ -391,7 +391,7 @@ export default function TokenDetail() {
               {metadata?.logoUrl ? (
                 <img
                   src={metadata.logoUrl}
-                  alt={status.token?.name}
+                  alt={tokenName}
                   className={`w-20 h-20 rounded-full border-2 ${bannerUrl ? 'border-gray-500/50' : 'border-gray-600'}`}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
@@ -404,14 +404,14 @@ export default function TokenDetail() {
                     background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)` 
                   }}
                 >
-                  {status.token?.symbol?.charAt(0) || 'T'}
+                  {tokenSymbol?.charAt(0) || 'T'}
                 </div>
               )}
               <div>
                 {!bannerUrl && (
                   <>
-                    <h1 className="text-4xl font-bold text-white mb-2">{status.token?.name || 'Unknown Token'}</h1>
-                    <p className="text-xl text-gray-400">{status.token?.symbol}</p>
+                    <h1 className="text-4xl font-bold text-white mb-2">{tokenName}</h1>
+                    <p className="text-xl text-gray-400">{tokenSymbol}</p>
                   </>
                 )}
                 {metadata?.description && (
