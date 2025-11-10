@@ -46,11 +46,11 @@ async function main() {
     console.warn("⚠️  WARNING: Low balance! You may not have enough funds for deployment.");
   }
 
-  // Get global supply tracker address for this network
+  // Get global supply tracker address for this network (from DEPLOYMENT_RESULTS.md)
   const globalTrackerAddresses: Record<string, string> = {
-    sepolia: "0xA4c5bFA9099347Bc405B72dd1955b75dCa263573",
-    bscTestnet: "0x15Bc893fa73694106D1720f4f0c8C3EE3259a15e",
-    baseSepolia: "0xA4c5bFA9099347Bc405B72dd1955b75dCa263573",
+    sepolia: "0x130195A8D09dfd99c36D5903B94088EDBD66533e",
+    bscTestnet: "0xe84Ae64735261F441e0bcB12bCf60630c5239ef4",
+    baseSepolia: "0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65",
   };
   
   const chainNames: Record<string, string> = {
@@ -73,11 +73,11 @@ async function main() {
     baseSepolia: 40245, // LayerZero EID for Base Sepolia
   };
 
-  // Cross-chain sync addresses (set in .env after deploying CrossChainSync)
+  // Cross-chain sync addresses (from DEPLOYMENT_RESULTS.md)
   const crossChainSyncAddresses: Record<string, string> = {
-    sepolia: process.env.CROSS_CHAIN_SYNC_SEPOLIA || ethers.ZeroAddress,
-    bscTestnet: process.env.CROSS_CHAIN_SYNC_BSCTESTNET || ethers.ZeroAddress,
-    baseSepolia: process.env.CROSS_CHAIN_SYNC_BASESEPOLIA || ethers.ZeroAddress,
+    sepolia: process.env.CROSS_CHAIN_SYNC_SEPOLIA || "0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65",
+    bscTestnet: process.env.CROSS_CHAIN_SYNC_BSCTESTNET || "0xf5446E2690B2eb161231fB647476A98e1b6b7736",
+    baseSepolia: process.env.CROSS_CHAIN_SYNC_BASESEPOLIA || "0x39fB28323572610eC0Df1EF075f4acDD51f77e2E",
   };
 
   // Price oracle addresses (optional, can deploy later)

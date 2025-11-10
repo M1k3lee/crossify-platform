@@ -140,14 +140,10 @@ contract TokenFactory is Ownable {
                 )
             );
             
-               // Authorize token in CrossChainSync contract
-               if (crossChainSync != address(0)) {
-                   // Call authorizeToken on CrossChainSync
-                   (bool success, ) = crossChainSync.call(
-                       abi.encodeWithSignature("authorizeToken(address)", address(token))
-                   );
-                   require(success, "Failed to authorize token in CrossChainSync");
-               }
+            // Note: We don't need to authorize the token in CrossChainSync here.
+            // The token contract doesn't directly call CrossChainSync.
+            // Instead, the GlobalSupplyTracker calls CrossChainSync, and it's already authorized.
+            // The authorization happens when the GlobalSupplyTracker is set up, not when tokens are created.
         } else {
             // Deploy CrossChainToken even without cross-chain sync (it will just work locally)
             // This simplifies the code and avoids code size issues
