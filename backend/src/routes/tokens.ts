@@ -2077,3 +2077,62 @@ router.delete('/:id/sections/:sectionId', async (req: Request, res: Response) =>
   }
 });
 
+// POST /tokens/fix-visibility - Make all hidden tokens visible (admin/utility endpoint)
+router.post('/fix-visibility', async (req: Request, res: Response) => {
+  try {
+    console.log('🔍 Checking for hidden tokens...');
+    
+    // Get count of hidden tokens
+    const hiddenTokens = await dbAll(
+      'SELECT COUNT(*) as count FROM tokens WHERE visible_in_marketplace = 0 OR visible_in_marketplace IS NULL',
+      []
+    ) as any[];
+    
+    const count = hiddenTokens[0]?.count || 0;
+    console.log(`📊 Found ${count} hidden tokens`);
+    
+    if (count === 0) {
+      return res.json({
+        success: true,
+        message: 'No hidden tokens found. All tokens are already visible.',
+        updated: 0,
+      });
+    }
+    
+    // Update all hidden tokens to be visible
+    console.log('🔄 Making all tokens visible...');
+    const result = await dbRun(
+      'UPDATE tokens SET visible_in_marketplace = 1 WHERE visible_in_marketplace = 0 OR visible_in_marketplace IS NULL',
+      []
+    );
+    
+    const updated = (result as any)?.changes ?? (result as any)?.rowCount ?? 0;
+    console.log(`✅ Updated ${updated} tokens to be visible in marketplace`);
+    
+    // Verify
+    const visibleTokens = await dbAll(
+      'SELECT COUNT(*) as count FROM tokens WHERE visible_in_marketplace = 1',
+      []
+    ) as any[];
+    const totalTokens = await dbAll(
+      'SELECT COUNT(*) as count FROM tokens',
+      []
+    ) as any[];
+    
+    res.json({
+      success: true,
+      message: `Updated ${updated} tokens to be visible in marketplace`,
+      updated,
+      totalTokens: totalTokens[0]?.count || 0,
+      visibleTokens: visibleTokens[0]?.count || 0,
+      hiddenTokens: (totalTokens[0]?.count || 0) - (visibleTokens[0]?.count || 0),
+    });
+  } catch (error) {
+    console.error('❌ Error making tokens visible:', error);
+    res.status(500).json({
+      error: 'Failed to update token visibility',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
