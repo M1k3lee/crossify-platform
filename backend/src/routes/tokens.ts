@@ -350,11 +350,23 @@ router.post('/:id/deploy', async (req: Request, res: Response) => {
     const { id } = req.params;
     const data = deployTokenSchema.parse(req.body);
     
-    // Verify token exists
-    const token = await dbGet('SELECT id FROM tokens WHERE id = ?', [id]) as any;
+    console.log(`📋 Saving deployments for token ${id}...`);
+    console.log(`📋 Deployments data:`, JSON.stringify(data, null, 2));
+    
+    // Verify token exists - CRITICAL CHECK
+    const token = await dbGet('SELECT id, name, symbol FROM tokens WHERE id = ?', [id]) as any;
     if (!token) {
-      return res.status(404).json({ error: 'Token not found' });
+      console.error(`❌ CRITICAL: Token ${id} not found in database when saving deployments!`);
+      console.error(`   This means the token creation failed or the token was deleted.`);
+      console.error(`   Cannot save deployments without a token record.`);
+      return res.status(404).json({ 
+        error: 'Token not found',
+        message: `Token ${id} does not exist in database. Token creation may have failed.`,
+        tokenId: id
+      });
     }
+    
+    console.log(`✅ Token found: ${token.name} (${token.symbol})`);
     
     // Save deployments
     for (const deployment of data.deployments || []) {
