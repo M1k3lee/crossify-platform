@@ -438,8 +438,24 @@ async function syncTokenToDatabase(
       return true;
     } catch (error: any) {
       // If deployment insert fails due to UNIQUE constraint, it already exists
-      if (error.message?.includes('UNIQUE constraint') || error.code === 'SQLITE_CONSTRAINT') {
+      if (error.message?.includes('UNIQUE constraint') || error.code === 'SQLITE_CONSTRAINT' || error.code === '23505') {
         console.log(`    ℹ️  Deployment for ${name} (${symbol}) on ${chain} already exists`);
+        
+        // Even though deployment exists, ensure token is visible
+        try {
+          const updateResult = await dbRun(
+            'UPDATE tokens SET visible_in_marketplace = 1 WHERE id = ? AND (visible_in_marketplace = 0 OR visible_in_marketplace IS NULL)',
+            [tokenId]
+          );
+          const updated = (updateResult as any)?.changes ?? (updateResult as any)?.rowCount ?? 0;
+          if (updated > 0) {
+            console.log(`    ✅ Made token ${tokenId} visible in marketplace`);
+          }
+        } catch (updateError) {
+          // Non-critical error - log but don't fail
+          console.warn(`    ⚠️  Could not update token visibility for ${tokenId}:`, updateError);
+        }
+        
         return false;
       }
       throw error;
