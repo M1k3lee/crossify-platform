@@ -16,10 +16,24 @@ export async function initializeDatabase(): Promise<void> {
   
   if (usePostgreSQL) {
     console.log('🗄️  Using PostgreSQL database');
-    initializePostgreSQL();
-    await initializePostgreSQLSchema();
+    console.log('📋 DATABASE_URL is set:', process.env.DATABASE_URL ? 'Yes' : 'No');
+    if (process.env.DATABASE_URL) {
+      // Log first part of connection string (without password) for debugging
+      const url = new URL(process.env.DATABASE_URL);
+      console.log(`📋 Connecting to: postgresql://${url.username}@${url.hostname}:${url.port}${url.pathname}`);
+    }
+    try {
+      initializePostgreSQL();
+      await initializePostgreSQLSchema();
+      console.log('✅ PostgreSQL database initialized successfully');
+    } catch (error: any) {
+      console.error('❌ Failed to initialize PostgreSQL:', error.message);
+      throw error;
+    }
   } else {
     console.log('🗄️  Using SQLite database');
+    console.log('ℹ️  DATABASE_URL not set or not a PostgreSQL URL');
+    console.log('ℹ️  To use PostgreSQL, set DATABASE_URL environment variable');
     await initializeSQLite();
   }
 }
