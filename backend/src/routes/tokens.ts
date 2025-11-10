@@ -837,10 +837,26 @@ router.get('/marketplace', async (req: Request, res: Response) => {
     
     console.log(`📊 Marketplace: Found ${tokens.length} tokens after query`);
     
-    // Debug: Log detailed information
+    // Debug: Log detailed information about tokens and deployments
     if (tokens.length > 0) {
-      console.log(`📊 Marketplace: First token: ${tokens[0].name} (${tokens[0].symbol}) - ID: ${tokens[0].id} - chains: ${tokens[0].chains || 'none'}`);
-      console.log(`📊 Marketplace: Token deleted: ${tokens[0].deleted}, visible: ${tokens[0].visible_in_marketplace}`);
+      console.log(`📊 Marketplace: Sample of first 3 tokens:`);
+      tokens.slice(0, 3).forEach((token, idx) => {
+        console.log(`   Token ${idx + 1}: ${token.name} (${token.symbol}) - ID: ${token.id}`);
+        console.log(`     - chains: ${token.chains || 'none'}`);
+        console.log(`     - token_addresses: ${token.token_addresses || 'none'}`);
+        console.log(`     - curve_addresses: ${token.curve_addresses || 'none'}`);
+        console.log(`     - deployment_statuses: ${token.deployment_statuses || 'none'}`);
+        console.log(`     - deleted: ${token.deleted}, visible: ${token.visible_in_marketplace}`);
+      });
+      
+      // Check for duplicate token IDs
+      const tokenIds = tokens.map(t => t.id);
+      const uniqueTokenIds = new Set(tokenIds);
+      if (tokenIds.length !== uniqueTokenIds.size) {
+        console.warn(`⚠️ Marketplace: Found ${tokenIds.length - uniqueTokenIds.size} duplicate token IDs in query results!`);
+        const duplicates = tokenIds.filter((id, idx) => tokenIds.indexOf(id) !== idx);
+        console.warn(`⚠️ Marketplace: Duplicate token IDs:`, [...new Set(duplicates)]);
+      }
     } else {
       // Check if there are any tokens at all in the database
       const allTokensResult = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
