@@ -1,10 +1,17 @@
 name: Deploy to GitHub Pages
 
+# DISABLED: Using Netlify for deployment instead
+# To enable GitHub Pages deployment:
+# 1. Go to repository Settings > Pages
+# 2. Enable GitHub Pages
+# 3. Set source to "GitHub Actions"
+# 4. Uncomment the on: section below
+
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_dispatch:  # Only manual trigger - Netlify handles automatic deployment
+  # push:
+  #   branches:
+  #     - main
 
 permissions:
   contents: read
