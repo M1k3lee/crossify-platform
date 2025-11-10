@@ -803,10 +803,24 @@ router.get('/:id/status', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
+    console.log(`📋 Fetching token status for ID: ${id}`);
+    
     const token = await dbGet('SELECT * FROM tokens WHERE id = ?', [id]) as any;
     if (!token) {
-      return res.status(404).json({ error: 'Token not found' });
+      console.error(`❌ Token ${id} not found in database`);
+      
+      // Check if token exists with different case or similar ID
+      const allTokens = await dbAll('SELECT id, name, symbol FROM tokens LIMIT 10', []) as any[];
+      console.log(`📊 Sample tokens in database:`, allTokens.map(t => ({ id: t.id, name: t.name, symbol: t.symbol })));
+      
+      return res.status(404).json({ 
+        error: 'Token not found',
+        tokenId: id,
+        message: `Token with ID "${id}" does not exist in database`
+      });
     }
+    
+    console.log(`✅ Token found: ${token.name} (${token.symbol})`);
     
     const deployments = await dbAll(
       'SELECT * FROM token_deployments WHERE token_id = ?',
