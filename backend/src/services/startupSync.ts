@@ -259,27 +259,56 @@ async function syncTokenToDatabase(
       tokenId = existingTokenByAddress.id;
       console.log(`    🔄 Token ${name} (${symbol}) exists by address in another chain, reusing token ID: ${tokenId}`);
     } else {
-      // Try to match by name + symbol + creator (for cross-chain tokens with different addresses)
-      // Only match if creator is available and tokens were created within a reasonable time window (1 hour)
-      const normalizedCreator = creator.toLowerCase();
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      // Try to match by name + symbol (for cross-chain tokens with different addresses)
+      // During sync, we're more aggressive about matching since we know tokens from blockchain events are related
+      // First try with creator address (more specific)
+      let existingTokenByMetadata = null;
+      if (creator && creator !== ethers.ZeroAddress) {
+        const normalizedCreator = creator.toLowerCase();
+        // Use a 7-day window for sync (tokens might be created over time)
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        
+        existingTokenByMetadata = await dbGet(
+          `SELECT t.id, t.created_at FROM tokens t 
+           WHERE LOWER(t.name) = LOWER(?) 
+             AND LOWER(t.symbol) = LOWER(?)
+             AND LOWER(t.creator_address) = ?
+             AND t.created_at >= ?
+           ORDER BY t.created_at DESC
+           LIMIT 1`,
+          [name, symbol, normalizedCreator, sevenDaysAgo]
+        ) as any;
+        
+        if (existingTokenByMetadata) {
+          console.log(`    🔄 Token ${name} (${symbol}) exists by metadata (name+symbol+creator), reusing token ID: ${existingTokenByMetadata.id}`);
+        }
+      }
       
-      const existingTokenByMetadata = await dbGet(
-        `SELECT t.id, t.created_at FROM tokens t 
-         WHERE LOWER(t.name) = LOWER(?) 
-           AND LOWER(t.symbol) = LOWER(?)
-           AND LOWER(t.creator_address) = ?
-           AND t.created_at >= ?
-         ORDER BY t.created_at DESC
-         LIMIT 1`,
-        [name, symbol, normalizedCreator, oneHourAgo]
-      ) as any;
+      // If not found with creator, try without creator (name+symbol only)
+      // This is useful for tokens that might have been created by different addresses or creator wasn't set
+      if (!existingTokenByMetadata) {
+        // Use a 30-day window for name+symbol matching (more lenient)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        
+        existingTokenByMetadata = await dbGet(
+          `SELECT t.id, t.created_at FROM tokens t 
+           WHERE LOWER(t.name) = LOWER(?) 
+             AND LOWER(t.symbol) = LOWER(?)
+             AND t.created_at >= ?
+           ORDER BY t.created_at DESC
+           LIMIT 1`,
+          [name, symbol, thirtyDaysAgo]
+        ) as any;
+        
+        if (existingTokenByMetadata) {
+          console.log(`    🔄 Token ${name} (${symbol}) exists by metadata (name+symbol), reusing token ID: ${existingTokenByMetadata.id}`);
+          console.log(`       Created at: ${existingTokenByMetadata.created_at}, matching deployment on ${chain}`);
+        }
+      }
 
       if (existingTokenByMetadata) {
-        // Found token by name+symbol+creator - reuse the token ID
+        // Found token by metadata - reuse the token ID
         tokenId = existingTokenByMetadata.id;
-        console.log(`    🔄 Token ${name} (${symbol}) exists by metadata (name+symbol+creator), reusing token ID: ${tokenId}`);
-        console.log(`       Created at: ${existingTokenByMetadata.created_at}, matching deployment on ${chain}`);
       } else {
         // No matching token found - generate new token ID
         tokenId = uuidv4();
