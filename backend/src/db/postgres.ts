@@ -8,6 +8,7 @@ let pool: Pool | null = null;
  */
 export function initializePostgreSQL(): Pool {
   if (pool) {
+    console.log('ℹ️  PostgreSQL pool already initialized, reusing existing pool');
     return pool;
   }
 
@@ -16,16 +17,32 @@ export function initializePostgreSQL(): Pool {
     throw new Error('DATABASE_URL environment variable is required for PostgreSQL');
   }
 
+  console.log('🔌 Initializing PostgreSQL connection pool...');
+  console.log('📋 Connection string format:', connectionString.substring(0, 20) + '...');
+
   pool = new Pool({
     connectionString,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000, // Increased timeout for Railway
   });
 
   pool.on('error', (err) => {
-    console.error('Unexpected error on idle PostgreSQL client', err);
+    console.error('❌ Unexpected error on idle PostgreSQL client', err);
+  });
+
+  pool.on('connect', () => {
+    console.log('✅ PostgreSQL client connected');
+  });
+
+  // Test connection
+  pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+      console.error('❌ Failed to connect to PostgreSQL:', err.message);
+    } else {
+      console.log('✅ PostgreSQL connection test successful');
+    }
   });
 
   console.log('✅ PostgreSQL connection pool initialized');
