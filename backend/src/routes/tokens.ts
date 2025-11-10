@@ -1036,53 +1036,91 @@ router.get('/:id/status', async (req: Request, res: Response) => {
       [id]
     ) as any[];
     
+    // Parse advanced settings with error handling
+    let advancedSettings = {};
+    if (token.advanced_settings) {
+      try {
+        advancedSettings = JSON.parse(token.advanced_settings);
+      } catch (e) {
+        console.error(`⚠️ Error parsing advanced_settings for token ${id}:`, e);
+        advancedSettings = {};
+      }
+    }
+    
+    // Parse custom settings with error handling
+    let customSettings = null;
+    if (token.custom_settings) {
+      try {
+        customSettings = JSON.parse(token.custom_settings);
+      } catch (e) {
+        console.error(`⚠️ Error parsing custom_settings for token ${id}:`, e);
+        customSettings = null;
+      }
+    }
+    
+    // Helper function to safely convert is_graduated to boolean (handles PostgreSQL booleans)
+    const isGraduated = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'boolean') return value;
+      if (value === 1 || value === '1' || value === 'true' || value === 't' || value === true) return true;
+      return false;
+    };
+    
+    // Helper function to safely convert cross_chain_enabled to boolean
+    const isCrossChainEnabled = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'boolean') return value;
+      if (value === 1 || value === '1' || value === 'true' || value === 't' || value === true) return true;
+      return false;
+    };
+    
     res.json({
       token: {
         id: token.id,
-        name: token.name,
-        symbol: token.symbol,
-        decimals: token.decimals,
-        initialSupply: token.initial_supply,
-        logoIpfs: token.logo_ipfs,
-        description: token.description,
-        twitterUrl: token.twitter_url,
-        discordUrl: token.discord_url,
-        telegramUrl: token.telegram_url,
-        websiteUrl: token.website_url,
-        githubUrl: token.github_url,
-        mediumUrl: token.medium_url,
-        redditUrl: token.reddit_url,
-        youtubeUrl: token.youtube_url,
-        linkedinUrl: token.linkedin_url,
-        basePrice: token.base_price,
-        slope: token.slope,
-        graduationThreshold: token.graduation_threshold,
-        buyFeePercent: token.buy_fee_percent,
-        sellFeePercent: token.sell_fee_percent,
+        name: token.name || '',
+        symbol: token.symbol || '',
+        decimals: token.decimals || 18,
+        initialSupply: token.initial_supply || '0',
+        logoIpfs: token.logo_ipfs || null,
+        description: token.description || null,
+        twitterUrl: token.twitter_url || null,
+        discordUrl: token.discord_url || null,
+        telegramUrl: token.telegram_url || null,
+        websiteUrl: token.website_url || null,
+        githubUrl: token.github_url || null,
+        mediumUrl: token.medium_url || null,
+        redditUrl: token.reddit_url || null,
+        youtubeUrl: token.youtube_url || null,
+        linkedinUrl: token.linkedin_url || null,
+        basePrice: token.base_price || 0,
+        slope: token.slope || 0,
+        graduationThreshold: token.graduation_threshold || 0,
+        buyFeePercent: token.buy_fee_percent || 0,
+        sellFeePercent: token.sell_fee_percent || 0,
         creatorAddress: token.creator_address || null,
-        crossChainEnabled: token.cross_chain_enabled === 1,
-        advancedSettings: token.advanced_settings ? JSON.parse(token.advanced_settings) : {},
-        createdAt: token.created_at,
+        crossChainEnabled: isCrossChainEnabled(token.cross_chain_enabled),
+        advancedSettings,
+        createdAt: token.created_at || null,
         customization: {
-          bannerImageIpfs: token.banner_image_ipfs,
+          bannerImageIpfs: token.banner_image_ipfs || null,
           primaryColor: token.primary_color || '#3B82F6',
           accentColor: token.accent_color || '#8B5CF6',
-          backgroundColor: token.background_color,
+          backgroundColor: token.background_color || null,
           layoutTemplate: token.layout_template || 'default',
-          customSettings: token.custom_settings ? JSON.parse(token.custom_settings) : null,
+          customSettings,
         },
       },
       deployments: deployments.map(d => ({
-        chain: d.chain,
-        tokenAddress: d.token_address,
-        curveAddress: d.curve_address,
-        poolAddress: d.pool_address,
-        bridgeAddress: d.bridge_address,
-        status: d.status,
-        isGraduated: d.is_graduated === 1,
-        currentSupply: d.current_supply,
-        reserveBalance: d.reserve_balance,
-        marketCap: d.market_cap || 0,
+        chain: d.chain || null,
+        tokenAddress: d.token_address || null,
+        curveAddress: d.curve_address || null,
+        poolAddress: d.pool_address || null,
+        bridgeAddress: d.bridge_address || null,
+        status: d.status || 'pending',
+        isGraduated: isGraduated(d.is_graduated),
+        currentSupply: d.current_supply || '0',
+        reserveBalance: d.reserve_balance || '0',
+        marketCap: parseFloat(d.market_cap || '0') || 0,
       })),
     });
   } catch (error) {
@@ -1519,48 +1557,56 @@ router.get('/:id', async (req: Request, res: Response) => {
       try {
         advancedSettings = JSON.parse(token.advanced_settings);
       } catch (e) {
-        console.error('Error parsing advanced_settings:', e);
+        console.error(`⚠️ Error parsing advanced_settings for token ${id}:`, e);
         advancedSettings = {};
       }
     }
     console.log(`📖 Token ${id} advanced settings:`, JSON.stringify(advancedSettings, null, 2));
     
+    // Helper function to safely convert boolean values (handles PostgreSQL booleans)
+    const toBoolean = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'boolean') return value;
+      if (value === 1 || value === '1' || value === 'true' || value === 't' || value === true) return true;
+      return false;
+    };
+    
     res.json({
       id: token.id,
-      name: token.name,
-      symbol: token.symbol,
-      decimals: token.decimals,
-      initialSupply: token.initial_supply,
-      logoIpfs: token.logo_ipfs,
-      description: token.description,
-      twitterUrl: token.twitter_url,
-      discordUrl: token.discord_url,
-      telegramUrl: token.telegram_url,
-      websiteUrl: token.website_url,
-      basePrice: token.base_price,
-      slope: token.slope,
-      graduationThreshold: token.graduation_threshold,
-      buyFeePercent: token.buy_fee_percent,
-      sellFeePercent: token.sell_fee_percent,
+      name: token.name || '',
+      symbol: token.symbol || '',
+      decimals: token.decimals || 18,
+      initialSupply: token.initial_supply || '0',
+      logoIpfs: token.logo_ipfs || null,
+      description: token.description || null,
+      twitterUrl: token.twitter_url || null,
+      discordUrl: token.discord_url || null,
+      telegramUrl: token.telegram_url || null,
+      websiteUrl: token.website_url || null,
+      basePrice: token.base_price || 0,
+      slope: token.slope || 0,
+      graduationThreshold: token.graduation_threshold || 0,
+      buyFeePercent: token.buy_fee_percent || 0,
+      sellFeePercent: token.sell_fee_percent || 0,
       creatorAddress: token.creator_address || null,
-      crossChainEnabled: token.cross_chain_enabled === 1,
+      crossChainEnabled: toBoolean(token.cross_chain_enabled),
       advancedSettings,
-      archived: (token.archived ?? 0) === 1,
-      pinned: (token.pinned ?? 0) === 1,
-      deleted: (token.deleted ?? 0) === 1,
-      visibleInMarketplace: (token.visible_in_marketplace ?? 1) === 1,
-      createdAt: token.created_at,
+      archived: toBoolean(token.archived),
+      pinned: toBoolean(token.pinned),
+      deleted: toBoolean(token.deleted),
+      visibleInMarketplace: token.visible_in_marketplace !== undefined ? toBoolean(token.visible_in_marketplace) : true,
+      createdAt: token.created_at || null,
       deployments: deployments.map(d => ({
-        chain: d.chain,
+        chain: d.chain || null,
         tokenAddress: d.token_address || null,
         curveAddress: d.curve_address || null,
         poolAddress: d.pool_address || null,
         bridgeAddress: d.bridge_address || null,
         status: d.status || 'pending',
-        isGraduated: d.is_graduated === 1,
+        isGraduated: toBoolean(d.is_graduated),
         currentSupply: d.current_supply || '0',
         reserveBalance: d.reserve_balance || '0',
-        marketCap: d.market_cap || 0,
+        marketCap: parseFloat(d.market_cap || '0') || 0,
         paused: false, // TODO: Get actual pause status from contract
       })),
     });
