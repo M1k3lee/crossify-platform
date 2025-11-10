@@ -84,10 +84,31 @@ function convertToPostgreSQL(sql: string): string {
   
   // Handle GROUP_CONCAT -> STRING_AGG (PostgreSQL equivalent)
   // PostgreSQL STRING_AGG requires TEXT type, so we need to cast values
-  // GROUP_CONCAT(DISTINCT column) -> STRING_AGG(DISTINCT CAST(column AS TEXT), ',')
-  // GROUP_CONCAT(column) -> STRING_AGG(CAST(column AS TEXT), ',')
+  // GROUP_CONCAT(DISTINCT column ORDER BY ...) -> STRING_AGG(DISTINCT CAST(column AS TEXT), ',' ORDER BY ...)
+  // GROUP_CONCAT(column ORDER BY ...) -> STRING_AGG(CAST(column AS TEXT), ',' ORDER BY ...)
   
-  // Handle GROUP_CONCAT(DISTINCT ...) first
+  // Handle GROUP_CONCAT with ORDER BY (with or without DISTINCT)
+  // Pattern: GROUP_CONCAT(column ORDER BY orderColumn) or GROUP_CONCAT(DISTINCT column ORDER BY orderColumn)
+  pgSQL = pgSQL.replace(/GROUP_CONCAT\s*\(\s*(DISTINCT\s+)?([^)]+?)\s+ORDER\s+BY\s+([^)]+)\s*\)/gi, (match, distinct, column, orderBy) => {
+    const hasDistinct = distinct && distinct.trim().toUpperCase() === 'DISTINCT';
+    const col = column.trim();
+    const order = orderBy.trim();
+    
+    // If it's already cast or is a string literal, use as-is
+    if (col.toUpperCase().includes('CAST') || col.toUpperCase().includes('AS TEXT') || col.startsWith("'")) {
+      const distinctStr = hasDistinct ? 'DISTINCT ' : '';
+      return `STRING_AGG(${distinctStr}${col}, ',' ORDER BY ${order})`;
+    }
+    // Cast to TEXT for STRING_AGG (handles boolean, integer, etc.)
+    const distinctStr = hasDistinct ? 'DISTINCT ' : '';
+    const converted = `STRING_AGG(${distinctStr}CAST(${col} AS TEXT), ',' ORDER BY ${order})`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 Converted: ${match} → ${converted}`);
+    }
+    return converted;
+  });
+  
+  // Handle GROUP_CONCAT(DISTINCT ...) without ORDER BY
   pgSQL = pgSQL.replace(/GROUP_CONCAT\s*\(\s*DISTINCT\s+([^)]+)\s*\)/gi, (match, column) => {
     const col = column.trim();
     // If it's already cast or is a string literal, use as-is
@@ -102,10 +123,10 @@ function convertToPostgreSQL(sql: string): string {
     return converted;
   });
   
-  // Handle GROUP_CONCAT without DISTINCT
+  // Handle GROUP_CONCAT without DISTINCT or ORDER BY
   pgSQL = pgSQL.replace(/GROUP_CONCAT\s*\(\s*([^)]+)\s*\)/gi, (match, column) => {
-    // Check if it already has DISTINCT (shouldn't happen after first replace, but just in case)
-    if (column.toUpperCase().includes('DISTINCT')) {
+    // Check if it already has DISTINCT or ORDER BY (shouldn't happen after first replaces, but just in case)
+    if (column.toUpperCase().includes('DISTINCT') || column.toUpperCase().includes('ORDER BY')) {
       return match; // Already handled
     }
     const col = column.trim();
