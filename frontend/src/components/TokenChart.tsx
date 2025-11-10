@@ -47,14 +47,26 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
   const chartData = useMemo(() => {
     if (!priceHistory || priceHistory.length === 0) return null;
     
+    // Filter out invalid data points and validate all values
+    const validData = priceHistory.filter(p => {
+      const isValid = (val: any) => {
+        if (val === null || val === undefined) return false;
+        const num = typeof val === 'number' ? val : parseFloat(val);
+        return !isNaN(num) && isFinite(num) && num > 0;
+      };
+      return isValid(p.open) && isValid(p.high) && isValid(p.low) && isValid(p.close) && isValid(p.volume);
+    });
+    
+    if (validData.length === 0) return null;
+    
     return {
-      prices: priceHistory.map(p => p.close),
-      opens: priceHistory.map(p => p.open),
-      highs: priceHistory.map(p => p.high),
-      lows: priceHistory.map(p => p.low),
-      closes: priceHistory.map(p => p.close),
-      volumes: priceHistory.map(p => p.volume),
-      times: priceHistory.map(p => p.time),
+      prices: validData.map(p => parseFloat(p.close) || 0),
+      opens: validData.map(p => parseFloat(p.open) || 0),
+      highs: validData.map(p => parseFloat(p.high) || 0),
+      lows: validData.map(p => parseFloat(p.low) || 0),
+      closes: validData.map(p => parseFloat(p.close) || 0),
+      volumes: validData.map(p => parseFloat(p.volume) || 0),
+      times: validData.map(p => parseFloat(p.time) || 0),
     };
   }, [priceHistory]);
 
@@ -83,18 +95,33 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
   const plotWidth = chartWidth - padding * 2;
   const plotHeight = chartHeight - padding * 2;
 
-  // Scale data
-  const allPrices = [...chartData.highs, ...chartData.lows];
+  // Scale data - validate and handle edge cases
+  const allPrices = [...chartData.highs, ...chartData.lows].filter(p => !isNaN(p) && isFinite(p) && p > 0);
+  if (allPrices.length === 0) {
+    return (
+      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-400">No valid price data available</div>
+        </div>
+      </div>
+    );
+  }
+  
   const maxPrice = Math.max(...allPrices);
   const minPrice = Math.min(...allPrices);
-  const priceRange = maxPrice - minPrice || 1;
-  const maxVolume = Math.max(...chartData.volumes);
+  const priceRange = (maxPrice - minPrice) || 1;
+  const validVolumes = chartData.volumes.filter(v => !isNaN(v) && isFinite(v) && v >= 0);
+  const maxVolume = validVolumes.length > 0 ? Math.max(...validVolumes) : 0;
 
-  // Generate path for line chart
+  // Generate path for line chart - validate calculations
   const linePoints = chartData.prices.map((price, index) => {
-    const x = padding + (index / (chartData.prices.length - 1)) * plotWidth;
-    const y = padding + plotHeight - ((price - minPrice) / priceRange) * plotHeight;
-    return { x, y, price };
+    const normalizedPrice = Math.max(minPrice, Math.min(maxPrice, price)); // Clamp to valid range
+    const x = chartData.prices.length > 1 
+      ? padding + (index / (chartData.prices.length - 1)) * plotWidth
+      : padding + plotWidth / 2;
+    const yValue = ((normalizedPrice - minPrice) / priceRange) * plotHeight;
+    const y = padding + plotHeight - (isNaN(yValue) ? plotHeight / 2 : Math.max(0, Math.min(plotHeight, yValue)));
+    return { x, y: isNaN(y) ? padding + plotHeight / 2 : y, price: normalizedPrice };
   });
 
   const pathData = linePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
@@ -102,26 +129,34 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
   // Generate area fill path
   const areaPath = `${pathData} L ${linePoints[linePoints.length - 1].x} ${padding + plotHeight} L ${linePoints[0].x} ${padding + plotHeight} Z`;
 
-  // Generate candlestick data
+  // Generate candlestick data - validate calculations
   const candlesticks = chartData.prices.map((close, index) => {
-    const x = padding + (index / (chartData.prices.length - 1)) * plotWidth;
-    const openY = padding + plotHeight - ((chartData.opens[index] - minPrice) / priceRange) * plotHeight;
-    const closeY = padding + plotHeight - ((close - minPrice) / priceRange) * plotHeight;
-    const highY = padding + plotHeight - ((chartData.highs[index] - minPrice) / priceRange) * plotHeight;
-    const lowY = padding + plotHeight - ((chartData.lows[index] - minPrice) / priceRange) * plotHeight;
-    const isUp = close >= chartData.opens[index];
+    const safeClose = Math.max(minPrice, Math.min(maxPrice, close));
+    const safeOpen = Math.max(minPrice, Math.min(maxPrice, chartData.opens[index]));
+    const safeHigh = Math.max(minPrice, Math.min(maxPrice, chartData.highs[index]));
+    const safeLow = Math.max(minPrice, Math.min(maxPrice, chartData.lows[index]));
+    
+    const x = chartData.prices.length > 1 
+      ? padding + (index / (chartData.prices.length - 1)) * plotWidth
+      : padding + plotWidth / 2;
+    
+    const calcY = (price: number) => {
+      const yValue = ((price - minPrice) / priceRange) * plotHeight;
+      const y = padding + plotHeight - (isNaN(yValue) ? plotHeight / 2 : Math.max(0, Math.min(plotHeight, yValue)));
+      return isNaN(y) ? padding + plotHeight / 2 : y;
+    };
     
     return {
-      x,
-      openY,
-      closeY,
-      highY,
-      lowY,
-      open: chartData.opens[index],
-      close,
-      high: chartData.highs[index],
-      low: chartData.lows[index],
-      isUp,
+      x: isNaN(x) ? padding + plotWidth / 2 : x,
+      openY: calcY(safeOpen),
+      closeY: calcY(safeClose),
+      highY: calcY(safeHigh),
+      lowY: calcY(safeLow),
+      open: safeOpen,
+      close: safeClose,
+      high: safeHigh,
+      low: safeLow,
+      isUp: safeClose >= safeOpen,
     };
   });
 
@@ -220,9 +255,22 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
 
           {/* Volume bars (background) */}
           {chartData.volumes.map((volume, index) => {
-            const x = padding + (index / (chartData.volumes.length - 1)) * plotWidth;
-            const barWidth = plotWidth / chartData.volumes.length;
-            const barHeight = (volume / maxVolume) * plotHeight * 0.3;
+            // Prevent division by zero and NaN values
+            const volumesLength = chartData.volumes.length;
+            if (volumesLength === 0 || maxVolume === 0) return null;
+            
+            const x = volumesLength > 1 
+              ? padding + (index / (volumesLength - 1)) * plotWidth
+              : padding + plotWidth / 2;
+            const barWidth = plotWidth / Math.max(volumesLength, 1);
+            const normalizedVolume = Math.max(0, Math.min(volume, maxVolume));
+            const barHeight = maxVolume > 0 ? (normalizedVolume / maxVolume) * plotHeight * 0.3 : 0;
+            
+            // Validate all values before rendering
+            if (isNaN(x) || isNaN(barWidth) || isNaN(barHeight) || !isFinite(x) || !isFinite(barWidth) || !isFinite(barHeight)) {
+              return null;
+            }
+            
             return (
               <rect
                 key={index}

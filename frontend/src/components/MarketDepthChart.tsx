@@ -50,17 +50,39 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
 
     const { buyOrders, sellOrders, currentPrice } = depth;
     
+    // Filter out invalid orders (NaN, null, undefined, <= 0)
+    const isValidOrder = (o: Order) => {
+      const price = typeof o.price === 'number' ? o.price : parseFloat(o.price);
+      const amount = typeof o.amount === 'number' ? o.amount : parseFloat(o.amount);
+      return !isNaN(price) && isFinite(price) && price > 0 && 
+             !isNaN(amount) && isFinite(amount) && amount > 0;
+    };
+    
+    const validBuyOrders = (buyOrders || []).filter(isValidOrder).map(o => ({
+      price: parseFloat(o.price) || 0,
+      amount: parseFloat(o.amount) || 0,
+      total: parseFloat(o.total) || 0,
+    }));
+    
+    const validSellOrders = (sellOrders || []).filter(isValidOrder).map(o => ({
+      price: parseFloat(o.price) || 0,
+      amount: parseFloat(o.amount) || 0,
+      total: parseFloat(o.total) || 0,
+    }));
+    
     // Combine and sort all orders by price
     const allOrders = [
-      ...buyOrders.map(o => ({ ...o, type: 'buy' as const })),
-      ...sellOrders.map(o => ({ ...o, type: 'sell' as const })),
+      ...validBuyOrders.map(o => ({ ...o, type: 'buy' as const })),
+      ...validSellOrders.map(o => ({ ...o, type: 'sell' as const })),
     ].sort((a, b) => a.price - b.price);
+    
+    if (allOrders.length === 0) return null;
 
     // Calculate cumulative volumes
     let buyCumulative = 0;
     let sellCumulative = 0;
 
-    const buyCumulativeData = buyOrders.map(order => {
+    const buyCumulativeData = validBuyOrders.map(order => {
       buyCumulative += order.amount;
       return {
         price: order.price,
@@ -69,7 +91,7 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
       };
     }).reverse(); // Reverse to show from current price down
 
-    const sellCumulativeData = sellOrders.map(order => {
+    const sellCumulativeData = validSellOrders.map(order => {
       sellCumulative += order.amount;
       return {
         price: order.price,
@@ -78,18 +100,27 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
       };
     });
 
-    const minPrice = Math.min(...allOrders.map(o => o.price));
-    const maxPrice = Math.max(...allOrders.map(o => o.price));
-    const priceRange = maxPrice - minPrice || 1;
-    const maxCumulative = Math.max(
+    const validPrices = allOrders.map(o => o.price).filter(p => !isNaN(p) && isFinite(p) && p > 0);
+    if (validPrices.length === 0) return null;
+    
+    const minPrice = Math.min(...validPrices);
+    const maxPrice = Math.max(...validPrices);
+    const priceRange = (maxPrice - minPrice) || 1;
+    
+    const allCumulatives = [
       ...buyCumulativeData.map(d => d.cumulative),
       ...sellCumulativeData.map(d => d.cumulative)
-    );
+    ].filter(c => !isNaN(c) && isFinite(c) && c >= 0);
+    
+    const maxCumulative = allCumulatives.length > 0 ? Math.max(...allCumulatives) : 1;
+    const safeCurrentPrice = (typeof currentPrice === 'number' && !isNaN(currentPrice) && isFinite(currentPrice) && currentPrice > 0)
+      ? currentPrice
+      : (minPrice + maxPrice) / 2;
 
     return {
       buyCumulativeData,
       sellCumulativeData,
-      currentPrice,
+      currentPrice: safeCurrentPrice,
       minPrice,
       maxPrice,
       priceRange,
@@ -115,13 +146,19 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
   const plotWidth = chartWidth - padding * 2;
   const plotHeight = chartHeight - padding * 2;
 
-  // Scale functions
+  // Scale functions - validate inputs to prevent NaN
   const scalePrice = (price: number) => {
-    return padding + ((price - chartData.minPrice) / chartData.priceRange) * plotWidth;
+    if (isNaN(price) || !isFinite(price)) return padding + plotWidth / 2;
+    const normalizedPrice = Math.max(chartData.minPrice, Math.min(chartData.maxPrice, price));
+    const xValue = padding + ((normalizedPrice - chartData.minPrice) / chartData.priceRange) * plotWidth;
+    return isNaN(xValue) || !isFinite(xValue) ? padding + plotWidth / 2 : xValue;
   };
 
   const scaleVolume = (volume: number) => {
-    return padding + plotHeight - (volume / chartData.maxCumulative) * plotHeight;
+    if (isNaN(volume) || !isFinite(volume) || volume < 0) return padding + plotHeight;
+    const normalizedVolume = Math.min(volume, chartData.maxCumulative);
+    const yValue = padding + plotHeight - (normalizedVolume / chartData.maxCumulative) * plotHeight;
+    return isNaN(yValue) || !isFinite(yValue) ? padding + plotHeight : Math.max(padding, Math.min(padding + plotHeight, yValue));
   };
 
   const currentPriceX = scalePrice(chartData.currentPrice);
@@ -181,13 +218,22 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
 
           {/* Buy orders area (green) */}
           {chartData.buyCumulativeData.length > 0 && (() => {
-            const buyPath = chartData.buyCumulativeData.map((point, index) => {
-              const x = scalePrice(point.price);
-              const y = scaleVolume(point.cumulative);
-              return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-            }).join(' ');
+            const buyPoints = chartData.buyCumulativeData
+              .map((point) => {
+                const x = scalePrice(point.price);
+                const y = scaleVolume(point.cumulative);
+                // Validate coordinates
+                if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) return null;
+                return { x, y };
+              })
+              .filter((p): p is { x: number; y: number } => p !== null);
             
-            const buyAreaPath = `${buyPath} L ${scalePrice(chartData.minPrice)} ${padding + plotHeight} L ${scalePrice(chartData.minPrice)} ${padding + plotHeight} Z`;
+            if (buyPoints.length === 0) return null;
+            
+            const buyPath = buyPoints.map((p, index) => `${index === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+            const minPriceX = scalePrice(chartData.minPrice);
+            const bottomY = padding + plotHeight;
+            const buyAreaPath = `${buyPath} L ${minPriceX} ${bottomY} L ${minPriceX} ${bottomY} Z`;
             
             return (
               <path
@@ -201,13 +247,22 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
 
           {/* Sell orders area (red) */}
           {chartData.sellCumulativeData.length > 0 && (() => {
-            const sellPath = chartData.sellCumulativeData.map((point, index) => {
-              const x = scalePrice(point.price);
-              const y = scaleVolume(point.cumulative);
-              return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-            }).join(' ');
+            const sellPoints = chartData.sellCumulativeData
+              .map((point) => {
+                const x = scalePrice(point.price);
+                const y = scaleVolume(point.cumulative);
+                // Validate coordinates
+                if (isNaN(x) || isNaN(y) || !isFinite(x) || !isFinite(y)) return null;
+                return { x, y };
+              })
+              .filter((p): p is { x: number; y: number } => p !== null);
             
-            const sellAreaPath = `${sellPath} L ${scalePrice(chartData.maxPrice)} ${padding + plotHeight} L ${scalePrice(chartData.maxPrice)} ${padding + plotHeight} Z`;
+            if (sellPoints.length === 0) return null;
+            
+            const sellPath = sellPoints.map((p, index) => `${index === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+            const maxPriceX = scalePrice(chartData.maxPrice);
+            const bottomY = padding + plotHeight;
+            const sellAreaPath = `${sellPath} L ${maxPriceX} ${bottomY} L ${maxPriceX} ${bottomY} Z`;
             
             return (
               <path
@@ -220,15 +275,17 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
           })()}
 
           {/* Current price line */}
-          <line
-            x1={currentPriceX}
-            y1={padding}
-            x2={currentPriceX}
-            y2={padding + plotHeight}
-            stroke="#3B82F6"
-            strokeWidth="2"
-            strokeDasharray="4 4"
-          />
+          {!isNaN(currentPriceX) && isFinite(currentPriceX) && (
+            <line
+              x1={currentPriceX}
+              y1={padding}
+              x2={currentPriceX}
+              y2={padding + plotHeight}
+              stroke="#3B82F6"
+              strokeWidth="2"
+              strokeDasharray="4 4"
+            />
+          )}
 
           {/* Price labels */}
           <text

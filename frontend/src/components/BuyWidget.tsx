@@ -324,11 +324,11 @@ export default function BuyWidget({
       return;
     }
 
+    // Get chain symbol for this transaction (outside try block so it's available in catch)
+    const chainSymbol = getChainSymbol(chain);
+    
     try {
       setLoading(true);
-      
-      // Get chain symbol for this transaction
-      const chainSymbol = getChainSymbol(chain);
       
       if (typeof window.ethereum === 'undefined') {
         throw new Error('MetaMask is not installed');
@@ -672,8 +672,13 @@ export default function BuyWidget({
       
       if (error.code === 4001) {
         toast.error('Transaction rejected by user', { id: 'buy-tx' });
-      } else if (error.message?.includes('insufficient')) {
-        toast.error('Insufficient funds for this transaction', { id: 'buy-tx' });
+      } else if (error.message?.includes('insufficient') || error.code === 'INSUFFICIENT_FUNDS' || error.info?.error?.message?.includes('insufficient')) {
+        const testnetInfo = getTestnetInfo(chain as any);
+        const faucetLink = testnetInfo?.faucet ? ` Get testnet tokens: ${testnetInfo.faucet}` : '';
+        toast.error(`Insufficient funds. You need more ${chainSymbol} to complete this transaction.${faucetLink}`, { 
+          id: 'buy-tx',
+          duration: 6000 
+        });
       } else if (error.message?.includes('graduated')) {
         toast.error('Token has graduated to DEX. Please use a DEX to buy.', { id: 'buy-tx' });
       } else {
