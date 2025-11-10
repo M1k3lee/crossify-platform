@@ -286,10 +286,10 @@ async function syncTokenToDatabase(
       }
     }
 
-    // Insert or update token (only if it doesn't exist)
-    // Use INSERT OR IGNORE to handle case where token exists from another chain
+    // Insert token - try INSERT OR IGNORE first, then verify
+    let tokenInserted = false;
     try {
-      await dbRun(
+      const insertResult = await dbRun(
         `INSERT OR IGNORE INTO tokens (
           id, name, symbol, decimals, initial_supply,
           base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
@@ -310,21 +310,98 @@ async function syncTokenToDatabase(
           0,
         ]
       );
-    } catch (error: any) {
-      // If insert fails, token might already exist - verify it exists
-      const verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
-      if (!verifyToken) {
-        console.error(`    ❌ Failed to insert token ${tokenId}:`, error.message);
-        throw error;
+      
+      // Check if insert actually happened (changes > 0 means row was inserted)
+      // For PostgreSQL, changes might be in a different format
+      const changes = (insertResult as any)?.changes ?? (insertResult as any)?.rowCount ?? 0;
+      if (changes > 0) {
+        tokenInserted = true;
+        console.log(`    ✅ Token ${tokenId} inserted (changes: ${changes})`);
+      } else {
+        console.log(`    ℹ️  Token insert was ignored (token may already exist)`);
       }
+    } catch (error: any) {
+      console.error(`    ⚠️  Token insert error:`, error.message);
+      // Continue to verification step
     }
 
-    // Verify token exists before inserting deployment
-    const verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
+    // Verify token exists (it might have been inserted or might already exist)
+    let verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
+    
+    // If token doesn't exist, try to find it by address or insert directly
     if (!verifyToken) {
-      console.error(`    ❌ Token ${tokenId} does not exist - cannot create deployment`);
+      console.log(`    🔍 Token ${tokenId} not found after insert, checking alternatives...`);
+      
+      // Check if token exists by address in another deployment
+      const tokenByAddress = await dbGet(
+        `SELECT t.id FROM tokens t 
+         JOIN token_deployments td ON t.id = td.token_id 
+         WHERE td.token_address = ? LIMIT 1`,
+        [normalizedTokenAddress]
+      ) as any;
+      
+      if (tokenByAddress && tokenByAddress.id) {
+        // Token exists with different ID - use that ID instead
+        tokenId = tokenByAddress.id;
+        console.log(`    🔄 Found token by address, using existing token ID: ${tokenId}`);
+        verifyToken = { id: tokenId };
+      } else {
+        // Token truly doesn't exist - try direct insert (might fail if it exists, but that's OK)
+        console.log(`    🔄 Token doesn't exist, attempting direct insert without IGNORE...`);
+        try {
+          await dbRun(
+            `INSERT INTO tokens (
+              id, name, symbol, decimals, initial_supply,
+              base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
+              creator_address, cross_chain_enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              tokenId,
+              name,
+              symbol,
+              decimals,
+              totalSupply,
+              parseFloat(basePrice) || 0.0001,
+              parseFloat(slope) || 0.00001,
+              parseFloat(graduationThreshold) || 0,
+              parseFloat(buyFeePercent) || 0,
+              parseFloat(sellFeePercent) || 0,
+              creator.toLowerCase(),
+              0,
+            ]
+          );
+          verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
+          if (verifyToken) {
+            console.log(`    ✅ Token ${tokenId} inserted successfully via direct insert`);
+          }
+        } catch (insertError: any) {
+          // If insert fails due to UNIQUE constraint, token already exists - verify it
+          if (insertError.message?.includes('UNIQUE') || insertError.message?.includes('duplicate') || insertError.code === 'SQLITE_CONSTRAINT') {
+            console.log(`    ℹ️  Token insert failed due to constraint, checking if token exists...`);
+            verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
+            if (!verifyToken) {
+              // Token doesn't exist but insert failed - this is a problem
+              console.error(`    ❌ Token insert failed but token doesn't exist:`, insertError.message);
+              throw new Error(`Failed to insert token: ${insertError.message}`);
+            }
+          } else {
+            console.error(`    ❌ Failed to insert token ${tokenId}:`, insertError.message);
+            throw new Error(`Failed to insert token: ${insertError.message}`);
+          }
+        }
+      }
+    } else {
+      console.log(`    ✅ Token ${tokenId} verified in database`);
+    }
+
+    // Final verification - token must exist now
+    if (!verifyToken || !verifyToken.id) {
+      console.error(`    ❌ Token ${tokenId} does not exist after all attempts`);
+      console.error(`    💡 This might indicate a database connection or transaction issue`);
       throw new Error(`Token ${tokenId} not found in database`);
     }
+    
+    console.log(`    ✅ Token ${tokenId} confirmed in database, proceeding with deployment`);
 
     // Insert deployment
     try {
