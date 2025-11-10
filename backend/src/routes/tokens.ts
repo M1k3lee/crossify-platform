@@ -2249,20 +2249,18 @@ router.post('/merge-duplicates', async (_req: Request, res: Response) => {
     
     let duplicatesQuery: string;
     if (usingPostgres) {
-      // PostgreSQL: Use DISTINCT in subquery or use array_agg with DISTINCT
+      // PostgreSQL: Use array_agg with DISTINCT, then array_to_string
+      // This works in all PostgreSQL versions that support DISTINCT in aggregates
       duplicatesQuery = `
         SELECT 
           token_address,
           COUNT(DISTINCT token_id) as token_count,
-          STRING_AGG(DISTINCT token_id::text, ',') as token_ids,
-          STRING_AGG(DISTINCT chain::text, ',') as chains
-        FROM (
-          SELECT DISTINCT token_address, token_id, chain
-          FROM token_deployments
-          WHERE token_address IS NOT NULL
-        ) td
-        GROUP BY token_address
-        HAVING COUNT(DISTINCT token_id) > 1
+          array_to_string(ARRAY(SELECT DISTINCT token_id::text FROM token_deployments td2 WHERE td2.token_address = td.token_address ORDER BY token_id::text), ',') as token_ids,
+          array_to_string(ARRAY(SELECT DISTINCT chain::text FROM token_deployments td3 WHERE td3.token_address = td.token_address ORDER BY chain::text), ',') as chains
+        FROM token_deployments td
+        WHERE td.token_address IS NOT NULL
+        GROUP BY td.token_address
+        HAVING COUNT(DISTINCT td.token_id) > 1
       `;
     } else {
       // SQLite: Use GROUP_CONCAT with DISTINCT
