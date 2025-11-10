@@ -2478,3 +2478,217 @@ router.post('/merge-duplicates', async (_req: Request, res: Response) => {
   }
 });
 
+// POST /tokens/merge-by-metadata - Merge tokens that have the same name+symbol+creator
+router.post('/merge-by-metadata', async (req: Request, res: Response) => {
+  try {
+    const { dbAll, dbRun, dbGet } = await import('../db/adapter');
+    const { isUsingPostgreSQL } = await import('../db/adapter');
+    const usingPostgres = isUsingPostgreSQL();
+    
+    console.log('🔍 Finding duplicate tokens by name+symbol+creator...');
+    
+    const timeWindowHours = 24 * 30; // 30 days
+    
+    let duplicatesQuery: string;
+    if (usingPostgres) {
+      duplicatesQuery = `
+        WITH token_groups AS (
+          SELECT 
+            LOWER(name) as name_lower,
+            LOWER(symbol) as symbol_lower,
+            LOWER(creator_address) as creator_lower,
+            COUNT(*) as token_count,
+            array_to_string(ARRAY_AGG(id::text ORDER BY created_at), ',') as token_ids,
+            MIN(created_at) as earliest_created,
+            MAX(created_at) as latest_created
+          FROM tokens
+          WHERE creator_address IS NOT NULL
+            AND (deleted IS NULL OR deleted = 0)
+          GROUP BY LOWER(name), LOWER(symbol), LOWER(creator_address)
+          HAVING COUNT(*) > 1
+            AND EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) <= ${timeWindowHours * 3600}
+        )
+        SELECT 
+          name_lower as name,
+          symbol_lower as symbol,
+          creator_lower as creator,
+          token_count,
+          token_ids,
+          earliest_created,
+          latest_created
+        FROM token_groups
+        ORDER BY token_count DESC, earliest_created DESC
+      `;
+    } else {
+      duplicatesQuery = `
+        SELECT 
+          LOWER(name) as name_lower,
+          LOWER(symbol) as symbol_lower,
+          LOWER(creator_address) as creator_lower,
+          COUNT(*) as token_count,
+          GROUP_CONCAT(id) as token_ids,
+          MIN(created_at) as earliest_created,
+          MAX(created_at) as latest_created
+        FROM tokens
+        WHERE creator_address IS NOT NULL
+          AND (deleted IS NULL OR deleted = 0)
+        GROUP BY LOWER(name), LOWER(symbol), LOWER(creator_address)
+        HAVING COUNT(*) > 1
+          AND (julianday(MAX(created_at)) - julianday(MIN(created_at))) * 24 <= ${timeWindowHours}
+        ORDER BY token_count DESC, earliest_created DESC
+      `;
+    }
+    
+    let duplicates = await dbAll(duplicatesQuery, []) as any[];
+    
+    // If no duplicates with creator, try name+symbol only
+    if (duplicates.length === 0) {
+      console.log('🔍 No duplicates found with creator, trying name+symbol only...');
+      
+      if (usingPostgres) {
+        duplicatesQuery = `
+          WITH token_groups AS (
+            SELECT 
+              LOWER(name) as name_lower,
+              LOWER(symbol) as symbol_lower,
+              COUNT(*) as token_count,
+              array_to_string(ARRAY_AGG(id::text ORDER BY created_at), ',') as token_ids,
+              MIN(created_at) as earliest_created,
+              MAX(created_at) as latest_created
+            FROM tokens
+            WHERE (deleted IS NULL OR deleted = 0)
+            GROUP BY LOWER(name), LOWER(symbol)
+            HAVING COUNT(*) > 1
+              AND EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) <= ${timeWindowHours * 3600}
+          )
+          SELECT 
+            name_lower as name,
+            symbol_lower as symbol,
+            NULL as creator,
+            token_count,
+            token_ids,
+            earliest_created,
+            latest_created
+          FROM token_groups
+          ORDER BY token_count DESC, earliest_created DESC
+        `;
+      } else {
+        duplicatesQuery = `
+          SELECT 
+            LOWER(name) as name_lower,
+            LOWER(symbol) as symbol_lower,
+            NULL as creator_lower,
+            COUNT(*) as token_count,
+            GROUP_CONCAT(id) as token_ids,
+            MIN(created_at) as earliest_created,
+            MAX(created_at) as latest_created
+          FROM tokens
+          WHERE (deleted IS NULL OR deleted = 0)
+          GROUP BY LOWER(name), LOWER(symbol)
+          HAVING COUNT(*) > 1
+            AND (julianday(MAX(created_at)) - julianday(MIN(created_at))) * 24 <= ${timeWindowHours}
+          ORDER BY token_count DESC, earliest_created DESC
+        `;
+      }
+      
+      duplicates = await dbAll(duplicatesQuery, []) as any[];
+    }
+    
+    if (duplicates.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No duplicate tokens found by metadata',
+        merged: 0,
+      });
+    }
+    
+    console.log(`📊 Found ${duplicates.length} groups of tokens with same name+symbol${duplicates[0]?.creator ? '+creator' : ''}`);
+    
+    let mergedCount = 0;
+    const mergeResults: any[] = [];
+    
+    for (const duplicate of duplicates) {
+      const tokenIds = duplicate.token_ids.split(',').filter((id: string) => id && id.trim() !== '');
+      const name = duplicate.name || duplicate.name_lower;
+      const symbol = duplicate.symbol || duplicate.symbol_lower;
+      const creator = duplicate.creator || duplicate.creator_lower || 'unknown';
+      
+      console.log(`\n🔀 Processing tokens: ${name} (${symbol})${creator !== 'unknown' ? ` by ${creator}` : ''}`);
+      console.log(`   Token IDs: ${tokenIds.join(', ')}`);
+      
+      const tokens = await dbAll(
+        `SELECT id, name, symbol, created_at, 
+         (SELECT COUNT(*) FROM token_deployments WHERE token_id = tokens.id) as deployment_count
+         FROM tokens 
+         WHERE id IN (${tokenIds.map(() => '?').join(',')}) 
+         ORDER BY created_at ASC`,
+        tokenIds
+      ) as any[];
+      
+      if (tokens.length === 0) continue;
+      
+      const masterTokenId = tokens[0].id;
+      const duplicateTokenIds = tokens.slice(1).map((t: any) => t.id);
+      
+      const allDeployments = await dbAll(
+        `SELECT token_id, chain, token_address 
+         FROM token_deployments 
+         WHERE token_id IN (${tokenIds.map(() => '?').join(',')}) 
+         ORDER BY token_id, chain`,
+        tokenIds
+      ) as any[];
+      
+      const masterChains = new Set(
+        allDeployments.filter((d: any) => d.token_id === masterTokenId).map((d: any) => d.chain)
+      );
+      
+      for (const duplicateTokenId of duplicateTokenIds) {
+        const duplicateDeployments = allDeployments.filter((d: any) => d.token_id === duplicateTokenId);
+        
+        for (const deployment of duplicateDeployments) {
+          if (masterChains.has(deployment.chain)) {
+            await dbRun(
+              'DELETE FROM token_deployments WHERE token_id = ? AND chain = ?',
+              [duplicateTokenId, deployment.chain]
+            );
+          } else {
+            await dbRun(
+              'UPDATE token_deployments SET token_id = ? WHERE token_id = ? AND chain = ?',
+              [masterTokenId, duplicateTokenId, deployment.chain]
+            );
+            masterChains.add(deployment.chain);
+          }
+        }
+        
+        await dbRun('DELETE FROM tokens WHERE id = ?', [duplicateTokenId]);
+        mergedCount++;
+      }
+      
+      mergeResults.push({
+        name,
+        symbol,
+        creator: creator !== 'unknown' ? creator : null,
+        masterTokenId,
+        duplicateTokenIds,
+        totalChains: masterChains.size,
+        chains: Array.from(masterChains),
+      });
+    }
+    
+    console.log(`\n✅ Merge complete: ${mergedCount} duplicate tokens merged by metadata`);
+    
+    res.json({
+      success: true,
+      message: `Merged ${mergedCount} duplicate tokens by metadata`,
+      merged: mergedCount,
+      results: mergeResults,
+    });
+  } catch (error: any) {
+    console.error('❌ Error merging tokens by metadata:', error);
+    res.status(500).json({
+      error: 'Failed to merge tokens by metadata',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
