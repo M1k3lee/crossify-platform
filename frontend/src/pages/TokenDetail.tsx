@@ -627,13 +627,13 @@ export default function TokenDetail() {
           </div>
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
             <p className="text-sm text-gray-400 mb-2">Active Chains</p>
-            <p className="text-2xl font-bold text-white">{status.deployments?.length || 0}</p>
+            <p className="text-2xl font-bold text-white">{deployments?.length || 0}</p>
             <p className="text-sm text-gray-500 mt-2">Blockchains</p>
           </div>
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
             <p className="text-sm text-gray-400 mb-2">Total Volume</p>
             <p className="text-2xl font-bold text-white">
-              ${(status.deployments?.reduce((sum: number, d: any) => sum + (d.marketCap || 0) * 0.1, 0) / 1e3 || 0).toFixed(1)}K
+              ${(deployments?.reduce((sum: number, d: any) => sum + ((d?.marketCap || 0) * 0.1), 0) / 1e3 || 0).toFixed(1)}K
             </p>
             <p className="text-sm text-gray-500 mt-2">24h</p>
           </div>
@@ -671,7 +671,7 @@ export default function TokenDetail() {
                 }, 2000);
               }}
             />
-          ) : status.deployments && status.deployments.length > 0 && !allGraduated ? (
+          ) : deployments && deployments.length > 0 && !allGraduated ? (
             <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
               <p className="text-yellow-400 text-sm mb-2">
                 ⚠️ Cannot buy on selected chain
@@ -683,8 +683,8 @@ export default function TokenDetail() {
                 Deployment: {selectedDeployment ? `${selectedDeployment.chain} (curve: ${selectedDeployment.curveAddress ? 'yes' : 'no'}, token: ${selectedDeployment.tokenAddress ? 'yes' : 'no'})` : 'none'}
               </p>
               <p className="text-yellow-400 text-xs">
-                Available chains: {status.deployments.map((d: any) => 
-                  d.curveAddress && d.tokenAddress ? d.chain : null
+                Available chains: {deployments.map((d: any) => 
+                  d && d.curveAddress && d.tokenAddress ? d.chain : null
                 ).filter(Boolean).join(', ') || 'none'}
               </p>
             </div>
@@ -700,13 +700,23 @@ export default function TokenDetail() {
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-white mb-4">Chain Deployments</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {status.deployments?.map((dep: any) => {
-              const chainName = dep.chain.toLowerCase();
-              const price = priceSync?.prices?.[chainName] || dep.marketCap / 1000000 || 0.001;
-              const liquidity = dep.marketCap * 0.7 || 0;
-              const volume24h = (dep.marketCap || 0) * 0.1;
-              const priceImpact = 0.08 + Math.random() * 0.3;
-              const chainColor = CHAIN_COLORS[chainName] || '#FFFFFF';
+            {deployments?.map((dep: any, idx: number) => {
+              if (!dep || !dep.chain) return null;
+              try {
+                const chainName = dep.chain.toLowerCase();
+                // Normalize chain name for lookup (handle testnet names)
+                const normalizedChainName = chainName.includes('base-sepolia') ? 'base-sepolia' :
+                                          chainName.includes('bsc-testnet') ? 'bsc-testnet' :
+                                          chainName.includes('sepolia') && !chainName.includes('base') ? 'sepolia' :
+                                          chainName.includes('base') ? 'base' :
+                                          chainName.includes('bsc') ? 'bsc' :
+                                          chainName.includes('ethereum') ? 'ethereum' : chainName;
+                const price = priceSync?.prices?.[chainName] || (dep.marketCap ? dep.marketCap / 1000000 : 0.001);
+                const liquidity = (dep.marketCap || 0) * 0.7;
+                const volume24h = (dep.marketCap || 0) * 0.1;
+                const priceImpact = 0.08 + (idx % 10) * 0.03; // Deterministic
+                const chainColor = CHAIN_COLORS[normalizedChainName] || CHAIN_COLORS[chainName] || '#FFFFFF';
+                const chainDisplayName = CHAIN_NAMES[normalizedChainName] || CHAIN_NAMES[chainName] || chainName;
 
               return (
                 <motion.div
@@ -813,15 +823,24 @@ export default function TokenDetail() {
         )}
 
         {/* Cross-Chain Price Comparison */}
-        {status.deployments && status.deployments.length > 1 && priceSync && (
+        {deployments && deployments.length > 1 && priceSync && (
           <div className="mb-6 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
             <h2 className="text-2xl font-bold text-white mb-4">Cross-Chain Price Comparison</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {status.deployments.map((dep: any) => {
-                const chainName = dep.chain.toLowerCase();
-                const price = priceSync.prices?.[chainName] || dep.marketCap / 1000000 || 0.001;
-                const chainColor = CHAIN_COLORS[chainName] || '#FFFFFF';
-                const variance = priceSync.variance || 0;
+              {deployments.map((dep: any) => {
+                if (!dep || !dep.chain) return null;
+                try {
+                  const chainName = dep.chain.toLowerCase();
+                  const normalizedChainName = chainName.includes('base-sepolia') ? 'base-sepolia' :
+                                            chainName.includes('bsc-testnet') ? 'bsc-testnet' :
+                                            chainName.includes('sepolia') && !chainName.includes('base') ? 'sepolia' :
+                                            chainName.includes('base') ? 'base' :
+                                            chainName.includes('bsc') ? 'bsc' :
+                                            chainName.includes('ethereum') ? 'ethereum' : chainName;
+                  const price = priceSync.prices?.[chainName] || (dep.marketCap ? dep.marketCap / 1000000 : 0.001);
+                  const chainColor = CHAIN_COLORS[normalizedChainName] || CHAIN_COLORS[chainName] || '#FFFFFF';
+                  const chainDisplayName = CHAIN_NAMES[normalizedChainName] || CHAIN_NAMES[chainName] || chainName;
+                  const variance = priceSync.variance || 0;
                 
                 return (
                   <div
