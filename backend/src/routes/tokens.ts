@@ -790,7 +790,25 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         query += ` ORDER BY t.created_at DESC`;
     }
     
-    const tokens = await dbAll(query, params) as any[];
+    // Log the actual query being executed (for debugging)
+    console.log(`📊 Marketplace: Executing query with params:`, params);
+    console.log(`📊 Marketplace: Query:`, query.substring(0, 200) + '...');
+    
+    let tokens: any[] = [];
+    try {
+      tokens = await dbAll(query, params) as any[];
+      console.log(`📊 Marketplace: Query executed successfully, found ${tokens.length} tokens`);
+    } catch (queryError: any) {
+      console.error(`❌ Marketplace: Query failed:`, queryError.message);
+      console.error(`❌ Marketplace: Query error code:`, queryError.code);
+      console.error(`❌ Marketplace: Query error stack:`, queryError.stack);
+      
+      // Check if there are any tokens at all in the database
+      const allTokensResult = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
+      console.log(`📊 Marketplace: Total tokens in database: ${allTokensResult[0]?.count || 0}`);
+      
+      throw queryError; // Re-throw to trigger error handler
+    }
     
     console.log(`📊 Marketplace: Found ${tokens.length} tokens after query`);
     
