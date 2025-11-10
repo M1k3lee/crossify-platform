@@ -884,42 +884,92 @@ router.get('/marketplace', async (req: Request, res: Response) => {
       }
     }
     
-    const formattedTokens = tokens.map(token => {
-      // Handle NULL/empty GROUP_CONCAT results - filter out null/empty strings
-      const chainsStr = token.chains as string | null | undefined;
-      const tokenAddressesStr = token.token_addresses as string | null | undefined;
-      const curveAddressesStr = token.curve_addresses as string | null | undefined;
-      const statusesStr = token.deployment_statuses as string | null | undefined;
-      const graduationsStr = token.graduation_statuses as string | null | undefined;
-      const marketCapsStr = token.market_caps as string | null | undefined;
-      
-      const chains = chainsStr ? chainsStr.split(',').filter((c: string) => c && c !== 'null' && c.trim() !== '') : [];
-      const tokenAddresses = tokenAddressesStr ? tokenAddressesStr.split(',').filter((a: string) => a && a !== 'null' && a.trim() !== '') : [];
-      const curveAddresses = curveAddressesStr ? curveAddressesStr.split(',').filter((a: string) => a && a !== 'null' && a.trim() !== '') : [];
-      const statuses = statusesStr ? statusesStr.split(',').filter((s: string) => s && s !== 'null' && s.trim() !== '') : [];
-      const graduations = graduationsStr ? graduationsStr.split(',').filter((g: string) => g && g !== 'null' && g.trim() !== '') : [];
-      const marketCaps = marketCapsStr ? marketCapsStr.split(',').filter((m: string) => m && m !== 'null' && m.trim() !== '') : [];
-      
-      // Create deployments array by matching chains with their corresponding data
-      // Since GROUP_CONCAT orders by chain, the arrays should be aligned by index
-      // However, we need to handle the case where the same chain appears multiple times
-      // by creating a map to deduplicate while preserving the first occurrence's data
-      const deployments: any[] = [];
-      const processedChains = new Set<string>();
-      
-      // Iterate through chains and match with corresponding deployment data by index
-      for (let idx = 0; idx < chains.length; idx++) {
-        const chain = chains[idx] as string;
-        if (!processedChains.has(chain)) {
-          processedChains.add(chain);
-          deployments.push({
-            chain,
-            tokenAddress: tokenAddresses[idx] || null,
-            curveAddress: curveAddresses[idx] || null,
-            status: statuses[idx] || 'pending',
-            isGraduated: graduations[idx] === '1' || graduations[idx] === 'true' || graduations[idx] === 't',
-            marketCap: parseFloat(marketCaps[idx] || '0') || 0,
+    // Fetch deployments separately for better accuracy and alignment
+    // This avoids issues with GROUP_CONCAT array alignment
+    const tokenIds = tokens.map(t => t.id);
+    let deploymentsByTokenId: Record<string, any[]> = {};
+    
+    if (tokenIds.length > 0) {
+      try {
+        // Query deployments for all tokens at once
+        const placeholders = tokenIds.map(() => '?').join(',');
+        const deploymentsQuery = `
+          SELECT 
+            token_id, chain, token_address, curve_address, status, 
+            is_graduated, market_cap
+          FROM token_deployments
+          WHERE token_id IN (${placeholders})
+          ORDER BY token_id, chain
+        `;
+        const allDeployments = await dbAll(deploymentsQuery, tokenIds) as any[];
+        
+        console.log(`📊 Marketplace: Fetched ${allDeployments.length} deployments for ${tokenIds.length} tokens`);
+        
+        // Group deployments by token_id
+        deploymentsByTokenId = allDeployments.reduce((acc, dep) => {
+          if (!acc[dep.token_id]) {
+            acc[dep.token_id] = [];
+          }
+          acc[dep.token_id].push({
+            chain: dep.chain,
+            tokenAddress: dep.token_address || null,
+            curveAddress: dep.curve_address || null,
+            status: dep.status || 'pending',
+            isGraduated: dep.is_graduated === 1 || dep.is_graduated === true || dep.is_graduated === '1' || dep.is_graduated === 'true',
+            marketCap: parseFloat(dep.market_cap || '0') || 0,
           });
+          return acc;
+        }, {} as Record<string, any[]>);
+        
+        // Log deployment counts per token
+        Object.entries(deploymentsByTokenId).slice(0, 3).forEach(([tokenId, deps]) => {
+          console.log(`📊 Marketplace: Token ${tokenId} has ${deps.length} deployments:`, deps.map(d => d.chain).join(', '));
+        });
+      } catch (deploymentsError: any) {
+        console.warn('⚠️ Could not fetch deployments separately, falling back to GROUP_CONCAT data:', deploymentsError.message);
+        // Fall back to GROUP_CONCAT data if separate query fails
+      }
+    }
+    
+    const formattedTokens = tokens.map(token => {
+      // Use deployments from separate query if available, otherwise fall back to GROUP_CONCAT
+      let deployments: any[] = [];
+      
+      if (deploymentsByTokenId[token.id] && deploymentsByTokenId[token.id].length > 0) {
+        // Use deployments from separate query (more reliable)
+        deployments = deploymentsByTokenId[token.id];
+      } else {
+        // Fall back to GROUP_CONCAT data (legacy support or if separate query failed)
+        const chainsStr = token.chains as string | null | undefined;
+        const tokenAddressesStr = token.token_addresses as string | null | undefined;
+        const curveAddressesStr = token.curve_addresses as string | null | undefined;
+        const statusesStr = token.deployment_statuses as string | null | undefined;
+        const graduationsStr = token.graduation_statuses as string | null | undefined;
+        const marketCapsStr = token.market_caps as string | null | undefined;
+        
+        const chains = chainsStr ? chainsStr.split(',').filter((c: string) => c && c !== 'null' && c.trim() !== '') : [];
+        const tokenAddresses = tokenAddressesStr ? tokenAddressesStr.split(',').filter((a: string) => a && a !== 'null' && a.trim() !== '') : [];
+        const curveAddresses = curveAddressesStr ? curveAddressesStr.split(',').filter((a: string) => a && a !== 'null' && a.trim() !== '') : [];
+        const statuses = statusesStr ? statusesStr.split(',').filter((s: string) => s && s !== 'null' && s.trim() !== '') : [];
+        const graduations = graduationsStr ? graduationsStr.split(',').filter((g: string) => g && g !== 'null' && g.trim() !== '') : [];
+        const marketCaps = marketCapsStr ? marketCapsStr.split(',').filter((m: string) => m && m !== 'null' && m.trim() !== '') : [];
+        
+        // Create deployments array by matching chains with their corresponding data
+        const processedChains = new Set<string>();
+        
+        for (let idx = 0; idx < chains.length; idx++) {
+          const chain = chains[idx] as string;
+          if (!processedChains.has(chain)) {
+            processedChains.add(chain);
+            deployments.push({
+              chain,
+              tokenAddress: tokenAddresses[idx] || null,
+              curveAddress: curveAddresses[idx] || null,
+              status: statuses[idx] || 'pending',
+              isGraduated: graduations[idx] === '1' || graduations[idx] === 'true' || graduations[idx] === 't',
+              marketCap: parseFloat(marketCaps[idx] || '0') || 0,
+            });
+          }
         }
       }
       
