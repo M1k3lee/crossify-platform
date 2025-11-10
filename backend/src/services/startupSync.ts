@@ -293,8 +293,8 @@ async function syncTokenToDatabase(
         `INSERT OR IGNORE INTO tokens (
           id, name, symbol, decimals, initial_supply,
           base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
-          creator_address, cross_chain_enabled
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          creator_address, cross_chain_enabled, visible_in_marketplace
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           tokenId,
           name,
@@ -308,6 +308,7 @@ async function syncTokenToDatabase(
           parseFloat(sellFeePercent) || 0,
           creator.toLowerCase(),
           0,
+          1, // Explicitly set visible_in_marketplace = 1
         ]
       );
       
@@ -353,8 +354,8 @@ async function syncTokenToDatabase(
             `INSERT INTO tokens (
               id, name, symbol, decimals, initial_supply,
               base_price, slope, graduation_threshold, buy_fee_percent, sell_fee_percent,
-              creator_address, cross_chain_enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              creator_address, cross_chain_enabled, visible_in_marketplace
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               tokenId,
               name,
@@ -368,6 +369,7 @@ async function syncTokenToDatabase(
               parseFloat(sellFeePercent) || 0,
               creator.toLowerCase(),
               0,
+              1, // Explicitly set visible_in_marketplace = 1
             ]
           );
           verifyToken = await dbGet('SELECT id FROM tokens WHERE id = ?', [tokenId]) as any;
@@ -399,6 +401,21 @@ async function syncTokenToDatabase(
       console.error(`    ❌ Token ${tokenId} does not exist after all attempts`);
       console.error(`    💡 This might indicate a database connection or transaction issue`);
       throw new Error(`Token ${tokenId} not found in database`);
+    }
+    
+    // Ensure token is visible in marketplace (update if it's hidden)
+    try {
+      const updateResult = await dbRun(
+        'UPDATE tokens SET visible_in_marketplace = 1 WHERE id = ? AND (visible_in_marketplace = 0 OR visible_in_marketplace IS NULL)',
+        [tokenId]
+      );
+      const updated = (updateResult as any)?.changes ?? (updateResult as any)?.rowCount ?? 0;
+      if (updated > 0) {
+        console.log(`    ✅ Made token ${tokenId} visible in marketplace`);
+      }
+    } catch (updateError) {
+      // Non-critical error - log but don't fail
+      console.warn(`    ⚠️  Could not update token visibility for ${tokenId}:`, updateError);
     }
     
     console.log(`    ✅ Token ${tokenId} confirmed in database, proceeding with deployment`);
