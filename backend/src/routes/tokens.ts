@@ -754,22 +754,27 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         INNER JOIN token_deployments td ON t.id = td.token_id AND td.chain = ?
         WHERE (t.deleted IS NULL OR t.deleted = 0)
           AND (t.visible_in_marketplace IS NULL OR t.visible_in_marketplace = 1)
+        GROUP BY t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
+          t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
+          t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
+          t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
+          t.deleted, t.visible_in_marketplace
       `;
       params.push(chain);
+    } else {
+      // Add GROUP BY clause for main query - required for aggregate functions (GROUP_CONCAT/STRING_AGG)
+      // PostgreSQL requires all non-aggregated columns to be in GROUP BY
+      query += ` GROUP BY t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
+        t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
+        t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
+        t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
+        t.deleted, t.visible_in_marketplace`;
     }
     
     if (search) {
       query += ` AND (LOWER(t.name) LIKE LOWER(?) OR LOWER(t.symbol) LIKE LOWER(?))`;
       params.push(`%${search}%`, `%${search}%`);
     }
-    
-    // Add GROUP BY clause - required for aggregate functions (GROUP_CONCAT/STRING_AGG)
-    // PostgreSQL requires all non-aggregated columns to be in GROUP BY
-    query += ` GROUP BY t.id, t.name, t.symbol, t.decimals, t.initial_supply, t.logo_ipfs,
-        t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
-        t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
-        t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
-        t.deleted, t.visible_in_marketplace`;
     
     switch (sortBy) {
       case 'newest':
