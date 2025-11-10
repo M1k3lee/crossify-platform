@@ -20,16 +20,16 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-3">
               <a
-                href="https://twitter.com/crossify"
+                href="https://x.com/crossify_io"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-gray-800 hover:bg-primary-600 rounded-lg transition-colors group"
-                aria-label="Twitter"
+                aria-label="X (Twitter)"
               >
                 <Twitter className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
               </a>
               <a
-                href="https://discord.gg/crossify"
+                href="https://discord.gg/WQMevJek"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-gray-800 hover:bg-indigo-600 rounded-lg transition-colors group"
@@ -38,7 +38,7 @@ export default function Footer() {
                 <MessageCircle className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
               </a>
               <a
-                href="https://github.com/crossify"
+                href="https://github.com/M1k3lee/crossify-platform"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors group"
@@ -144,7 +144,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://github.com/crossify/docs"
+                  href="https://github.com/M1k3lee/crossify-platform"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-primary-400 transition-colors text-sm flex items-center gap-2"
