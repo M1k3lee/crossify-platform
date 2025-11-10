@@ -662,7 +662,6 @@ export default function TokenDetail() {
               tokenAddress={selectedDeployment.tokenAddress}
               tokenSymbol={tokenSymbol}
               currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
-              curveAddress={selectedDeployment.curveAddress || ''}
               onSell={() => {
                 // Scroll to buy widget when sell is clicked
                 setTimeout(() => {
