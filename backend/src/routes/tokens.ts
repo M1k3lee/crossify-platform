@@ -771,7 +771,7 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         t.description, t.twitter_url, t.discord_url, t.telegram_url, t.website_url,
         t.base_price, t.slope, t.graduation_threshold, t.buy_fee_percent, t.sell_fee_percent,
         t.creator_address, t.cross_chain_enabled, t.advanced_settings, t.created_at,
-        t.deleted, t.visible_in_marketplace
+        t.deleted, t.visible_in_marketplace, t.verified
     `;
     
     switch (sortBy) {
