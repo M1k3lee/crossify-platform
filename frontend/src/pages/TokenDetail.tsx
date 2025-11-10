@@ -807,7 +807,11 @@ export default function TokenDetail() {
                     )}
                   </div>
                 </motion.div>
-              );
+                );
+              } catch (error) {
+                console.error('Error rendering deployment card:', error, dep);
+                return null;
+              }
             })}
           </div>
         </div>
@@ -860,7 +864,11 @@ export default function TokenDetail() {
                       <p className="text-xs text-yellow-400">Variance: {variance.toFixed(2)}%</p>
                     )}
                   </div>
-                );
+                  );
+                } catch (error) {
+                  console.error('Error rendering price comparison:', error, dep);
+                  return null;
+                }
               })}
             </div>
             {priceSync.variance && priceSync.variance > 0.5 && (
