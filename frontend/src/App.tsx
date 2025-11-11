@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { WagmiProvider } from 'wagmi';
@@ -7,7 +7,7 @@ import { sepolia } from 'wagmi/chains';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { config } from './config/wagmi';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -36,6 +36,24 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 const queryClient = new QueryClient();
 
+// Component to clean up URLs and prevent index.html in paths
+function URLCleanup() {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Clean up any index.html in the URL path
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/index.html') || currentPath.includes('/index.htm')) {
+      const cleanPath = currentPath.replace(/\/index\.html?$/i, '') || '/';
+      if (cleanPath !== currentPath) {
+        window.history.replaceState(null, '', cleanPath + window.location.search + window.location.hash);
+      }
+    }
+  }, [location]);
+
+  return null;
+}
+
 function App() {
   const wallets = useMemo(
     () => [
@@ -63,6 +81,7 @@ function App() {
             <WalletProvider wallets={wallets} autoConnect={false}>
               <WalletModalProvider>
                 <Router basename={basename}>
+                  <URLCleanup />
                   <GoogleAnalytics />
                   <Routes>
                     <Route path="/" element={<Layout><Home /></Layout>} />

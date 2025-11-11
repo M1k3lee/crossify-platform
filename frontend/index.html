@@ -10,16 +10,32 @@
     <script>
       // Single Page Apps for GitHub Pages - URL cleanup
       // This converts index.html?/path back to clean /path URLs
-      (function(l) {
+      (function() {
+        var l = window.location;
+        
+        // Handle index.html?/path format (from 404.html redirect)
         if (l.search[1] === '/') {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&')
           }).join('?');
-          window.history.replaceState(null, null,
-              l.pathname.slice(0, -1) + decoded + l.hash
-          );
+          
+          // Remove /index.html or /index.htm from pathname before adding decoded path
+          var cleanPathname = l.pathname.replace(/\/index\.html?$/i, '') || '/';
+          var newPath = cleanPathname === '/' ? decoded : (cleanPathname + decoded);
+          
+          // Ensure path starts with /
+          if (!newPath.startsWith('/')) {
+            newPath = '/' + newPath;
+          }
+          
+          window.history.replaceState(null, null, newPath + l.hash);
         }
-      }(window.location))
+        // Handle direct access to index.html or index.htm (shouldn't happen, but clean it up)
+        else if (l.pathname.includes('/index.html') || l.pathname.includes('/index.htm')) {
+          var cleanPath = l.pathname.replace(/\/index\.html?$/i, '') || '/';
+          window.history.replaceState(null, null, cleanPath + l.search + l.hash);
+        }
+      })();
     </script>
     
     <!-- Block WalletConnect API calls and prevent MetaMask store redirects -->
