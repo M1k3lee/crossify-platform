@@ -1723,8 +1723,14 @@ router.patch('/:id', async (req: Request, res: Response) => {
       values.push(cleanUrl(logoIpfs));
     }
     if (bannerImageIpfs !== undefined) {
+      const cleanedBanner = cleanUrl(bannerImageIpfs);
+      console.log(`📸 Banner update for token ${id}:`, {
+        original: bannerImageIpfs,
+        cleaned: cleanedBanner,
+        type: typeof bannerImageIpfs,
+      });
       updates.push('banner_image_ipfs = ?');
-      values.push(cleanUrl(bannerImageIpfs));
+      values.push(cleanedBanner);
     }
     if (description !== undefined) {
       updates.push('description = ?');
@@ -1791,7 +1797,10 @@ router.patch('/:id', async (req: Request, res: Response) => {
       values
     );
 
+    // Verify the update was successful
+    const updatedToken = await dbGet('SELECT banner_image_ipfs FROM tokens WHERE id = ?', [id]) as any;
     console.log(`✅ Token metadata updated for ${id} by ${creatorAddress}`);
+    console.log(`📸 Banner after update:`, updatedToken?.banner_image_ipfs || 'NULL');
 
     res.json({
       success: true,
