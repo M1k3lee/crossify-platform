@@ -23,6 +23,19 @@ interface TokenCapabilities {
   vestingEnabled: boolean;
 }
 
+// Helper function to map deployment chain names to expected chain names
+const mapChainName = (chain: string): 'ethereum' | 'bsc' | 'base' | null => {
+  const chainMap: Record<string, 'ethereum' | 'bsc' | 'base'> = {
+    'sepolia': 'ethereum',
+    'ethereum': 'ethereum',
+    'bsc-testnet': 'bsc',
+    'bsc': 'bsc',
+    'base-sepolia': 'base',
+    'base': 'base',
+  };
+  return chainMap[chain.toLowerCase()] || null;
+};
+
 export default function CreatorDashboard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -123,6 +136,13 @@ export default function CreatorDashboard() {
       return;
     }
 
+    // Map deployment chain names to expected chain names
+    const mappedChain = mapChainName(chain);
+    if (!mappedChain) {
+      toast.error(`Unsupported chain: ${chain}. Supported chains: sepolia, bsc-testnet, base-sepolia`);
+      return;
+    }
+
     setActionLoading('mint');
     try {
       // Call blockchain directly with platform fee
@@ -130,7 +150,7 @@ export default function CreatorDashboard() {
         tokenAddress: deployment.tokenAddress,
         to: mintTo,
         amount: mintAmount,
-        chain: chain as 'ethereum' | 'bsc' | 'base',
+        chain: mappedChain,
         platformFeePercent: 0.1, // 0.1% platform fee
       });
 
@@ -193,13 +213,20 @@ export default function CreatorDashboard() {
       return;
     }
 
+    // Map deployment chain names to expected chain names
+    const mappedChain = mapChainName(chain);
+    if (!mappedChain) {
+      toast.error(`Unsupported chain: ${chain}. Supported chains: sepolia, bsc-testnet, base-sepolia`);
+      return;
+    }
+
     setActionLoading('burn');
     try {
       // Call blockchain directly
       const result = await burnTokens({
         tokenAddress: deployment.tokenAddress,
         amount: burnAmount,
-        chain: chain as 'ethereum' | 'bsc' | 'base',
+        chain: mappedChain,
       });
 
       // Notify backend
@@ -244,13 +271,20 @@ export default function CreatorDashboard() {
       return;
     }
 
+    // Map deployment chain names to expected chain names
+    const mappedChain = mapChainName(chain);
+    if (!mappedChain) {
+      toast.error(`Unsupported chain: ${chain}. Supported chains: sepolia, bsc-testnet, base-sepolia`);
+      return;
+    }
+
     setActionLoading(paused ? 'unpause' : 'pause');
     try {
       // Call blockchain directly
       const result = await pauseToken({
         tokenAddress: deployment.tokenAddress,
         paused: !paused, // Toggle state
-        chain: chain as 'ethereum' | 'bsc' | 'base',
+        chain: mappedChain,
       });
 
       // Notify backend
@@ -330,12 +364,20 @@ export default function CreatorDashboard() {
 
     setActionLoading('update-fees');
     try {
+      // Map deployment chain names to expected chain names
+      const mappedChain = mapChainName(chain);
+      if (!mappedChain) {
+        toast.error(`Unsupported chain: ${chain}. Supported chains: sepolia, bsc-testnet, base-sepolia`);
+        setEditingFees(false);
+        return;
+      }
+
       // Call blockchain directly
       const result = await updateBondingCurveFees({
         bondingCurveAddress: deployment.curveAddress,
         buyFeePercent: buyFeeNum,
         sellFeePercent: sellFeeNum,
-        chain: chain as 'ethereum' | 'bsc' | 'base',
+        chain: mappedChain,
       });
 
       // Notify backend
