@@ -12,9 +12,10 @@ interface BannerUploadProps {
 
 export default function BannerUpload({ value, onChange, label = 'Banner Image (Optional)' }: BannerUploadProps) {
   const [uploading, setUploading] = useState(false);
-  // Construct preview URL - if value starts with http, use it; if it's a filename, use API; if mock, skip
+  // Construct preview URL - if value starts with http (Cloudinary URL), use it; if it's a filename, use API; if mock, skip
   const getPreviewUrl = (val: string | undefined | null): string | null => {
     if (!val) return null;
+    // If it's already a full URL (Cloudinary or other), return it directly
     if (val.startsWith('http')) return val;
     if (val.startsWith('mock_')) return null; // Mock CIDs don't work
     // It's a filename, construct API URL using /upload/file/:filename endpoint
@@ -60,35 +61,49 @@ export default function BannerUpload({ value, onChange, label = 'Banner Image (O
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (response.data.cid || response.data.filename) {
-        const fileId = response.data.filename || response.data.cid;
-        onChange(fileId);
-        
-        // Try to load the image from the server URL to verify it works
+      // Handle response - Cloudinary returns full URL, local storage returns filename
+      const fileId = response.data.url || response.data.filename || response.data.cid;
+      onChange(fileId);
+      
+      // If it's a Cloudinary URL (full URL), use it directly
+      if (fileId && fileId.startsWith('http')) {
+        // Test if the Cloudinary URL loads successfully
+        const img = new Image();
+        img.onload = () => {
+          setPreview(fileId); // Use Cloudinary URL directly
+          toast.success('Banner uploaded successfully to Cloudinary');
+        };
+        img.onerror = () => {
+          console.warn('Failed to load image from Cloudinary, keeping data URL preview');
+          if (dataUrl) {
+            setPreview(dataUrl);
+          }
+          toast.success('Banner uploaded (preview may take a moment)');
+        };
+        img.src = fileId;
+      } else if (fileId) {
+        // Local storage - construct API URL
         const previewUrl = getPreviewUrl(fileId);
         if (previewUrl) {
-          // Test if the URL loads successfully
           const img = new Image();
           img.onload = () => {
-            // Image loaded successfully from server, use server URL
             setPreview(previewUrl);
+            toast.success('Banner uploaded successfully');
           };
           img.onerror = () => {
-            // Image failed to load from server, keep the data URL preview
             console.warn('Failed to load image from server, keeping data URL preview');
             if (dataUrl) {
               setPreview(dataUrl);
             }
+            toast.success('Banner uploaded (preview may take a moment)');
           };
           img.src = previewUrl;
         } else {
-          // No preview URL, keep data URL if available
           if (dataUrl) {
             setPreview(dataUrl);
           }
+          toast.success('Banner uploaded successfully');
         }
-        
-        toast.success('Banner uploaded successfully');
       } else {
         throw new Error('No file ID returned');
       }

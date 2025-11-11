@@ -323,7 +323,7 @@ export default function TokenDetail() {
   const getImageUrl = useMemo(() => {
     return (imageId: string | null | undefined): string | null => {
       if (!imageId) return null;
-      // If it's already a full URL, return it
+      // If it's already a full URL (Cloudinary or other), return it
       if (imageId.startsWith('http')) return imageId;
       // If it's a mock CID (old format), skip it
       if (imageId.startsWith('mock_')) return null;
