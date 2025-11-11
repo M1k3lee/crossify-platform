@@ -1007,9 +1007,29 @@ router.get('/marketplace', async (req: Request, res: Response) => {
       tokens: formattedTokens,
       count: formattedTokens.length,
     });
-  } catch (error) {
-    console.error('Error fetching marketplace tokens:', error);
-    res.status(500).json({ error: 'Failed to fetch tokens' });
+  } catch (error: any) {
+    console.error('❌ Error fetching marketplace tokens:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
+    
+    // Check database type and connection
+    const { isUsingPostgreSQL } = await import('../db/adapter');
+    const usingPostgres = isUsingPostgreSQL();
+    console.error(`❌ Database type: ${usingPostgres ? 'PostgreSQL' : 'SQLite'}`);
+    
+    // Try to get basic token count to see if database is accessible
+    try {
+      const testCount = await dbAll('SELECT COUNT(*) as count FROM tokens', []) as any[];
+      console.error(`❌ Database accessible. Total tokens: ${testCount[0]?.count || 0}`);
+    } catch (dbError) {
+      console.error('❌ Database not accessible:', dbError);
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch tokens',
+      details: error.message || 'Unknown error',
+      databaseType: usingPostgres ? 'PostgreSQL' : 'SQLite'
+    });
   }
 });
 

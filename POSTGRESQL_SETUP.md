@@ -1,5 +1,15 @@
 # PostgreSQL Setup for Railway
 
+## ⚠️ IMPORTANT: SQLite is Ephemeral
+
+**If you're using SQLite (default), your data will be LOST on every redeploy!**
+
+Railway uses ephemeral storage for SQLite databases, which means:
+- ❌ Data is deleted when the service restarts
+- ❌ Data is deleted when you redeploy
+- ❌ Data is deleted when Railway updates the container
+- ✅ **You MUST use PostgreSQL for production to persist data**
+
 ## Quick Setup Guide
 
 ### Step 1: Add PostgreSQL to Railway
@@ -37,11 +47,21 @@ After deployment, check Railway logs for:
 
 ## Benefits of PostgreSQL
 
-✅ **Persistent storage** - Data survives redeployments
+✅ **Persistent storage** - Data survives redeployments (CRITICAL for production!)
 ✅ **Better performance** - Optimized for production workloads
 ✅ **ACID compliance** - Data integrity guarantees
 ✅ **Concurrent access** - Multiple connections supported
 ✅ **Better scaling** - Handles larger datasets
+
+## Why PostgreSQL is Required for Production
+
+**SQLite on Railway is ephemeral** - your tokens, deployments, and all data will be lost on:
+- Service restarts
+- Code deployments
+- Railway container updates
+- Any infrastructure changes
+
+**PostgreSQL on Railway is persistent** - your data survives all of the above.
 
 ## Migration from SQLite
 
