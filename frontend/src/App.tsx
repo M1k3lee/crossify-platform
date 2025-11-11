@@ -56,7 +56,7 @@ function App() {
           <ConnectionProvider endpoint="https://api.devnet.solana.com">
             <WalletProvider wallets={wallets} autoConnect={false}>
               <WalletModalProvider>
-                <Router>
+                <Router basename={import.meta.env.BASE_URL || '/crossify-platform'}>
                   <GoogleAnalytics />
                   <Routes>
                     <Route path="/" element={<Layout><Home /></Layout>} />
