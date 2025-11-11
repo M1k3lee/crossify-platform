@@ -661,19 +661,30 @@ export default function BuyWidget({
         throw new Error(`Failed to get price estimate: ${err.message}. Please try again or contact support.`);
       }
       
-      // Final validation: price should be reasonable (before fees)
+      // Final validation: price should be valid (not NaN/Infinity) and within contract limits
       const finalPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
       const finalPriceUSD = finalPriceEth * 3000; // Rough ETH price estimate
-      // isTestnet is already declared at function level
-      const maxFinalPrice = isTestnet ? 0.01 : 0.1; // Much stricter limits
-      const maxFinalUSD = isTestnet ? 30 : 300;
       
-      if (priceEstimateWei <= 0 || finalPriceEth > maxFinalPrice || finalPriceUSD > maxFinalUSD || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
+      // Only validate that price is a valid number and within contract's 100 ETH/BNB limit
+      if (priceEstimateWei <= 0 || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
         throw new Error(
-          `Invalid price estimate: ${finalPriceEth.toFixed(6)} ${chainSymbol} (~$${finalPriceUSD.toFixed(2)}) ` +
-          `(max allowed: ${maxFinalPrice} ${chainSymbol} (~$${maxFinalUSD})). ` +
-          `This suggests the bonding curve parameters are misconfigured. Please try a much smaller amount or contact support.`
+          `Invalid price estimate: ${finalPriceEth.toFixed(6)} ${chainSymbol} (~$${finalPriceUSD.toFixed(2)}). ` +
+          `Please try again or contact support.`
         );
+      }
+      
+      // Warn if price is very high but don't block (contract will reject if >100 ETH/BNB)
+      if (finalPriceEth > 100) {
+        throw new Error(
+          `Price estimate exceeds contract maximum: ${finalPriceEth.toFixed(6)} ${chainSymbol} (~$${finalPriceUSD.toFixed(2)}). ` +
+          `Contract maximum is 100 ${chainSymbol} per transaction. Please try a smaller amount.`
+        );
+      }
+      
+      // Warn if price is high but still acceptable
+      if (finalPriceUSD > 1000) {
+        console.warn(`⚠️ High transaction cost: ${finalPriceEth.toFixed(6)} ${chainSymbol} (~$${finalPriceUSD.toFixed(2)})`);
+        console.warn(`   Contract maximum: 100 ${chainSymbol} per transaction`);
       }
       
       // Calculate total cost: price + fee (matching contract logic EXACTLY)
@@ -724,25 +735,36 @@ export default function BuyWidget({
       totalCostEth = parseFloat(ethers.formatEther(totalCostWei));
       console.log(`💰 Total cost with 2% buffer: ${totalCostEth.toFixed(6)} ${chainSymbol}`);
       
-      // Final validation before sending - must be within reasonable limits
-      // For testnet: Maximum $30 per transaction (~0.01 ETH)
-      // For mainnet: Maximum $300 per transaction (~0.1 ETH)
+      // Final validation before sending - must be valid and within contract limits
       const totalCostUSD = totalCostEth * 3000; // Rough ETH price estimate
-      // Reuse isTestnet and maxFinalUSD from earlier in the function
-      const maxFinalPriceWithFee = isTestnet ? 0.01 : 0.1; // Much stricter than contract's 100 ETH limit
       
-      if (totalCostEth > maxFinalPriceWithFee || totalCostUSD > maxFinalUSD || isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
-        // Calculate maximum amount user can buy
-        const safeMaxPriceWei = ethers.parseEther(maxFinalPriceWithFee.toString());
+      // Only validate that total cost is a valid number and within contract's 100 ETH/BNB limit
+      if (isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
+        throw new Error(
+          `Invalid total cost calculation: ${totalCostEth.toFixed(6)} ${chainSymbol}. ` +
+          `Please try again or contact support.`
+        );
+      }
+      
+      // Only reject if total cost exceeds contract's 100 ETH/BNB limit
+      if (totalCostEth > 100) {
+        // Calculate maximum amount user can buy based on contract limit
+        const safeMaxPriceWei = ethers.parseEther('90'); // 90 ETH/BNB to be safe (contract allows 100)
         const estimatedMaxAmountWei = (safeMaxPriceWei * ethers.parseEther('1')) / currentPriceWei;
         const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei));
         
         throw new Error(
-          `Total cost too high: ${totalCostEth.toFixed(6)} ${chainSymbol} (~$${totalCostUSD.toFixed(2)}) ` +
-          `exceeds reasonable maximum of ${maxFinalPriceWithFee} ${chainSymbol} (~$${maxFinalUSD}).\n\n` +
-          `Please try a much smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price). ` +
-          `If prices are consistently too high, the bonding curve parameters may need adjustment.`
+          `Total cost exceeds contract maximum: ${totalCostEth.toFixed(6)} ${chainSymbol} (~$${totalCostUSD.toFixed(2)}) ` +
+          `exceeds contract limit of 100 ${chainSymbol} per transaction.\n\n` +
+          `Please try a smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price). ` +
+          `The price increases with the bonding curve, so the maximum may be even lower.`
         );
+      }
+      
+      // Warn if total cost is high but still acceptable
+      if (totalCostUSD > 1000) {
+        console.warn(`⚠️ High total transaction cost: ${totalCostEth.toFixed(6)} ${chainSymbol} (~$${totalCostUSD.toFixed(2)})`);
+        console.warn(`   Contract maximum: 100 ${chainSymbol} per transaction`);
       }
       
       console.log(`🚀 Sending buy transaction with value: ${totalCostWei.toString()} wei (${totalCostEth.toFixed(6)} ${chainSymbol})`);
