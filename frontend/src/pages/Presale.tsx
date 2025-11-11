@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -58,7 +58,6 @@ interface Transaction {
 
 export default function Presale() {
   const { publicKey, connected, disconnect } = useWallet();
-  const { setVisible } = useWalletModal();
   const [presale, setPresale] = useState<PresaleConfig | null>(null);
   const [allocation, setAllocation] = useState<Allocation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -351,13 +350,9 @@ export default function Presale() {
 
               {/* Wallet Connection */}
               {!connected ? (
-                <button
-                  onClick={() => setVisible(true)}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <Wallet className="w-5 h-5" />
-                  Connect Wallet
-                </button>
+                <div className="w-full flex justify-center">
+                  <WalletMultiButton className="!bg-gradient-to-r !from-primary-600 !to-blue-600 hover:!from-primary-700 hover:!to-blue-700 !text-white !font-semibold !rounded-lg !transition-all" />
+                </div>
               ) : (
                 <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-between mb-2">
@@ -497,12 +492,9 @@ export default function Presale() {
                 <div className="text-center py-8">
                   <Wallet className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-400 mb-4">Connect your wallet to view your allocation</p>
-                  <button
-                    onClick={() => setVisible(true)}
-                    className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
-                  >
-                    Connect Wallet
-                  </button>
+                  <div className="flex justify-center">
+                    <WalletMultiButton className="!bg-primary-600 hover:!bg-primary-700 !text-white !rounded-lg !transition" />
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -706,12 +698,9 @@ export default function Presale() {
               ) : (
                 <div className="text-center py-4">
                   <p className="text-gray-400 text-sm mb-4">Connect wallet to get your referral code</p>
-                  <button
-                    onClick={() => setVisible(true)}
-                    className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition"
-                  >
-                    Connect Wallet
-                  </button>
+                  <div className="flex justify-center">
+                    <WalletMultiButton className="!bg-primary-600 hover:!bg-primary-700 !text-white !rounded-lg !transition" />
+                  </div>
                 </div>
               )}
             </motion.div>
