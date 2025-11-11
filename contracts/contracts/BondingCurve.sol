@@ -253,13 +253,79 @@ contract BondingCurve is Ownable, ReentrancyGuard {
     }
     
     /**
+     * @dev Get price for amount using LOCAL supply only (for transaction calculations)
+     * This ensures failed transactions don't affect local price
+     * Global supply is used for display/consistency, but transactions use local supply
+     */
+    function _getPriceForAmountLocal(uint256 tokenAmount) internal view returns (uint256) {
+        require(tokenAmount > 0, "Amount must be greater than 0");
+        
+        // Use LOCAL supply only for transaction calculations
+        // This prevents price increases from failed transactions
+        uint256 supply = totalSupplySold;
+        
+        // Convert supply and tokenAmount from wei to base token units
+        uint256 supplyInTokens = supply / 1 ether;
+        uint256 amountInTokens = tokenAmount / 1 ether;
+        
+        // SAFETY CHECK: Maximum reasonable amount is 1 billion tokens
+        require(amountInTokens <= 1e9, "Amount too large");
+        
+        // For very small amounts (< 1 token), use simplified calculation
+        if (tokenAmount < 1 ether) {
+            uint256 priceFromBase = (basePrice * tokenAmount) / 1 ether;
+            uint256 maxPrice = 100 ether;
+            if (priceFromBase > maxPrice) {
+                revert("Price calculation overflow - basePrice may be too high");
+            }
+            return priceFromBase;
+        }
+        
+        // Standard calculation: Price per token at average supply
+        uint256 supplyForAvgPrice = supplyInTokens + (amountInTokens / 2);
+        
+        // Maximum reasonable supply for price calculation
+        if (supplyForAvgPrice > 1e9) {
+            revert("Supply too large for price calculation");
+        }
+        
+        // Calculate average price per token using LOCAL supply only
+        uint256 slopeComponent = slope * supplyForAvgPrice;
+        if (slopeComponent > 1e25) {
+            revert("Slope calculation error");
+        }
+        
+        uint256 avgPricePerToken = basePrice + slopeComponent;
+        
+        // Validate price per token is reasonable
+        uint256 maxPricePerToken = 1 ether;
+        if (avgPricePerToken > maxPricePerToken) {
+            revert("Price per token exceeds maximum (1 ETH)");
+        }
+        
+        // Total price = avgPricePerToken * amountInTokens
+        uint256 totalPrice = avgPricePerToken * amountInTokens;
+        
+        // Final safety check
+        uint256 maxTotalPrice = 100 ether;
+        if (totalPrice > maxTotalPrice) {
+            revert("Total price exceeds maximum (100 ETH)");
+        }
+        
+        return totalPrice;
+    }
+    
+    /**
      * @dev Buy tokens from the bonding curve
      */
     function buy(uint256 tokenAmount) external payable nonReentrant {
         require(!isGraduated, "Curve has graduated to DEX");
         require(tokenAmount > 0, "Amount must be greater than 0");
         
-        uint256 price = getPriceForAmount(tokenAmount);
+        // CRITICAL FIX: Use LOCAL supply for transaction price calculation
+        // This ensures failed transactions don't cause price increases
+        // Global supply is used for display/consistency, but actual transactions use local supply
+        uint256 price = _getPriceForAmountLocal(tokenAmount);
         uint256 fee = (price * buyFeePercent) / 10000;
         uint256 totalCost = price + fee;
         
@@ -317,7 +383,10 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         require(tokenAmount > 0, "Amount must be greater than 0");
         require(token.balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
         
-        uint256 price = getPriceForAmount(tokenAmount);
+        // CRITICAL FIX: Use LOCAL supply for transaction price calculation
+        // This ensures failed transactions don't cause price changes
+        // Global supply is used for display/consistency, but actual transactions use local supply
+        uint256 price = _getPriceForAmountLocal(tokenAmount);
         uint256 fee = (price * sellFeePercent) / 10000;
         uint256 amountReceived = price - fee;
         
