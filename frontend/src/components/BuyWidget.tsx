@@ -31,6 +31,7 @@ export default function BuyWidget({
   const { isConnected, address } = useAccount();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
+  const [realCurrentPrice, setRealCurrentPrice] = useState<number | null>(null);
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [priceEstimate, setPriceEstimate] = useState<number | null>(null);
   const [tokensEstimate, setTokensEstimate] = useState<number | null>(null);
@@ -80,6 +81,37 @@ export default function BuyWidget({
     console.log(`   → Using Base Sepolia RPC (default fallback)`);
     return 'https://base-sepolia-rpc.publicnode.com';
   };
+
+  // Fetch real current price from contract
+  useEffect(() => {
+    const fetchCurrentPrice = async () => {
+      if (!curveAddress || curveAddress === '0x0000000000000000000000000000000000000000' || !ethers.isAddress(curveAddress)) {
+        return;
+      }
+
+      try {
+        const rpcUrl = getRpcUrlForChain(chain);
+        const ethersProvider = new ethers.JsonRpcProvider(rpcUrl);
+        const bondingCurveABI = ['function getCurrentPrice() external view returns (uint256)'];
+        const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, ethersProvider);
+        
+        const currentPriceWei = await curveContract.getCurrentPrice();
+        const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
+        // Convert to USD (ETH price ~$3000)
+        const currentPriceUSD = currentPriceEth * 3000;
+        setRealCurrentPrice(currentPriceUSD);
+        console.log(`💰 Real current price from contract: ${currentPriceEth} ETH ($${currentPriceUSD.toFixed(6)} per token)`);
+      } catch (error: any) {
+        console.warn(`⚠️ Could not fetch real current price from contract:`, error.message);
+        // Don't set realCurrentPrice on error, will use fallback
+      }
+    };
+
+    fetchCurrentPrice();
+    // Refresh price every 10 seconds
+    const interval = setInterval(fetchCurrentPrice, 10000);
+    return () => clearInterval(interval);
+  }, [curveAddress, chain]);
 
   // Validate addresses and check contract deployment
   useEffect(() => {
@@ -1031,7 +1063,14 @@ export default function BuyWidget({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-400 mb-1">Current Price</p>
-            <p className="text-3xl font-bold text-white">${currentPrice.toFixed(6)}</p>
+            <p className="text-3xl font-bold text-white">
+              ${realCurrentPrice !== null ? realCurrentPrice.toFixed(6) : currentPrice.toFixed(6)}
+            </p>
+            {realCurrentPrice !== null && realCurrentPrice !== currentPrice && (
+              <p className="text-xs text-yellow-400 mt-1">
+                (Displayed: ${currentPrice.toFixed(6)} may be outdated)
+              </p>
+            )}
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-400 mb-1">Chain</p>
