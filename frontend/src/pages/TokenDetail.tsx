@@ -350,9 +350,9 @@ export default function TokenDetail() {
         // Filename from customization - construct URL
         return getImageUrl(customization.bannerImageIpfs);
       }
-      // Check token directly
-      if ((token as any)?.banner_image_ipfs) {
-        return getImageUrl((token as any).banner_image_ipfs);
+      // Check token directly (status endpoint returns bannerImageIpfs in camelCase)
+      if (token?.bannerImageIpfs) {
+        return getImageUrl(token.bannerImageIpfs);
       }
       return null;
     } catch (e) {
@@ -373,9 +373,9 @@ export default function TokenDetail() {
         // Filename from metadata - construct URL
         return getImageUrl(metadata.logoIpfs);
       }
-      // Check token directly for logo_ipfs
-      if ((token as any)?.logo_ipfs) {
-        return getImageUrl((token as any).logo_ipfs);
+      // Check token directly (status endpoint returns logoIpfs in camelCase)
+      if (token?.logoIpfs) {
+        return getImageUrl(token.logoIpfs);
       }
       return null;
     } catch (e) {
@@ -394,8 +394,8 @@ export default function TokenDetail() {
   const handleStartEdit = () => {
     if (!token) return;
     setEditForm({
-      logoIpfs: (token as any)?.logo_ipfs || token?.logoIpfs || '',
-      bannerImageIpfs: (token as any)?.banner_image_ipfs || token?.bannerImageIpfs || customization?.bannerImageIpfs || '',
+      logoIpfs: token?.logoIpfs || '',
+      bannerImageIpfs: token?.bannerImageIpfs || customization?.bannerImageIpfs || '',
       description: token?.description || metadata?.description || '',
       twitterUrl: token?.twitterUrl || metadata?.twitterUrl || '',
       discordUrl: token?.discordUrl || metadata?.discordUrl || '',
