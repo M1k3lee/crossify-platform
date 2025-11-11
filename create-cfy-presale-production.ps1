@@ -3,7 +3,7 @@
 
 $API_BASE = "https://crossify-platform-production.up.railway.app/api"
 
-Write-Host "🚀 Creating CFY Token Presale on Production..." -ForegroundColor Cyan
+Write-Host "Creating CFY Token Presale on Production..." -ForegroundColor Cyan
 Write-Host ""
 
 # Presale configuration
@@ -25,7 +25,7 @@ $presaleConfig = @{
 
 $jsonBody = $presaleConfig | ConvertTo-Json
 
-Write-Host "📋 Configuration:" -ForegroundColor Yellow
+Write-Host "Configuration:" -ForegroundColor Yellow
 Write-Host $jsonBody
 Write-Host ""
 
@@ -34,7 +34,7 @@ Write-Host "Checking for existing presale..." -ForegroundColor Cyan
 try {
     $existing = Invoke-RestMethod -Uri "$API_BASE/presale?id=default" -Method GET -ErrorAction SilentlyContinue
     if ($existing) {
-        Write-Host "⚠️  Presale with id 'default' already exists!" -ForegroundColor Yellow
+        Write-Host "Presale with id 'default' already exists!" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "Existing presale details:" -ForegroundColor Yellow
         Write-Host ($existing | ConvertTo-Json -Depth 5)
@@ -59,14 +59,14 @@ try {
     $presaleId = $response.id
     
     Write-Host ""
-    Write-Host "✅ Presale created successfully!" -ForegroundColor Green
+    Write-Host "Presale created successfully!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "📝 Presale ID: $presaleId" -ForegroundColor Yellow
+    Write-Host "Presale ID: $presaleId" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "🔗 Presale URL: https://crossify.io/presale?id=$presaleId" -ForegroundColor Cyan
+    Write-Host "Presale URL: https://crossify.io/presale?id=$presaleId" -ForegroundColor Cyan
     Write-Host "   (or just https://crossify.io/presale since id='default')" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "⚠️  NEXT STEP: Activate the presale to start monitoring" -ForegroundColor Yellow
+    Write-Host "NEXT STEP: Activate the presale to start monitoring" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Run this command to activate:" -ForegroundColor White
     Write-Host "Invoke-RestMethod -Uri `"$API_BASE/presale/$presaleId/status`" -Method PATCH -ContentType `"application/json`" -Body '{\"status\": \"active\"}'" -ForegroundColor Gray
@@ -74,11 +74,11 @@ try {
     
     # Save presale ID to file
     $presaleId | Out-File -FilePath "presale-id.txt" -Encoding utf8
-    Write-Host "💾 Presale ID saved to presale-id.txt" -ForegroundColor Green
+    Write-Host "Presale ID saved to presale-id.txt" -ForegroundColor Green
     Write-Host ""
     
 } catch {
-    Write-Host "❌ Failed to create presale" -ForegroundColor Red
+    Write-Host "Failed to create presale" -ForegroundColor Red
     Write-Host ""
     Write-Host "Error details:" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
@@ -98,4 +98,3 @@ try {
     Write-Host "3. Check database connection" -ForegroundColor White
     exit 1
 }
-
