@@ -144,9 +144,6 @@ export default function BuyWidget({
         // Note: We don't validate price per token here because bonding curve prices increase naturally
         // as tokens are bought. The contract itself enforces maximum limits (100 ETH/BNB per transaction).
         // Only check for truly astronomical prices that indicate bugs (>100 ETH/BNB).
-        const isTestnet = chain.toLowerCase().includes('testnet') || 
-                         chain.toLowerCase().includes('sepolia') || 
-                         chain.toLowerCase() === 'base-sepolia';
         
         // Calculate expected price for warnings (but don't block)
         const expectedPriceEth = currentPriceEth * parseFloat(amount);
@@ -328,11 +325,6 @@ export default function BuyWidget({
 
     // Get chain symbol for this transaction (outside try block so it's available in catch)
     const chainSymbol = getChainSymbol(chain);
-    
-    // Determine if this is a testnet (used throughout the function)
-    const isTestnet = chain.toLowerCase().includes('testnet') || 
-                     chain.toLowerCase().includes('sepolia') || 
-                     chain.toLowerCase() === 'base-sepolia';
     
     try {
       setLoading(true);
