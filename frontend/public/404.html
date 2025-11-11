@@ -12,6 +12,11 @@
         var l = window.location;
         var path = l.pathname;
         
+        // If we're already on index.html with a query parameter, let index.html handle it
+        if (path.includes('/index.html') && l.search[1] === '/') {
+          return;
+        }
+        
         // Prevent infinite loops - if we're already on index.html, don't redirect again
         if (path.includes('/index.html') || path.includes('/index.htm')) {
           return;
@@ -28,6 +33,11 @@
           path = '/' + path;
         }
         
+        // Don't redirect if path is just /
+        if (path === '/' || path === '') {
+          return;
+        }
+        
         // Build redirect URL - use root base for custom domain
         var redirectPath = '/index.html?/' + path.slice(1) + l.search + l.hash;
         
@@ -36,18 +46,6 @@
           window.location.replace(redirectPath);
         }
       })();
-      
-      // Handle the redirect back (from index.html?/path)
-      (function(l) {
-        if (l.search[1] === '/' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) { 
-            return s.replace(/~and~/g, '&')
-          }).join('?');
-          window.history.replaceState(null, null,
-              l.pathname.slice(0, -1) + decoded + l.hash
-          );
-        }
-      }(window.location))
     </script>
   </head>
   <body>
