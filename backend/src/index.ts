@@ -134,6 +134,21 @@ async function start() {
     await initializeDatabase();
     console.log('✅ Database initialized');
 
+    // Ensure all tokens are visible in marketplace (safeguard against hidden tokens after deployment)
+    try {
+      const { dbRun } = await import('./db/adapter');
+      const result = await dbRun(
+        'UPDATE tokens SET visible_in_marketplace = 1 WHERE visible_in_marketplace = 0 OR visible_in_marketplace IS NULL'
+      );
+      const updated = (result as any)?.changes ?? (result as any)?.rowCount ?? 0;
+      if (updated > 0) {
+        console.log(`✅ Made ${updated} hidden tokens visible on startup`);
+      }
+    } catch (error) {
+      // Non-critical - log but don't fail startup
+      console.warn('⚠️  Could not ensure token visibility on startup:', error instanceof Error ? error.message : error);
+    }
+
     // Initialize Redis (optional - won't crash if Redis is unavailable)
     try {
       await initializeRedis();
