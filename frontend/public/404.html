@@ -22,8 +22,10 @@
           return;
         }
         
-        // With custom domain, we always use root base
-        var base = '';
+        // Don't redirect if path is just / or /index.html (already at root)
+        if (path === '/' || path === '' || path === '/index.html' || path === '/index.htm') {
+          return;
+        }
         
         // Remove leading /index.html or /index.htm if present (prevent loops)
         path = path.replace(/^\/index\.html?\/?/i, '/');
@@ -33,7 +35,7 @@
           path = '/' + path;
         }
         
-        // Don't redirect if path is just /
+        // Don't redirect if path is just / after cleanup
         if (path === '/' || path === '') {
           return;
         }
