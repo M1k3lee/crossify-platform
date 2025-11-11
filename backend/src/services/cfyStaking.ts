@@ -101,10 +101,11 @@ export class CFYStakingService {
    * Get a specific pool
    */
   async getPool(poolId: number): Promise<StakingPool | null> {
-    return await pgGet<StakingPool>(
+    const pool = await pgGet<StakingPool>(
       'SELECT * FROM cfy_staking_pools WHERE id = $1',
       [poolId]
     );
+    return pool || null;
   }
 
   /**
@@ -302,13 +303,14 @@ export class CFYStakingService {
    * Get active position for user in a pool
    */
   async getUserPoolPosition(stakerAddress: string, poolId: number): Promise<StakingPosition | null> {
-    return await pgGet<StakingPosition>(
+    const position = await pgGet<StakingPosition>(
       `SELECT * FROM cfy_staking_positions 
        WHERE staker_address = $1 AND pool_id = $2 AND is_active = true
        ORDER BY staked_at DESC
        LIMIT 1`,
       [stakerAddress, poolId]
     );
+    return position || null;
   }
 
   /**

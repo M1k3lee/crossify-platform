@@ -63,10 +63,11 @@ export class CFYVestingService {
    * Get vesting schedule for a beneficiary
    */
   async getVestingSchedule(beneficiaryAddress: string): Promise<VestingSchedule | null> {
-    return await pgGet<VestingSchedule>(
+    const schedule = await pgGet<VestingSchedule>(
       'SELECT * FROM cfy_vesting_schedules WHERE beneficiary_address = $1',
       [beneficiaryAddress]
     );
+    return schedule || null;
   }
 
   /**

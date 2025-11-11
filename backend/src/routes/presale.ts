@@ -8,6 +8,7 @@ export const router = Router();
 
 // Validation schemas
 const createPresaleSchema = z.object({
+  id: z.string().min(1).max(100).optional(), // Allow custom ID (e.g., "default")
   token_symbol: z.string().min(1).max(10),
   token_name: z.string().min(1).max(100),
   solana_address: z.string().min(32).max(44), // Solana address format
@@ -100,7 +101,16 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    const presaleId = uuidv4();
+    // Use provided ID or generate UUID
+    const presaleId = data.id || uuidv4();
+    
+    // Check if presale with this ID already exists
+    const existing = await pgGet('SELECT id FROM presale_config WHERE id = $1', [presaleId]);
+    if (existing) {
+      return res.status(400).json({
+        error: `Presale with id '${presaleId}' already exists`,
+      });
+    }
 
     await pgRun(
       `INSERT INTO presale_config 
