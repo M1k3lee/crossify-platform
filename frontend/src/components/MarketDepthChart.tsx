@@ -59,15 +59,15 @@ export default function MarketDepthChart({ tokenId, chain }: MarketDepthChartPro
     };
     
     const validBuyOrders = (buyOrders || []).filter(isValidOrder).map(o => ({
-      price: parseFloat(o.price) || 0,
-      amount: parseFloat(o.amount) || 0,
-      total: parseFloat(o.total) || 0,
+      price: typeof o.price === 'number' ? o.price : parseFloat(String(o.price)) || 0,
+      amount: typeof o.amount === 'number' ? o.amount : parseFloat(String(o.amount)) || 0,
+      total: typeof o.total === 'number' ? o.total : parseFloat(String(o.total)) || 0,
     }));
     
     const validSellOrders = (sellOrders || []).filter(isValidOrder).map(o => ({
-      price: parseFloat(o.price) || 0,
-      amount: parseFloat(o.amount) || 0,
-      total: parseFloat(o.total) || 0,
+      price: typeof o.price === 'number' ? o.price : parseFloat(String(o.price)) || 0,
+      amount: typeof o.amount === 'number' ? o.amount : parseFloat(String(o.amount)) || 0,
+      total: typeof o.total === 'number' ? o.total : parseFloat(String(o.total)) || 0,
     }));
     
     // Combine and sort all orders by price
