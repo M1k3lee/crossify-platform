@@ -15,7 +15,9 @@ const getImageUrl = (imageId: string | null | undefined): string | null => {
   if (imageId.startsWith('http')) return imageId;
   if (imageId.startsWith('mock_')) return null; // Mock CIDs don't work
   // It's a filename, construct API URL
-  return `${API_BASE.replace('/api', '')}/upload/file/${imageId}`;
+  // API_BASE already includes /api, so we can use it directly
+  // Route is: /api/upload/file/:filename
+  return `${API_BASE}/upload/file/${imageId}`;
 };
 
 export default function Marketplace() {
