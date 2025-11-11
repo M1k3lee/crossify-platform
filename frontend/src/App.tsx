@@ -45,6 +45,17 @@ function App() {
     []
   );
 
+  // Determine basename dynamically based on hostname
+  // Custom domain (crossify.io) uses root, GitHub Pages uses /crossify-platform
+  const basename = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const isCustomDomain = window.location.hostname === 'crossify.io' || 
+                            window.location.hostname === 'www.crossify.io';
+      return isCustomDomain ? '' : (import.meta.env.BASE_URL?.replace(/\/$/, '') || '/crossify-platform');
+    }
+    return import.meta.env.BASE_URL?.replace(/\/$/, '') || '/crossify-platform';
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={config}>
@@ -56,7 +67,7 @@ function App() {
           <ConnectionProvider endpoint="https://api.devnet.solana.com">
             <WalletProvider wallets={wallets} autoConnect={false}>
               <WalletModalProvider>
-                <Router basename={import.meta.env.BASE_URL?.replace(/\/$/, '') || '/crossify-platform'}>
+                <Router basename={basename}>
                   <GoogleAnalytics />
                   <Routes>
                     <Route path="/" element={<Layout><Home /></Layout>} />
