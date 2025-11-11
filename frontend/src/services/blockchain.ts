@@ -247,8 +247,28 @@ export async function deployTokenOnEVM(
   const slope = ethers.parseEther(config.curveData.slope); // Convert ETH to wei
   // graduationThreshold is in USD, scale by 1e18 (not parseEther which treats it as ETH)
   const graduationThreshold = ethers.parseUnits(config.curveData.graduationThreshold, 18);
-  const buyFeePercent = BigInt(config.curveData.buyFeePercent || '0');
-  const sellFeePercent = BigInt(config.curveData.sellFeePercent || '0');
+  
+  // CRITICAL: Convert fee percentages to basis points (like Uniswap)
+  // User enters percentage (e.g., 1 = 1%), contract expects basis points (e.g., 100 = 1%)
+  // Formula: basis points = percentage * 100
+  // Example: 1% → 100 basis points, 0.5% → 50 basis points, 0% → 0 basis points
+  const buyFeePercentInput = parseFloat(config.curveData.buyFeePercent || '0');
+  const sellFeePercentInput = parseFloat(config.curveData.sellFeePercent || '0');
+  
+  // Validate fees are within acceptable range (0-10%)
+  if (buyFeePercentInput < 0 || buyFeePercentInput > 10) {
+    throw new Error(`Buy fee must be between 0% and 10%. Got: ${buyFeePercentInput}%`);
+  }
+  if (sellFeePercentInput < 0 || sellFeePercentInput > 10) {
+    throw new Error(`Sell fee must be between 0% and 10%. Got: ${sellFeePercentInput}%`);
+  }
+  
+  // Convert to basis points: percentage * 100 (e.g., 1% = 100, 0.5% = 50)
+  // Use Math.floor to ensure we don't exceed contract limits due to rounding
+  const buyFeePercent = BigInt(Math.floor(buyFeePercentInput * 100));
+  const sellFeePercent = BigInt(Math.floor(sellFeePercentInput * 100));
+  
+  console.log(`💰 Fee conversion: Buy ${buyFeePercentInput}% → ${buyFeePercent.toString()} basis points, Sell ${sellFeePercentInput}% → ${sellFeePercent.toString()} basis points`);
   
   // Validate parameters before sending
   if (initialSupply === BigInt(0)) {

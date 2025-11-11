@@ -142,11 +142,18 @@ export default function BuyWidget({
         const tokenAmount = ethers.parseUnits(amount, 18);
         
         // CRITICAL: Validate current price is reasonable (same validation as buy function)
-        const maxReasonablePricePerToken = 0.0001; // 0.0001 ETH/BNB per token max
+        const isTestnet = chain.toLowerCase().includes('testnet') || 
+                         chain.toLowerCase().includes('sepolia') || 
+                         chain.toLowerCase() === 'base-sepolia';
+        
+        // Maximum reasonable price per token (much stricter for testnet)
+        const maxReasonablePricePerToken = isTestnet ? 0.00005 : 0.001;
         const maxReasonablePriceWei = ethers.parseEther(maxReasonablePricePerToken.toString());
         
         if (currentPriceWei > maxReasonablePriceWei || currentPriceEth > maxReasonablePricePerToken) {
-          console.warn(`⚠️ Current price too high for estimate: ${currentPriceEth} ${chainSymbol} per token`);
+          const estimatedUSD = currentPriceEth * 3000;
+          console.warn(`⚠️ Current price too high for estimate: ${currentPriceEth} ${chainSymbol} per token (~$${estimatedUSD.toFixed(2)})`);
+          console.warn(`   Maximum reasonable: ${maxReasonablePricePerToken} ${chainSymbol} per token`);
           setPriceEstimate(null);
           setTokensEstimate(null);
           return;
@@ -154,17 +161,22 @@ export default function BuyWidget({
         
         // Calculate expected price and validate total
         const expectedPriceEth = currentPriceEth * parseFloat(amount);
-        const maxReasonableTotalPrice = 0.1; // 0.1 ETH/BNB total max
+        const expectedPriceUSD = expectedPriceEth * 3000;
         
-        if (expectedPriceEth > maxReasonableTotalPrice) {
-          console.warn(`⚠️ Estimated total price too high: ${expectedPriceEth} ${chainSymbol}`);
+        // Maximum reasonable total price (much stricter for testnet)
+        const maxReasonableTotalPrice = isTestnet ? 0.01 : 0.1; // Testnet: $30 max, Mainnet: $300 max
+        const maxReasonableTotalUSD = isTestnet ? 30 : 300;
+        
+        if (expectedPriceEth > maxReasonableTotalPrice || expectedPriceUSD > maxReasonableTotalUSD) {
+          console.warn(`⚠️ Estimated total price too high: ${expectedPriceEth} ${chainSymbol} (~$${expectedPriceUSD.toFixed(2)})`);
+          console.warn(`   Maximum reasonable: ${maxReasonableTotalPrice} ${chainSymbol} (~$${maxReasonableTotalUSD})`);
           setPriceEstimate(null);
           setTokensEstimate(null);
           return;
         }
         
         const absoluteMaxPrice = maxReasonableTotalPrice; // Use same limit as buy function
-        const maxReasonableWei = ethers.parseEther('0.1'); // 0.1 ETH/BNB max
+        const maxReasonableWei = ethers.parseEther('90'); // 90 ETH/BNB max
 
         if (tab === 'buy') {
           // Calculate ETH/BNB needed for token amount
@@ -439,32 +451,65 @@ export default function BuyWidget({
         console.log(`💰 Current price per token: ${currentPriceWei.toString()} wei (${currentPriceEth} ETH)`);
         
         // CRITICAL: Validate current price is reasonable BEFORE using it
-        // Maximum reasonable price per token: 0.0001 ETH/BNB (for testnet tokens, should be much lower)
-        // This prevents astronomical prices when multiplied by large amounts
-        const maxReasonablePricePerToken = 0.0001; // 0.0001 ETH/BNB per token max (very conservative)
+        // For testnet: Maximum reasonable price per token should be very low (e.g., $0.10 max)
+        // At ETH price ~$3000, that's about 0.000033 ETH per token max for testnet
+        // For mainnet, we allow higher prices but still need reasonable limits
+        const isTestnet = chain.toLowerCase().includes('testnet') || 
+                         chain.toLowerCase().includes('sepolia') || 
+                         chain.toLowerCase() === 'base-sepolia';
+        
+        // Maximum reasonable price per token (in ETH)
+        // Testnet: ~$0.10 per token max = 0.000033 ETH (at $3000/ETH)
+        // Mainnet: ~$1 per token max = 0.00033 ETH (at $3000/ETH)
+        const maxReasonablePricePerToken = isTestnet ? 0.00005 : 0.001; // Much stricter for testnet
         const maxReasonablePriceWei = ethers.parseEther(maxReasonablePricePerToken.toString());
         
         if (currentPriceWei > maxReasonablePriceWei || currentPriceEth > maxReasonablePricePerToken) {
-          console.error(`❌ Current price from contract is too high: ${currentPriceEth} ${chainSymbol} per token`);
+          const estimatedUSD = currentPriceEth * 3000; // Rough ETH price estimate
+          console.error(`❌ Current price from contract is UNREASONABLY HIGH: ${currentPriceEth} ${chainSymbol} per token (~$${estimatedUSD.toFixed(2)})`);
           console.error(`   Maximum reasonable: ${maxReasonablePricePerToken} ${chainSymbol} per token`);
-          console.error(`   This indicates the contract has corrupted price data (likely old buggy version).`);
-          throw new Error(`Invalid current price: ${currentPriceEth} ${chainSymbol} per token. The bonding curve contract appears to have corrupted price data. Maximum allowed: ${maxReasonablePricePerToken} ${chainSymbol} per token. Please contact support or try a different token.`);
+          console.error(`   This indicates the bonding curve parameters (basePrice/slope) are set too high.`);
+          throw new Error(
+            `Price is too high: ${currentPriceEth.toFixed(6)} ${chainSymbol} per token (~$${estimatedUSD.toFixed(2)}). ` +
+            `Maximum allowed: ${maxReasonablePricePerToken} ${chainSymbol} per token. ` +
+            `The bonding curve parameters appear to be misconfigured. Please contact the token creator or try a different token.`
+          );
         }
         
         // Additional check: Calculate total price and validate it's reasonable
         const estimatedTotalPrice = currentPriceEth * parseFloat(amount);
-        const maxReasonableTotalPrice = 0.1; // 0.1 ETH/BNB total max for any transaction
+        const estimatedTotalUSD = estimatedTotalPrice * 3000; // Rough ETH price estimate
         
-        if (estimatedTotalPrice > maxReasonableTotalPrice) {
-          console.error(`❌ Estimated total price is too high: ${estimatedTotalPrice} ${chainSymbol} for ${amount} tokens`);
-          console.error(`   Current price per token: ${currentPriceEth} ${chainSymbol}`);
-          console.error(`   Maximum reasonable total: ${maxReasonableTotalPrice} ${chainSymbol}`);
-          throw new Error(`Price too high: ${estimatedTotalPrice.toFixed(6)} ${chainSymbol} for ${amount} tokens (${currentPriceEth.toFixed(6)} ${chainSymbol} per token). Maximum allowed: ${maxReasonableTotalPrice} ${chainSymbol}. Please try a much smaller amount (e.g., ${Math.floor(parseFloat(amount) * maxReasonableTotalPrice / estimatedTotalPrice)} tokens) or contact support.`);
+        // Maximum reasonable total transaction cost
+        // Testnet: $20 max (0.0067 ETH at $3000/ETH)
+        // Mainnet: $100 max (0.033 ETH at $3000/ETH)
+        const maxReasonableTotalPrice = isTestnet ? 0.01 : 0.1; // Much stricter for testnet
+        const maxReasonableTotalUSD = isTestnet ? 30 : 300; // USD equivalent
+        
+        if (estimatedTotalPrice > maxReasonableTotalPrice || estimatedTotalUSD > maxReasonableTotalUSD) {
+          console.error(`❌ Estimated total price is UNREASONABLY HIGH: ${estimatedTotalPrice} ${chainSymbol} (~$${estimatedTotalUSD.toFixed(2)}) for ${amount} tokens`);
+          console.error(`   Current price per token: ${currentPriceEth} ${chainSymbol} (~$${(currentPriceEth * 3000).toFixed(2)})`);
+          console.error(`   Maximum reasonable total: ${maxReasonableTotalPrice} ${chainSymbol} (~$${maxReasonableTotalUSD})`);
+          
+          // Calculate maximum amount user can buy
+          const maxAmount = Math.floor(parseFloat(amount) * maxReasonableTotalPrice / estimatedTotalPrice);
+          
+          throw new Error(
+            `Transaction cost too high: ${estimatedTotalPrice.toFixed(6)} ${chainSymbol} (~$${estimatedTotalUSD.toFixed(2)}) for ${amount} tokens. ` +
+            `Maximum allowed: ${maxReasonableTotalPrice} ${chainSymbol} (~$${maxReasonableTotalUSD}). ` +
+            `Please try a much smaller amount (e.g., ${maxAmount} tokens or less). ` +
+            `If prices are consistently too high, the bonding curve parameters may need adjustment.`
+          );
         }
         
-        // Additional check: for testnet tokens, price should be very small
-        if (currentPriceEth > 0.00001) {
-          console.warn(`⚠️ Current price seems high for testnet: ${currentPriceEth} ${chainSymbol} per token`);
+        // Warning for high but acceptable prices
+        if (isTestnet && currentPriceEth > 0.00001) {
+          console.warn(`⚠️ Current price seems high for testnet: ${currentPriceEth} ${chainSymbol} per token (~$${(currentPriceEth * 3000).toFixed(2)})`);
+        }
+        
+        // Warning if transaction cost is high but still acceptable
+        if (estimatedTotalUSD > (isTestnet ? 10 : 50)) {
+          console.warn(`⚠️ Transaction cost is high: ${estimatedTotalPrice.toFixed(6)} ${chainSymbol} (~$${estimatedTotalUSD.toFixed(2)}) for ${amount} tokens`);
         }
 
         // Try to get price for amount
@@ -504,26 +549,49 @@ export default function BuyWidget({
             throw new Error('Invalid price from contract - using fallback');
           }
           
-          // TRUST THE CONTRACT: Only reject if price is clearly wrong (astronomical values)
-          // The contract's getPriceForAmount() is the source of truth, so we should use it
-          // Bonding curves can have prices that are much higher than a simple linear estimate
-          // Absolute maximum safety check: 0.1 ETH/BNB total (this is our hard limit)
-          const absoluteMaxPrice = 0.1; // 0.1 ETH/BNB absolute max
+          // TRUST THE CONTRACT: Use contract price but validate it's reasonable
+          // The contract's getPriceForAmount() is the source of truth, but we must validate it's reasonable
+          // For testnet: Maximum $30 per transaction (~0.01 ETH at $3000/ETH)
+          // For mainnet: Maximum $300 per transaction (~0.1 ETH at $3000/ETH)
+          const isTestnet = chain.toLowerCase().includes('testnet') || 
+                           chain.toLowerCase().includes('sepolia') || 
+                           chain.toLowerCase() === 'base-sepolia';
           
-          // Only reject if price is clearly wrong (exceeds absolute max)
-          // Don't reject based on comparison to linear estimate - bonding curves are non-linear
-          if (priceEth > absoluteMaxPrice) {
-            console.error(`❌ Price from contract exceeds absolute maximum: ${priceEth} ${chainSymbol} (max: ${absoluteMaxPrice} ${chainSymbol}).`);
-            console.error(`   This exceeds our safety limit. Please try a smaller amount.`);
-            throw new Error(`Price exceeds maximum allowed: ${priceEth.toFixed(6)} ${chainSymbol} (max: ${absoluteMaxPrice} ${chainSymbol}). Please try a smaller amount.`);
-          }
+          const estimatedPriceUSD = priceEth * 3000; // Rough ETH price estimate
+          const absoluteMaxPrice = isTestnet ? 0.01 : 0.1; // Much stricter limits
+          const absoluteMaxUSD = isTestnet ? 30 : 300;
           
           // Additional safety: Reject if price is astronomically high (likely a bug)
           // This catches cases where the contract returns values like 1e30 wei
           if (priceEth > 100) {
-            console.error(`❌ Price from contract is astronomically high: ${priceEth} ${chainSymbol}.`);
-            console.error(`   This likely indicates a bug in the contract.`);
-            throw new Error(`Price is too high: ${priceEth.toFixed(6)} ${chainSymbol}. This likely indicates a contract issue. Please contact support.`);
+            console.error(`❌ Price from contract is astronomically high: ${priceEth} ${chainSymbol} (~$${estimatedPriceUSD.toFixed(2)}).`);
+            console.error(`   This likely indicates a bug in the contract or misconfigured bonding curve.`);
+            throw new Error(
+              `Price is astronomically high: ${priceEth.toFixed(6)} ${chainSymbol} (~$${estimatedPriceUSD.toFixed(2)}). ` +
+              `This likely indicates a contract issue or misconfigured bonding curve parameters. Please contact support.`
+            );
+          }
+          
+          // Reject if price exceeds reasonable limits (much stricter than contract's 100 ETH limit)
+          if (priceEth > absoluteMaxPrice || estimatedPriceUSD > absoluteMaxUSD) {
+            console.error(`❌ Price from contract exceeds reasonable maximum: ${priceEth} ${chainSymbol} (~$${estimatedPriceUSD.toFixed(2)})`);
+            console.error(`   Maximum reasonable: ${absoluteMaxPrice} ${chainSymbol} (~$${absoluteMaxUSD})`);
+            console.error(`   This indicates the bonding curve parameters (basePrice/slope) are set too high.`);
+            
+            // Calculate maximum amount user can buy
+            const maxAmount = Math.floor(parseFloat(amount) * absoluteMaxPrice / priceEth);
+            
+            throw new Error(
+              `Transaction cost too high: ${priceEth.toFixed(6)} ${chainSymbol} (~$${estimatedPriceUSD.toFixed(2)}) for ${amount} tokens. ` +
+              `Maximum reasonable: ${absoluteMaxPrice} ${chainSymbol} (~$${absoluteMaxUSD}). ` +
+              `Please try a much smaller amount (e.g., ${maxAmount} tokens or less). ` +
+              `The bonding curve parameters appear to be misconfigured.`
+            );
+          }
+          
+          // Warn if price is high but still acceptable
+          if (estimatedPriceUSD > (isTestnet ? 10 : 50)) {
+            console.warn(`⚠️ Price is high but acceptable: ${priceEth} ${chainSymbol} (~$${estimatedPriceUSD.toFixed(2)})`);
           }
           
           // All validations passed - trust and use contract price
@@ -560,14 +628,26 @@ export default function BuyWidget({
           }
           
           // Fallback: use improved approximation that accounts for bonding curve
+          // Only use fallback if the contract call actually failed (not just validation)
+          const isValidationError = priceErr.message?.includes('exceeds maximum') || 
+                                   priceErr.message?.includes('too high') ||
+                                   priceErr.message?.includes('Price exceeds');
+          
+          if (isValidationError) {
+            // If it's a validation error (price too high), don't use fallback - throw the error
+            // This prevents sending transactions with insufficient funds
+            console.error(`❌ Cannot proceed: ${priceErr.message}`);
+            throw priceErr;
+          }
+          
           console.warn('⚠️ Contract price call failed, using fallback calculation');
-          console.warn(`   Reason: ${priceErr.message || 'Contract price validation failed'}`);
+          console.warn(`   Reason: ${priceErr.message || 'Contract price call failed'}`);
           console.warn('   WARNING: Fallback is an approximation and may not match contract exactly.');
           console.warn('   The transaction may fail if the estimate is too low.');
           
           // Improved fallback: For bonding curves, price increases with supply
           // The contract uses: price = basePrice + slope * (supply + amount/2) for average price
-          // Our fallback: Use currentPrice * amount, but add a generous buffer (50%) to account for curve
+          // Our fallback: Use currentPrice * amount, but add a generous buffer (100%) to account for curve
           // This is a conservative estimate that's more likely to succeed than fail
           try {
             // Linear approximation: currentPrice * amount
@@ -587,17 +667,17 @@ export default function BuyWidget({
               );
             }
             
-            // Add 50% buffer to account for bonding curve (price increases with supply)
-            // This is conservative - the actual price could be even higher
-            priceEstimateWei = (linearPriceWei * BigInt(150)) / BigInt(100);
+            // Add 100% buffer to account for bonding curve (price increases with supply)
+            // This is more conservative - the actual price could be significantly higher
+            priceEstimateWei = (linearPriceWei * BigInt(200)) / BigInt(100);
             
             // Check if the buffered price exceeds 100 ETH limit
             if (priceEstimateWei > maxPriceWei) {
-              // Calculate maximum amount user can buy (accounting for 50% buffer)
+              // Calculate maximum amount user can buy (accounting for 100% buffer)
               const safeMaxPriceWei = ethers.parseEther('90'); // 90 ETH/BNB to account for buffer
               const estimatedMaxAmountWei = (safeMaxPriceWei * ethers.parseEther('1')) / currentPriceWei;
-              // Account for the 50% buffer in the calculation
-              const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei)) * 0.67; // 1/1.5 ≈ 0.67
+              // Account for the 100% buffer in the calculation
+              const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei)) * 0.5; // 1/2 = 0.5
               
               throw new Error(
                 `Purchase amount would exceed contract's 100 ${chainSymbol} maximum limit (even with fallback calculation).\n\n` +
@@ -606,7 +686,7 @@ export default function BuyWidget({
             }
             
             const fallbackPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
-            console.log(`💰 Fallback price estimate (with 50% curve buffer): ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ${chainSymbol})`);
+            console.log(`💰 Fallback price estimate (with 100% curve buffer): ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ${chainSymbol})`);
             
             // Validate fallback is reasonable
             if (isNaN(fallbackPriceEth) || !isFinite(fallbackPriceEth) || fallbackPriceEth <= 0) {
@@ -618,7 +698,7 @@ export default function BuyWidget({
             if (fallbackPriceEth > maxFallbackPrice) {
               // Calculate maximum amount user can buy
               const estimatedMaxAmountWei = (ethers.parseEther('90') * ethers.parseEther('1')) / currentPriceWei;
-              const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei)) * 0.67; // Account for buffer
+              const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei)) * 0.5; // Account for buffer
               
               throw new Error(
                 `Fallback price too high: ${fallbackPriceEth.toFixed(6)} ${chainSymbol} for ${amount} tokens exceeds the 100 ${chainSymbol} contract limit.\n\n` +
@@ -641,29 +721,60 @@ export default function BuyWidget({
       
       // Final validation: price should be reasonable (before fees)
       const finalPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
-      const maxFinalPrice = 0.1; // 0.1 ETH/BNB absolute max
+      const finalPriceUSD = finalPriceEth * 3000; // Rough ETH price estimate
+      const isTestnet = chain.toLowerCase().includes('testnet') || 
+                       chain.toLowerCase().includes('sepolia') || 
+                       chain.toLowerCase() === 'base-sepolia';
+      const maxFinalPrice = isTestnet ? 0.01 : 0.1; // Much stricter limits
+      const maxFinalUSD = isTestnet ? 30 : 300;
       
-      if (priceEstimateWei <= 0 || finalPriceEth > maxFinalPrice || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
-        throw new Error(`Invalid price estimate: ${finalPriceEth.toFixed(6)} ${chainSymbol} (max allowed: ${maxFinalPrice} ${chainSymbol}). This suggests an issue with the bonding curve. Please try a much smaller amount or contact support.`);
+      if (priceEstimateWei <= 0 || finalPriceEth > maxFinalPrice || finalPriceUSD > maxFinalUSD || isNaN(finalPriceEth) || !isFinite(finalPriceEth)) {
+        throw new Error(
+          `Invalid price estimate: ${finalPriceEth.toFixed(6)} ${chainSymbol} (~$${finalPriceUSD.toFixed(2)}) ` +
+          `(max allowed: ${maxFinalPrice} ${chainSymbol} (~$${maxFinalUSD})). ` +
+          `This suggests the bonding curve parameters are misconfigured. Please try a much smaller amount or contact support.`
+        );
       }
       
-      // Calculate total cost: price + fee (matching contract logic exactly)
-      // Contract: fee = (price * buyFeePercent) / 10000, totalCost = price + fee
-      // Then requires: msg.value >= totalCost
-      // CRITICAL: The contract will revert if msg.value < totalCost, so we must calculate this accurately
+      // Calculate total cost: price + fee (matching contract logic EXACTLY)
+      // Contract logic (BondingCurve.sol line 263-264):
+      //   uint256 fee = (price * buyFeePercent) / 10000;
+      //   uint256 totalCost = price + fee;
+      //   require(msg.value >= totalCost, "Insufficient payment");
+      // 
+      // CRITICAL: The contract will revert if msg.value < totalCost, so we must calculate this EXACTLY
+      // buyFeePercent is in basis points (e.g., 100 = 1%, 50 = 0.5%, 0 = 0%)
+      // Formula: fee = (price * buyFeePercent) / 10000
+      // This matches Uniswap's fee calculation approach for precision
       
-      // Calculate fee: (price * buyFeePercent) / 10000 (matches contract exactly)
-      // buyFeePercent is in basis points (e.g., 100 = 1%)
+      // Calculate fee using exact same formula as contract (integer division for precision)
+      // This ensures no rounding errors that could cause "Insufficient payment" errors
       const feeWei = (priceEstimateWei * buyFeePercent) / BigInt(10000);
       let totalCostWei = priceEstimateWei + feeWei;
       
+      // Convert to human-readable format for logging
       const priceEth = parseFloat(ethers.formatEther(priceEstimateWei));
       const feeEth = parseFloat(ethers.formatEther(feeWei));
+      const feePercentDisplay = Number(buyFeePercent) / 100; // Convert basis points to percentage
       let totalCostEth = parseFloat(ethers.formatEther(totalCostWei));
       
-      console.log(`💰 Price (before fee): ${priceEth.toFixed(6)} ${chainSymbol}`);
-      console.log(`💰 Fee (${Number(buyFeePercent) / 100}%): ${feeEth.toFixed(6)} ${chainSymbol}`);
-      console.log(`💰 Total cost (price + fee): ${totalCostEth.toFixed(6)} ${chainSymbol}`);
+      // Detailed logging for fee transparency (like Uniswap does)
+      console.log(`💰 Fee Calculation (matching contract exactly):`);
+      console.log(`   Price (before fee): ${priceEstimateWei.toString()} wei = ${priceEth.toFixed(8)} ${chainSymbol}`);
+      console.log(`   Fee rate: ${buyFeePercent.toString()} basis points = ${feePercentDisplay}%`);
+      console.log(`   Fee amount: ${feeWei.toString()} wei = ${feeEth.toFixed(8)} ${chainSymbol}`);
+      console.log(`   Total cost: ${totalCostWei.toString()} wei = ${totalCostEth.toFixed(8)} ${chainSymbol}`);
+      
+      // Validation: Ensure fee calculation is reasonable
+      if (feeWei < 0 || feeWei > priceEstimateWei) {
+        throw new Error(`Invalid fee calculation: fee (${feeEth}) cannot be negative or exceed price (${priceEth})`);
+      }
+      
+      // Verify fee percentage matches expected rate (with small tolerance for rounding)
+      const expectedFeeWei = (priceEstimateWei * buyFeePercent) / BigInt(10000);
+      if (feeWei !== expectedFeeWei) {
+        console.warn(`⚠️ Fee calculation mismatch: got ${feeWei.toString()}, expected ${expectedFeeWei.toString()}`);
+      }
       
       // Add a small buffer (2%) to account for any rounding differences or price changes between estimate and execution
       // The contract will refund any excess, but we need to ensure msg.value >= totalCost
@@ -674,17 +785,26 @@ export default function BuyWidget({
       console.log(`💰 Total cost with 2% buffer: ${totalCostEth.toFixed(6)} ${chainSymbol}`);
       
       // Final validation before sending - must be within reasonable limits
-      // Contract has a 100 ETH/BNB maximum limit, so we enforce 90 ETH to be safe (accounting for fees and rounding)
-      const maxFinalPriceWithFee = 90; // 90 ETH/BNB max to stay under contract's 100 ETH limit (including fees)
-      if (totalCostEth > maxFinalPriceWithFee || isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
+      // For testnet: Maximum $30 per transaction (~0.01 ETH)
+      // For mainnet: Maximum $300 per transaction (~0.1 ETH)
+      const totalCostUSD = totalCostEth * 3000; // Rough ETH price estimate
+      const isTestnet = chain.toLowerCase().includes('testnet') || 
+                       chain.toLowerCase().includes('sepolia') || 
+                       chain.toLowerCase() === 'base-sepolia';
+      const maxFinalPriceWithFee = isTestnet ? 0.01 : 0.1; // Much stricter than contract's 100 ETH limit
+      const maxFinalUSD = isTestnet ? 30 : 300;
+      
+      if (totalCostEth > maxFinalPriceWithFee || totalCostUSD > maxFinalUSD || isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
         // Calculate maximum amount user can buy
-        const safeMaxPriceWei = ethers.parseEther('90');
+        const safeMaxPriceWei = ethers.parseEther(maxFinalPriceWithFee.toString());
         const estimatedMaxAmountWei = (safeMaxPriceWei * ethers.parseEther('1')) / currentPriceWei;
         const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei));
         
         throw new Error(
-          `Total cost too high: ${totalCostEth.toFixed(6)} ${chainSymbol} exceeds the contract's 100 ${chainSymbol} maximum limit.\n\n` +
-          `Please try a much smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price).`
+          `Total cost too high: ${totalCostEth.toFixed(6)} ${chainSymbol} (~$${totalCostUSD.toFixed(2)}) ` +
+          `exceeds reasonable maximum of ${maxFinalPriceWithFee} ${chainSymbol} (~$${maxFinalUSD}).\n\n` +
+          `Please try a much smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price). ` +
+          `If prices are consistently too high, the bonding curve parameters may need adjustment.`
         );
       }
       
