@@ -1656,7 +1656,149 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
   }
 });
 
-// GET /tokens/:id
+// PATCH /tokens/:id - Update token metadata (logo, banner, description, social links, colors)
+// Only allowed by token creator
+// Must be before GET /:id route to ensure proper route matching
+router.patch('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      logoIpfs,
+      bannerImageIpfs,
+      description,
+      twitterUrl,
+      discordUrl,
+      telegramUrl,
+      websiteUrl,
+      githubUrl,
+      mediumUrl,
+      redditUrl,
+      youtubeUrl,
+      linkedinUrl,
+      primaryColor,
+      accentColor,
+      backgroundColor,
+    } = req.body;
+    const creatorAddress = req.headers['x-creator-address'] as string;
+
+    if (!creatorAddress) {
+      return res.status(401).json({ error: 'Creator address required. Please connect your wallet.' });
+    }
+
+    const token = await dbGet('SELECT creator_address FROM tokens WHERE id = ?', [id]) as any;
+    if (!token) {
+      return res.status(404).json({ error: 'Token not found' });
+    }
+
+    // Verify creator - allow if creator_address is null (legacy tokens) or matches
+    if (token.creator_address) {
+      if (token.creator_address.toLowerCase() !== creatorAddress.toLowerCase()) {
+        return res.status(403).json({ 
+          error: 'Only token creator can update metadata',
+          details: `Token creator: ${token.creator_address}, Requested by: ${creatorAddress}`
+        });
+      }
+    } else {
+      // Legacy token without creator_address - allow update but log warning
+      console.warn(`⚠️ Token ${id} has no creator_address set. Allowing metadata update from ${creatorAddress}`);
+    }
+
+    // Build update query dynamically - only update fields that are provided
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    // Helper function to clean URLs
+    const cleanUrl = (url: any): string | null => {
+      if (url === null || url === undefined || url === '') return null;
+      const trimmed = String(url).trim();
+      return trimmed === '' ? null : trimmed;
+    };
+
+    if (logoIpfs !== undefined) {
+      updates.push('logo_ipfs = ?');
+      values.push(cleanUrl(logoIpfs));
+    }
+    if (bannerImageIpfs !== undefined) {
+      updates.push('banner_image_ipfs = ?');
+      values.push(cleanUrl(bannerImageIpfs));
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description && description.trim() !== '' ? description.trim() : null);
+    }
+    if (twitterUrl !== undefined) {
+      updates.push('twitter_url = ?');
+      values.push(cleanUrl(twitterUrl));
+    }
+    if (discordUrl !== undefined) {
+      updates.push('discord_url = ?');
+      values.push(cleanUrl(discordUrl));
+    }
+    if (telegramUrl !== undefined) {
+      updates.push('telegram_url = ?');
+      values.push(cleanUrl(telegramUrl));
+    }
+    if (websiteUrl !== undefined) {
+      updates.push('website_url = ?');
+      values.push(cleanUrl(websiteUrl));
+    }
+    if (githubUrl !== undefined) {
+      updates.push('github_url = ?');
+      values.push(cleanUrl(githubUrl));
+    }
+    if (mediumUrl !== undefined) {
+      updates.push('medium_url = ?');
+      values.push(cleanUrl(mediumUrl));
+    }
+    if (redditUrl !== undefined) {
+      updates.push('reddit_url = ?');
+      values.push(cleanUrl(redditUrl));
+    }
+    if (youtubeUrl !== undefined) {
+      updates.push('youtube_url = ?');
+      values.push(cleanUrl(youtubeUrl));
+    }
+    if (linkedinUrl !== undefined) {
+      updates.push('linkedin_url = ?');
+      values.push(cleanUrl(linkedinUrl));
+    }
+    if (primaryColor !== undefined) {
+      updates.push('primary_color = ?');
+      values.push(primaryColor || '#3B82F6');
+    }
+    if (accentColor !== undefined) {
+      updates.push('accent_color = ?');
+      values.push(accentColor || '#8B5CF6');
+    }
+    if (backgroundColor !== undefined) {
+      updates.push('background_color = ?');
+      values.push(cleanUrl(backgroundColor));
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(id);
+
+    await dbRun(
+      `UPDATE tokens SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    console.log(`✅ Token metadata updated for ${id} by ${creatorAddress}`);
+
+    res.json({
+      success: true,
+      message: 'Token metadata updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating token metadata:', error);
+    res.status(500).json({ error: 'Failed to update token metadata' });
+  }
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -2269,6 +2411,7 @@ router.put('/:id/customize', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to update customization' });
   }
 });
+
 
 // GET /tokens/:id/customize - Get token customization settings
 router.get('/:id/customize', async (req: Request, res: Response) => {

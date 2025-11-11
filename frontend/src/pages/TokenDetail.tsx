@@ -6,7 +6,7 @@ import {
   Zap, Twitter, MessageCircle,
   TrendingUp, TrendingDown, ExternalLink, Settings,
   Github, BookOpen, MessageSquare, Youtube, Linkedin, Loader2,
-  Share2, Users, Activity, Clock
+  Share2, Users, Activity, Clock, Edit2, X, Save, Upload, Image as ImageIcon
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,6 +21,8 @@ import { motion } from 'framer-motion';
 import SEO from '../components/SEO';
 import { API_BASE } from '../config/api';
 import { deployTokenOnEVM, getTestnetInfo } from '../services/blockchain';
+import BannerUpload from '../components/BannerUpload';
+import ColorPicker from '../components/ColorPicker';
 
 const CHAIN_COLORS: Record<string, string> = {
   ethereum: '#627EEA',
@@ -54,6 +56,27 @@ export default function TokenDetail() {
     tokenAddress: string;
   } | null>(null);
   const [deploying, setDeploying] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    logoIpfs: '',
+    bannerImageIpfs: '',
+    description: '',
+    twitterUrl: '',
+    discordUrl: '',
+    telegramUrl: '',
+    websiteUrl: '',
+    githubUrl: '',
+    mediumUrl: '',
+    redditUrl: '',
+    youtubeUrl: '',
+    linkedinUrl: '',
+    primaryColor: '#3B82F6',
+    accentColor: '#8B5CF6',
+    backgroundColor: '',
+  });
   
   // Get chain from URL query parameter, default to first deployed chain
   const selectedChainFromUrl = searchParams.get('chain');
@@ -359,6 +382,89 @@ export default function TokenDetail() {
     }
   }, [metadata?.logoUrl, token, getImageUrl]);
   
+  // Check if current user is the token creator (after token is loaded)
+  const isCreator = useMemo(() => {
+    if (!isConnected || !address || !token?.creatorAddress) return false;
+    return token.creatorAddress.toLowerCase() === address.toLowerCase();
+  }, [isConnected, address, token?.creatorAddress]);
+  
+  // Initialize edit form when entering edit mode
+  const handleStartEdit = () => {
+    if (!token) return;
+    setEditForm({
+      logoIpfs: (token as any)?.logo_ipfs || token?.logoIpfs || '',
+      bannerImageIpfs: (token as any)?.banner_image_ipfs || token?.bannerImageIpfs || customization?.bannerImageIpfs || '',
+      description: token?.description || metadata?.description || '',
+      twitterUrl: token?.twitterUrl || metadata?.twitterUrl || '',
+      discordUrl: token?.discordUrl || metadata?.discordUrl || '',
+      telegramUrl: token?.telegramUrl || metadata?.telegramUrl || '',
+      websiteUrl: token?.websiteUrl || metadata?.websiteUrl || '',
+      githubUrl: token?.githubUrl || metadata?.githubUrl || '',
+      mediumUrl: token?.mediumUrl || metadata?.mediumUrl || '',
+      redditUrl: token?.redditUrl || metadata?.redditUrl || '',
+      youtubeUrl: token?.youtubeUrl || metadata?.youtubeUrl || '',
+      linkedinUrl: token?.linkedinUrl || metadata?.linkedinUrl || '',
+      primaryColor: customization?.primaryColor || metadata?.primaryColor || primaryColor,
+      accentColor: customization?.accentColor || metadata?.accentColor || accentColor,
+      backgroundColor: customization?.backgroundColor || metadata?.backgroundColor || '',
+    });
+    setIsEditing(true);
+  };
+  
+  // Handle saving edits
+  const handleSaveEdit = async () => {
+    if (!isConnected || !address) {
+      toast.error('Please connect your wallet to edit token');
+      return;
+    }
+    
+    setEditLoading(true);
+    try {
+      await axios.patch(
+        `${API_BASE}/tokens/${id}`,
+        editForm,
+        {
+          headers: {
+            'x-creator-address': address,
+          },
+        }
+      );
+      
+      toast.success('Token metadata updated successfully!');
+      setIsEditing(false);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['token-status', id] });
+      queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
+      
+      // Reload page after a short delay to show updated data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error: any) {
+      console.error('Error updating token:', error);
+      toast.error(error.response?.data?.error || 'Failed to update token metadata');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+  
+  // Upload logo helper
+  const uploadLogo = async (file: File): Promise<string | undefined> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post(`${API_BASE}/upload/logo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.filename || response.data.cid;
+    } catch (error) {
+      console.error('Logo upload failed:', error);
+      toast.error('Failed to upload logo');
+      return undefined;
+    }
+  };
+  
   // Find selected deployment based on URL chain parameter or use first deployed chain
   const selectedDeployment = useMemo(() => {
     if (!deployments || deployments.length === 0) return null;
@@ -591,6 +697,16 @@ export default function TokenDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Edit Button - Only show if user is creator */}
+              {isCreator && !isEditing && (
+                <button
+                  onClick={handleStartEdit}
+                  className="p-2 bg-primary-500/20 hover:bg-primary-500/30 backdrop-blur-sm rounded-lg transition-colors border border-primary-500/50"
+                  title="Edit token metadata"
+                >
+                  <Edit2 className="w-5 h-5 text-primary-300" />
+                </button>
+              )}
               {/* Share Button */}
               <button
                 onClick={async () => {
@@ -694,7 +810,7 @@ export default function TokenDetail() {
           </div>
 
           {/* Creator Actions */}
-          {status.token?.creatorAddress && address && status.token.creatorAddress.toLowerCase() === address.toLowerCase() && (
+          {isCreator && !isEditing && (
             <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-700">
               <Link
                 to={`/creator/${id}`}
@@ -716,8 +832,239 @@ export default function TokenDetail() {
             </div>
           )}
 
-          {/* Social Links - More Prominent */}
-          {(metadata?.twitterUrl || metadata?.discordUrl || metadata?.telegramUrl || metadata?.websiteUrl || 
+          {/* Edit Form */}
+          {isEditing && isCreator && (
+            <div className="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-gray-700/50">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Edit Token Metadata</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={editLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                  >
+                    {editLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    disabled={editLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Banner Upload */}
+                <BannerUpload
+                  value={editForm.bannerImageIpfs}
+                  onChange={(value) => setEditForm({ ...editForm, bannerImageIpfs: value || '' })}
+                  label="Banner Image"
+                />
+
+                {/* Logo Upload */}
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Logo</label>
+                  <div className="flex items-center gap-4">
+                    {editForm.logoIpfs ? (
+                      <div className="relative">
+                        <img
+                          src={getImageUrl(editForm.logoIpfs) || ''}
+                          alt="Logo"
+                          className="w-20 h-20 rounded-full border-2 border-gray-600"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        <button
+                          onClick={() => setEditForm({ ...editForm, logoIpfs: '' })}
+                          className="absolute -top-2 -right-2 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-full border-2 border-gray-600 border-dashed flex items-center justify-center bg-gray-700/50">
+                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                      </div>
+                    )}
+                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg cursor-pointer transition-colors">
+                      <Upload className="w-4 h-4" />
+                      {editForm.logoIpfs ? 'Change Logo' : 'Upload Logo'}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const filename = await uploadLogo(file);
+                            if (filename) {
+                              setEditForm({ ...editForm, logoIpfs: filename });
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Description</label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    rows={4}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Describe your token..."
+                  />
+                </div>
+
+                {/* Social Links */}
+                <div>
+                  <label className="block text-sm font-medium mb-3 text-gray-300">Social Links</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Twitter URL</label>
+                      <input
+                        type="url"
+                        value={editForm.twitterUrl}
+                        onChange={(e) => setEditForm({ ...editForm, twitterUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://twitter.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Discord URL</label>
+                      <input
+                        type="url"
+                        value={editForm.discordUrl}
+                        onChange={(e) => setEditForm({ ...editForm, discordUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://discord.gg/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Telegram URL</label>
+                      <input
+                        type="url"
+                        value={editForm.telegramUrl}
+                        onChange={(e) => setEditForm({ ...editForm, telegramUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://t.me/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Website URL</label>
+                      <input
+                        type="url"
+                        value={editForm.websiteUrl}
+                        onChange={(e) => setEditForm({ ...editForm, websiteUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">GitHub URL</label>
+                      <input
+                        type="url"
+                        value={editForm.githubUrl}
+                        onChange={(e) => setEditForm({ ...editForm, githubUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://github.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Medium URL</label>
+                      <input
+                        type="url"
+                        value={editForm.mediumUrl}
+                        onChange={(e) => setEditForm({ ...editForm, mediumUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://medium.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Reddit URL</label>
+                      <input
+                        type="url"
+                        value={editForm.redditUrl}
+                        onChange={(e) => setEditForm({ ...editForm, redditUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://reddit.com/r/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">YouTube URL</label>
+                      <input
+                        type="url"
+                        value={editForm.youtubeUrl}
+                        onChange={(e) => setEditForm({ ...editForm, youtubeUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://youtube.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">LinkedIn URL</label>
+                      <input
+                        type="url"
+                        value={editForm.linkedinUrl}
+                        onChange={(e) => setEditForm({ ...editForm, linkedinUrl: e.target.value })}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        placeholder="https://linkedin.com/company/..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Colors */}
+                <div>
+                  <label className="block text-sm font-medium mb-3 text-gray-300">Colors</label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <ColorPicker
+                      label="Primary Color"
+                      value={editForm.primaryColor}
+                      onChange={(color) => setEditForm({ ...editForm, primaryColor: color })}
+                    />
+                    <ColorPicker
+                      label="Accent Color"
+                      value={editForm.accentColor}
+                      onChange={(color) => setEditForm({ ...editForm, accentColor: color })}
+                    />
+                    <ColorPicker
+                      label="Background Color (Optional)"
+                      value={editForm.backgroundColor}
+                      onChange={(color) => setEditForm({ ...editForm, backgroundColor: color })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Description - Hide when editing */}
+          {!isEditing && token?.description && (
+            <div className="mt-6 pt-6 border-t border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-400 mb-2">About</h3>
+              <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{token.description}</p>
+            </div>
+          )}
+
+          {/* Social Links - More Prominent - Hide when editing */}
+          {!isEditing && (metadata?.twitterUrl || metadata?.discordUrl || metadata?.telegramUrl || metadata?.websiteUrl || 
             metadata?.githubUrl || metadata?.mediumUrl || metadata?.redditUrl || metadata?.youtubeUrl || metadata?.linkedinUrl) && (
             <div className="mt-6 pt-6 border-t border-gray-700">
               <h3 className="text-sm font-semibold text-gray-400 mb-3">Connect & Follow</h3>
