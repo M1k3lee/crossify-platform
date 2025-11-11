@@ -146,8 +146,10 @@ export default function BuyWidget({
                          chain.toLowerCase().includes('sepolia') || 
                          chain.toLowerCase() === 'base-sepolia';
         
-        // Maximum reasonable price per token (much stricter for testnet)
-        const maxReasonablePricePerToken = isTestnet ? 0.00005 : 0.001;
+        // Maximum reasonable price per token (allow higher prices for legitimate tokens)
+        // Testnet: 0.001 BNB (~$3) - allows for tokens with higher basePrice
+        // Mainnet: 0.01 ETH (~$30) - allows for legitimate tokens
+        const maxReasonablePricePerToken = isTestnet ? 0.001 : 0.01;
         const maxReasonablePriceWei = ethers.parseEther(maxReasonablePricePerToken.toString());
         
         if (currentPriceWei > maxReasonablePriceWei || currentPriceEth > maxReasonablePricePerToken) {
@@ -163,9 +165,9 @@ export default function BuyWidget({
         const expectedPriceEth = currentPriceEth * parseFloat(amount);
         const expectedPriceUSD = expectedPriceEth * 3000;
         
-        // Maximum reasonable total price (much stricter for testnet)
-        const maxReasonableTotalPrice = isTestnet ? 0.01 : 0.1; // Testnet: $30 max, Mainnet: $300 max
-        const maxReasonableTotalUSD = isTestnet ? 30 : 300;
+        // Maximum reasonable total price (allow higher amounts for legitimate tokens)
+        const maxReasonableTotalPrice = isTestnet ? 0.033 : 0.33; // Testnet: $100 max, Mainnet: $1000 max
+        const maxReasonableTotalUSD = isTestnet ? 100 : 1000;
         
         if (expectedPriceEth > maxReasonableTotalPrice || expectedPriceUSD > maxReasonableTotalUSD) {
           console.warn(`⚠️ Estimated total price too high: ${expectedPriceEth} ${chainSymbol} (~$${expectedPriceUSD.toFixed(2)})`);
@@ -461,10 +463,10 @@ export default function BuyWidget({
         // For mainnet, we allow higher prices but still need reasonable limits
         // isTestnet is already declared at function level
         
-        // Maximum reasonable price per token (in ETH)
-        // Testnet: ~$0.10 per token max = 0.000033 ETH (at $3000/ETH)
-        // Mainnet: ~$1 per token max = 0.00033 ETH (at $3000/ETH)
-        const maxReasonablePricePerToken = isTestnet ? 0.00005 : 0.001; // Much stricter for testnet
+        // Maximum reasonable price per token (in ETH/BNB)
+        // Testnet: 0.001 BNB (~$3) - allows for tokens with higher basePrice
+        // Mainnet: 0.01 ETH (~$30) - allows for legitimate tokens
+        const maxReasonablePricePerToken = isTestnet ? 0.001 : 0.01;
         const maxReasonablePriceWei = ethers.parseEther(maxReasonablePricePerToken.toString());
         
         if (currentPriceWei > maxReasonablePriceWei || currentPriceEth > maxReasonablePricePerToken) {
@@ -484,10 +486,10 @@ export default function BuyWidget({
         const estimatedTotalUSD = estimatedTotalPrice * 3000; // Rough ETH price estimate
         
         // Maximum reasonable total transaction cost
-        // Testnet: $20 max (0.0067 ETH at $3000/ETH)
-        // Mainnet: $100 max (0.033 ETH at $3000/ETH)
-        const maxReasonableTotalPrice = isTestnet ? 0.01 : 0.1; // Much stricter for testnet
-        const maxReasonableTotalUSD = isTestnet ? 30 : 300; // USD equivalent
+        // Testnet: $100 max (0.033 BNB at $3000/BNB)
+        // Mainnet: $1000 max (0.33 ETH at $3000/ETH)
+        const maxReasonableTotalPrice = isTestnet ? 0.033 : 0.33; // Allow higher amounts for legitimate tokens
+        const maxReasonableTotalUSD = isTestnet ? 100 : 1000; // USD equivalent
         
         if (estimatedTotalPrice > maxReasonableTotalPrice || estimatedTotalUSD > maxReasonableTotalUSD) {
           console.error(`❌ Estimated total price is UNREASONABLY HIGH: ${estimatedTotalPrice} ${chainSymbol} (~$${estimatedTotalUSD.toFixed(2)}) for ${amount} tokens`);
@@ -554,13 +556,13 @@ export default function BuyWidget({
           
           // TRUST THE CONTRACT: Use contract price but validate it's reasonable
           // The contract's getPriceForAmount() is the source of truth, but we must validate it's reasonable
-          // For testnet: Maximum $30 per transaction (~0.01 ETH at $3000/ETH)
-          // For mainnet: Maximum $300 per transaction (~0.1 ETH at $3000/ETH)
+          // For testnet: Maximum $100 per transaction (~0.033 BNB at $3000/BNB)
+          // For mainnet: Maximum $1000 per transaction (~0.33 ETH at $3000/ETH)
           // isTestnet is already declared at function level
           
           const estimatedPriceUSD = priceEth * 3000; // Rough ETH price estimate
-          const absoluteMaxPrice = isTestnet ? 0.01 : 0.1; // Much stricter limits
-          const absoluteMaxUSD = isTestnet ? 30 : 300;
+          const absoluteMaxPrice = isTestnet ? 0.033 : 0.33; // Allow higher amounts for legitimate tokens
+          const absoluteMaxUSD = isTestnet ? 100 : 1000;
           
           // Additional safety: Reject if price is astronomically high (likely a bug)
           // This catches cases where the contract returns values like 1e30 wei
