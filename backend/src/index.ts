@@ -32,7 +32,11 @@ const PORT = process.env.PORT || 3001;
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(helmet());
+// Configure Helmet to allow cross-origin image loading
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
 // CORS configuration - allow multiple origins
 const allowedOrigins = [

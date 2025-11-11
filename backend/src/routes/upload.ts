@@ -45,6 +45,26 @@ const upload = multer({
 });
 
 // GET /upload/file/:filename - Serve uploaded images (must be before POST routes)
+// Handle OPTIONS preflight requests
+router.options('/file/:filename', (req: Request, res: Response) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://crossify-platform.vercel.app',
+    'https://crossify.io',
+    'https://www.crossify.io',
+    ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []),
+  ];
+  
+  if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  res.status(204).end();
+});
+
 router.get('/file/:filename', async (req: Request, res: Response) => {
   try {
     const { filename } = req.params;
@@ -81,6 +101,24 @@ router.get('/file/:filename', async (req: Request, res: Response) => {
     };
     
     const contentType = contentTypes[ext] || 'application/octet-stream';
+    
+    // Set CORS headers to allow cross-origin requests
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://crossify-platform.vercel.app',
+      'https://crossify.io',
+      'https://www.crossify.io',
+      ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : []),
+    ];
+    
+    // Allow requests from allowed origins or any origin in development
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      res.setHeader('Access-Control-Allow-Origin', origin || '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
     
     // Set headers and send file
     res.setHeader('Content-Type', contentType);
