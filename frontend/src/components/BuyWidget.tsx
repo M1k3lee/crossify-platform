@@ -421,6 +421,7 @@ export default function BuyWidget({
       // Get price estimate with detailed logging and validation
       let priceEstimateWei: bigint;
       let buyFeePercent: bigint = BigInt(0); // Declare outside try block so it's accessible for fee calculation
+      let currentPriceWei: bigint; // Declare outside try block so it's accessible for final validation
       
       try {
         // First get buy fee percent from contract (needed for accurate total cost calculation)
@@ -433,7 +434,7 @@ export default function BuyWidget({
         }
         
         // First get current price to validate
-        const currentPriceWei = await curveContract.getCurrentPrice();
+        currentPriceWei = await curveContract.getCurrentPrice();
         const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
         console.log(`💰 Current price per token: ${currentPriceWei.toString()} wei (${currentPriceEth} ETH)`);
         
@@ -540,7 +541,6 @@ export default function BuyWidget({
           if (isMaxPriceExceeded) {
             // Calculate maximum amount user can buy based on 100 ETH limit
             // Use current price as baseline (conservative estimate)
-            const maxPriceWei = ethers.parseEther('100'); // 100 ETH/BNB limit
             // Estimate: maxAmount = maxPrice / currentPrice (conservative, actual will be slightly less due to curve)
             // For safety, use 90 ETH to account for curve effect
             const safeMaxPriceWei = ethers.parseEther('90'); // 90 ETH/BNB to be safe
