@@ -673,7 +673,6 @@ export default function BuyWidget({
       if (error.code === 4001) {
         toast.error('Transaction rejected by user', { id: 'buy-tx' });
       } else if (error.message?.includes('insufficient') || error.code === 'INSUFFICIENT_FUNDS' || error.info?.error?.message?.includes('insufficient')) {
-        const testnetInfo = getTestnetInfo(chain as any);
         const faucetLinks = {
           ethereum: 'https://sepoliafaucet.com',
           bsc: 'https://testnet.bnbchain.org/faucet-smart',
