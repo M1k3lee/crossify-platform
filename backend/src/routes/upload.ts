@@ -80,7 +80,13 @@ router.get('/file/:filename', async (req: Request, res: Response) => {
     try {
       await fs.access(filePath);
     } catch {
-      return res.status(404).json({ error: 'File not found' });
+      console.error(`❌ File not found: ${filename} (path: ${filePath})`);
+      console.error('⚠️ This may be due to Railway ephemeral storage - files are lost on container restart');
+      return res.status(404).json({ 
+        error: 'File not found',
+        message: 'File may have been lost due to container restart (Railway ephemeral storage)',
+        filename 
+      });
     }
     
     // Get file stats
