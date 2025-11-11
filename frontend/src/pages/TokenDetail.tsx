@@ -337,29 +337,45 @@ export default function TokenDetail() {
   // Get banner URL from multiple sources
   const bannerUrl = useMemo(() => {
     try {
-      // Priority: metadata bannerUrl (if full URL) > metadata bannerImageIpfs > customization bannerImageIpfs > token banner_image_ipfs
+      // Debug logging
+      console.log('🔍 Constructing banner URL:', {
+        metadataBannerUrl: metadata?.bannerUrl,
+        metadataBannerImageIpfs: metadata?.bannerImageIpfs,
+        customizationBannerImageIpfs: customization?.bannerImageIpfs,
+        tokenBannerImageIpfs: token?.bannerImageIpfs,
+      });
+      
+      // Priority: metadata bannerUrl (if full URL) > metadata bannerImageIpfs > customization bannerImageIpfs > token bannerImageIpfs
       if (metadata?.bannerUrl && metadata.bannerUrl.startsWith('http')) {
         // Full URL from metadata
+        console.log('✅ Using metadata bannerUrl:', metadata.bannerUrl);
         return metadata.bannerUrl;
       }
       if (metadata?.bannerImageIpfs) {
         // Filename from metadata - construct URL
-        return getImageUrl(metadata.bannerImageIpfs);
+        const url = getImageUrl(metadata.bannerImageIpfs);
+        console.log('✅ Using metadata bannerImageIpfs:', metadata.bannerImageIpfs, '→', url);
+        return url;
       }
       if (customization?.bannerImageIpfs) {
         // Filename from customization - construct URL
-        return getImageUrl(customization.bannerImageIpfs);
+        const url = getImageUrl(customization.bannerImageIpfs);
+        console.log('✅ Using customization bannerImageIpfs:', customization.bannerImageIpfs, '→', url);
+        return url;
       }
       // Check token directly (status endpoint returns bannerImageIpfs in camelCase)
       if (token?.bannerImageIpfs) {
-        return getImageUrl(token.bannerImageIpfs);
+        const url = getImageUrl(token.bannerImageIpfs);
+        console.log('✅ Using token bannerImageIpfs:', token.bannerImageIpfs, '→', url);
+        return url;
       }
+      console.log('⚠️ No banner image found');
       return null;
     } catch (e) {
       console.error('Error constructing banner URL:', e);
       return null;
     }
-  }, [metadata?.bannerUrl, metadata?.bannerImageIpfs, customization?.bannerImageIpfs, token, getImageUrl]);
+  }, [metadata?.bannerUrl, metadata?.bannerImageIpfs, customization?.bannerImageIpfs, token?.bannerImageIpfs, getImageUrl]);
 
   // Get logo URL from multiple sources
   const logoUrl = useMemo(() => {
