@@ -677,7 +677,11 @@ export default function TokenDetail() {
                 src={bannerUrl}
                 alt={`${tokenName} banner`}
                 className="w-full h-full object-cover"
+                onLoad={() => {
+                  console.log('✅ Banner image loaded successfully:', bannerUrl);
+                }}
                 onError={(e) => {
+                  console.error('❌ Banner image failed to load:', bannerUrl, e);
                   // Hide image and show gradient fallback
                   (e.target as HTMLImageElement).style.display = 'none';
                   const parent = (e.target as HTMLImageElement).parentElement;
