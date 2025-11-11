@@ -131,16 +131,13 @@ export default function Footer() {
             <h3 className="text-white font-semibold mb-4">Resources</h3>
             <ul className="space-y-2">
               <li>
-                <a
-                  href="/docs"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/docs"
                   className="text-gray-400 hover:text-primary-400 transition-colors text-sm flex items-center gap-2"
                 >
                   <FileText className="w-4 h-4" />
                   <span>Documentation</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                </Link>
               </li>
               <li>
                 <a
