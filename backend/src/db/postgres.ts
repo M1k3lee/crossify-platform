@@ -299,6 +299,170 @@ export async function initializePostgreSQLSchema(): Promise<void> {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(date)
       );
+
+      -- Presale system tables
+      CREATE TABLE IF NOT EXISTS presale_config (
+        id TEXT PRIMARY KEY,
+        token_symbol TEXT NOT NULL,
+        token_name TEXT NOT NULL,
+        solana_address TEXT NOT NULL UNIQUE,
+        presale_price DOUBLE PRECISION NOT NULL,
+        total_tokens_for_presale TEXT NOT NULL,
+        min_purchase_sol DOUBLE PRECISION NOT NULL DEFAULT 0.1,
+        max_purchase_sol DOUBLE PRECISION,
+        start_date TIMESTAMP,
+        end_date TIMESTAMP,
+        status TEXT NOT NULL DEFAULT 'pending',
+        liquidity_percentage DOUBLE PRECISION NOT NULL DEFAULT 60,
+        dev_percentage DOUBLE PRECISION NOT NULL DEFAULT 20,
+        marketing_percentage DOUBLE PRECISION NOT NULL DEFAULT 20,
+        affiliate_reward_percentage DOUBLE PRECISION NOT NULL DEFAULT 5,
+        total_raised_sol DOUBLE PRECISION NOT NULL DEFAULT 0,
+        total_contributors INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS presale_transactions (
+        id SERIAL PRIMARY KEY,
+        presale_id TEXT NOT NULL,
+        solana_tx_hash TEXT NOT NULL UNIQUE,
+        buyer_address TEXT NOT NULL,
+        sol_amount DOUBLE PRECISION NOT NULL,
+        token_amount TEXT NOT NULL,
+        referral_code TEXT,
+        referral_address TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        confirmed_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (presale_id) REFERENCES presale_config(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS presale_allocations (
+        id SERIAL PRIMARY KEY,
+        presale_id TEXT NOT NULL,
+        buyer_address TEXT NOT NULL,
+        total_sol_contributed DOUBLE PRECISION NOT NULL DEFAULT 0,
+        total_tokens_allocated TEXT NOT NULL DEFAULT '0',
+        transaction_count INTEGER NOT NULL DEFAULT 0,
+        first_contribution_at TIMESTAMP,
+        last_contribution_at TIMESTAMP,
+        tokens_claimed BOOLEAN NOT NULL DEFAULT false,
+        tokens_claimed_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (presale_id) REFERENCES presale_config(id) ON DELETE CASCADE,
+        UNIQUE(presale_id, buyer_address)
+      );
+
+      CREATE TABLE IF NOT EXISTS presale_affiliates (
+        id SERIAL PRIMARY KEY,
+        presale_id TEXT NOT NULL,
+        referral_code TEXT NOT NULL UNIQUE,
+        affiliate_address TEXT NOT NULL,
+        total_referrals INTEGER NOT NULL DEFAULT 0,
+        total_volume_sol DOUBLE PRECISION NOT NULL DEFAULT 0,
+        total_rewards_sol DOUBLE PRECISION NOT NULL DEFAULT 0,
+        rewards_claimed_sol DOUBLE PRECISION NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (presale_id) REFERENCES presale_config(id) ON DELETE CASCADE,
+        UNIQUE(presale_id, referral_code)
+      );
+
+      CREATE TABLE IF NOT EXISTS presale_referrals (
+        id SERIAL PRIMARY KEY,
+        presale_id TEXT NOT NULL,
+        affiliate_id INTEGER NOT NULL,
+        referral_code TEXT NOT NULL,
+        buyer_address TEXT NOT NULL,
+        sol_amount DOUBLE PRECISION NOT NULL,
+        reward_amount_sol DOUBLE PRECISION NOT NULL,
+        transaction_id INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (presale_id) REFERENCES presale_config(id) ON DELETE CASCADE,
+        FOREIGN KEY (affiliate_id) REFERENCES presale_affiliates(id) ON DELETE CASCADE,
+        FOREIGN KEY (transaction_id) REFERENCES presale_transactions(id) ON DELETE CASCADE
+      );
+
+      -- CFY Token Vesting Tables
+      CREATE TABLE IF NOT EXISTS cfy_vesting_schedules (
+        id SERIAL PRIMARY KEY,
+        beneficiary_address TEXT NOT NULL,
+        total_amount TEXT NOT NULL,
+        tge_amount TEXT NOT NULL,
+        vesting_amount TEXT NOT NULL,
+        tge_released BOOLEAN NOT NULL DEFAULT false,
+        tge_released_at TIMESTAMP,
+        vesting_start_date TIMESTAMP NOT NULL,
+        vesting_duration_months INTEGER NOT NULL DEFAULT 18,
+        monthly_release_amount TEXT NOT NULL,
+        total_released TEXT NOT NULL DEFAULT '0',
+        last_release_date TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(beneficiary_address)
+      );
+
+      CREATE TABLE IF NOT EXISTS cfy_vesting_releases (
+        id SERIAL PRIMARY KEY,
+        vesting_schedule_id INTEGER NOT NULL,
+        beneficiary_address TEXT NOT NULL,
+        release_amount TEXT NOT NULL,
+        release_type TEXT NOT NULL, -- 'tge' or 'monthly'
+        release_date TIMESTAMP NOT NULL,
+        transaction_hash TEXT,
+        status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'completed', 'failed'
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (vesting_schedule_id) REFERENCES cfy_vesting_schedules(id) ON DELETE CASCADE
+      );
+
+      -- CFY Staking Tables
+      CREATE TABLE IF NOT EXISTS cfy_staking_pools (
+        id SERIAL PRIMARY KEY,
+        pool_name TEXT NOT NULL UNIQUE,
+        pool_type TEXT NOT NULL, -- 'flexible', '30day', '90day', '180day'
+        apy_percentage DOUBLE PRECISION NOT NULL,
+        lock_period_days INTEGER, -- NULL for flexible
+        min_stake_amount TEXT NOT NULL DEFAULT '0',
+        max_stake_amount TEXT,
+        total_staked TEXT NOT NULL DEFAULT '0',
+        total_rewards_distributed TEXT NOT NULL DEFAULT '0',
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS cfy_staking_positions (
+        id SERIAL PRIMARY KEY,
+        pool_id INTEGER NOT NULL,
+        staker_address TEXT NOT NULL,
+        staked_amount TEXT NOT NULL,
+        staked_at TIMESTAMP NOT NULL,
+        lock_until TIMESTAMP, -- NULL for flexible
+        total_rewards_earned TEXT NOT NULL DEFAULT '0',
+        rewards_claimed TEXT NOT NULL DEFAULT '0',
+        last_reward_calculation TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        unstaked_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (pool_id) REFERENCES cfy_staking_pools(id) ON DELETE CASCADE,
+        UNIQUE(pool_id, staker_address, staked_at)
+      );
+
+      CREATE TABLE IF NOT EXISTS cfy_staking_rewards (
+        id SERIAL PRIMARY KEY,
+        position_id INTEGER NOT NULL,
+        staker_address TEXT NOT NULL,
+        reward_amount TEXT NOT NULL,
+        reward_period_start TIMESTAMP NOT NULL,
+        reward_period_end TIMESTAMP NOT NULL,
+        calculated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        claimed_at TIMESTAMP,
+        transaction_hash TEXT,
+        FOREIGN KEY (position_id) REFERENCES cfy_staking_positions(id) ON DELETE CASCADE
+      );
     `);
 
     // Create indexes
@@ -312,6 +476,22 @@ export async function initializePostgreSQLSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_platform_fees_type ON platform_fees(fee_type);
       CREATE INDEX IF NOT EXISTS idx_platform_fees_collected_at ON platform_fees(collected_at);
       CREATE INDEX IF NOT EXISTS idx_fee_statistics_date ON fee_statistics(date);
+      CREATE INDEX IF NOT EXISTS idx_presale_transactions_presale_id ON presale_transactions(presale_id);
+      CREATE INDEX IF NOT EXISTS idx_presale_transactions_buyer_address ON presale_transactions(buyer_address);
+      CREATE INDEX IF NOT EXISTS idx_presale_transactions_status ON presale_transactions(status);
+      CREATE INDEX IF NOT EXISTS idx_presale_allocations_presale_id ON presale_allocations(presale_id);
+      CREATE INDEX IF NOT EXISTS idx_presale_allocations_buyer_address ON presale_allocations(buyer_address);
+      CREATE INDEX IF NOT EXISTS idx_presale_affiliates_presale_id ON presale_affiliates(presale_id);
+      CREATE INDEX IF NOT EXISTS idx_presale_affiliates_referral_code ON presale_affiliates(referral_code);
+      CREATE INDEX IF NOT EXISTS idx_presale_referrals_affiliate_id ON presale_referrals(affiliate_id);
+      CREATE INDEX IF NOT EXISTS idx_presale_referrals_buyer_address ON presale_referrals(buyer_address);
+      CREATE INDEX IF NOT EXISTS idx_cfy_vesting_schedules_beneficiary ON cfy_vesting_schedules(beneficiary_address);
+      CREATE INDEX IF NOT EXISTS idx_cfy_vesting_releases_schedule ON cfy_vesting_releases(vesting_schedule_id);
+      CREATE INDEX IF NOT EXISTS idx_cfy_vesting_releases_beneficiary ON cfy_vesting_releases(beneficiary_address);
+      CREATE INDEX IF NOT EXISTS idx_cfy_staking_positions_pool ON cfy_staking_positions(pool_id);
+      CREATE INDEX IF NOT EXISTS idx_cfy_staking_positions_staker ON cfy_staking_positions(staker_address);
+      CREATE INDEX IF NOT EXISTS idx_cfy_staking_rewards_position ON cfy_staking_rewards(position_id);
+      CREATE INDEX IF NOT EXISTS idx_cfy_staking_rewards_staker ON cfy_staking_rewards(staker_address);
     `);
 
     await client.query('COMMIT');

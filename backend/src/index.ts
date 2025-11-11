@@ -13,6 +13,8 @@ import { router as crosschainRouter } from './routes/crosschain';
 import { router as adminRouter } from './routes/admin';
 import { router as debugRouter } from './routes/debug';
 import { router as healthCheckRouter } from './routes/health-check';
+import { router as presaleRouter } from './routes/presale';
+import { router as cfyRouter } from './routes/cfy';
 import { initializeDatabase } from './db/adapter';
 import { initializeRedis } from './services/redis';
 import { startPriceSyncService } from './services/priceSync';
@@ -101,6 +103,8 @@ app.use('/api/contact', contactRouter);
 app.use('/api/crosschain', crosschainRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/debug', debugRouter);
+app.use('/api/presale', presaleRouter);
+app.use('/api/cfy', cfyRouter);
 app.use('/api', healthCheckRouter);
 
 // Health check

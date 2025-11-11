@@ -17,6 +17,9 @@ import Dashboard from './pages/Dashboard';
 import TokenDetail from './pages/TokenDetail';
 import Airdrop from './pages/Airdrop';
 import Presale from './pages/Presale';
+import CFYVesting from './pages/CFYVesting';
+import CFYStaking from './pages/CFYStaking';
+import CFYDashboard from './pages/CFYDashboard';
 import Contact from './pages/Contact';
 import Docs from './pages/Docs';
 import Whitepaper from './pages/Whitepaper';
@@ -62,6 +65,9 @@ function App() {
                     <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
                     <Route path="/airdrop" element={<Layout><Airdrop /></Layout>} />
                     <Route path="/presale" element={<Layout><Presale /></Layout>} />
+                    <Route path="/cfy" element={<Layout><CFYDashboard /></Layout>} />
+                    <Route path="/cfy/vesting" element={<Layout><CFYVesting /></Layout>} />
+                    <Route path="/cfy/staking" element={<Layout><CFYStaking /></Layout>} />
                     <Route path="/contact" element={<Layout><Contact /></Layout>} />
                     <Route path="/docs" element={<Layout><Docs /></Layout>} />
                     <Route path="/whitepaper" element={<Layout><Whitepaper /></Layout>} />
