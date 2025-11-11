@@ -6,10 +6,45 @@
     <script>
       // Single Page Apps for GitHub Pages
       // https://github.com/rafgraph/spa-github-pages
-      // This script takes the current url and converts the path and query
-      // string into just a path portion and then redirects the browser to the
-      // new path with only a pathname and no search or hash.
+      // This script handles both custom domain (crossify.io) and GitHub Pages subdirectory
       
+      (function() {
+        var l = window.location;
+        var path = l.pathname;
+        
+        // Prevent infinite loops - if we're already on index.html, don't redirect again
+        if (path.includes('/index.html') || path.includes('/index.htm')) {
+          return;
+        }
+        
+        // Determine base path based on current hostname
+        // If on custom domain (crossify.io), use root. Otherwise use /crossify-platform
+        var isCustomDomain = l.hostname === 'crossify.io' || l.hostname === 'www.crossify.io';
+        var base = isCustomDomain ? '' : '/crossify-platform';
+        
+        // Remove base from path if present
+        if (base && path.startsWith(base)) {
+          path = path.slice(base.length);
+        }
+        
+        // Ensure path starts with /
+        if (!path.startsWith('/')) {
+          path = '/' + path;
+        }
+        
+        // Remove leading /index.html or /index.htm if present (prevent loops)
+        path = path.replace(/^\/index\.html?\/?/i, '/');
+        
+        // Build redirect URL
+        var redirectPath = base + '/index.html?/' + path.slice(1) + l.search + l.hash;
+        
+        // Only redirect if we're not already there
+        if (l.pathname + l.search + l.hash !== redirectPath) {
+          window.location.replace(redirectPath);
+        }
+      })();
+      
+      // Handle the redirect back (from index.html?/path)
       (function(l) {
         if (l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
@@ -23,15 +58,7 @@
     </script>
   </head>
   <body>
-    <script>
-      // Redirect to index.html with the path as a query parameter
-      var path = window.location.pathname;
-      var base = '/crossify-platform';
-      if (path.startsWith(base)) {
-        path = path.slice(base.length);
-      }
-      window.location.replace(base + '/index.html?/' + path.slice(1) + window.location.search + window.location.hash);
-    </script>
+    <p>Redirecting...</p>
   </body>
 </html>
 
