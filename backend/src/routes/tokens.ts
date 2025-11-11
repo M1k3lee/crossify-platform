@@ -978,7 +978,8 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         logoIpfs: token.logo_ipfs || null,
         logoUrl: token.logo_ipfs && (token.logo_ipfs.startsWith('http') || token.logo_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null, // Frontend will construct URL from filename if not mock
         bannerImageIpfs: token.banner_image_ipfs || null,
-        bannerUrl: token.banner_image_ipfs && (token.banner_image_ipfs.startsWith('http') || token.banner_image_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null, // Frontend will construct URL from filename if not mock
+        // If bannerImageIpfs is already a full URL (Cloudinary), return it as-is. Otherwise, frontend will construct from filename
+        bannerUrl: token.banner_image_ipfs && token.banner_image_ipfs.startsWith('http') ? token.banner_image_ipfs : null,
         description: token.description,
         twitterUrl: token.twitter_url,
         discordUrl: token.discord_url,
@@ -1089,7 +1090,8 @@ router.get('/:id/status', async (req: Request, res: Response) => {
         logoIpfs: token.logo_ipfs || null,
         logoUrl: token.logo_ipfs ? (token.logo_ipfs.startsWith('http') || token.logo_ipfs.startsWith('mock_') ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null) : null, // Frontend will construct URL
         bannerImageIpfs: token.banner_image_ipfs || null,
-        bannerUrl: token.banner_image_ipfs ? (token.banner_image_ipfs.startsWith('http') || token.banner_image_ipfs.startsWith('mock_') ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null) : null, // Frontend will construct URL
+        // If bannerImageIpfs is already a full URL (Cloudinary), return it as-is. Otherwise, frontend will construct from filename
+        bannerUrl: token.banner_image_ipfs && token.banner_image_ipfs.startsWith('http') ? token.banner_image_ipfs : null,
         description: token.description || null,
         twitterUrl: token.twitter_url || null,
         discordUrl: token.discord_url || null,
@@ -1157,11 +1159,12 @@ router.get('/:id/metadata', async (req: Request, res: Response) => {
       symbol: token.symbol,
       description: token.description,
       // Return logoIpfs and bannerImageIpfs as filenames, let frontend construct URLs
-      // Only return full URLs if they're already URLs or mock CIDs
+      // Only return full URLs if they're already URLs (Cloudinary)
       logoIpfs: token.logo_ipfs || null,
-      logoUrl: token.logo_ipfs && (token.logo_ipfs.startsWith('http') || token.logo_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null, // Frontend will construct URL from filename if not mock
+      logoUrl: token.logo_ipfs && token.logo_ipfs.startsWith('http') ? token.logo_ipfs : null, // If already a full URL, return as-is
       bannerImageIpfs: token.banner_image_ipfs || null,
-      bannerUrl: token.banner_image_ipfs && (token.banner_image_ipfs.startsWith('http') || token.banner_image_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null, // Frontend will construct URL from filename if not mock
+      // If bannerImageIpfs is already a full URL (Cloudinary), return it as-is. Otherwise, frontend will construct from filename
+      bannerUrl: token.banner_image_ipfs && token.banner_image_ipfs.startsWith('http') ? token.banner_image_ipfs : null,
       twitterUrl: token.twitter_url,
       discordUrl: token.discord_url,
       telegramUrl: token.telegram_url,
