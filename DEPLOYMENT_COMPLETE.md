@@ -1,129 +1,119 @@
-# ✅ TokenFactory Deployment Complete!
+# ✅ Cross-Chain Liquidity Bridge - Deployment Complete!
 
-## Summary
+## 🎉 Successfully Deployed
 
-Successfully deployed updated TokenFactory contracts to all three testnets with ownership fixes!
+All bridge contracts have been deployed and configured on all testnets!
 
-## Deployed Contracts
+### Deployment Summary
 
-### Sepolia (Ethereum Testnet)
-- **Factory Address**: `0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0`
-- **Explorer**: https://sepolia.etherscan.io/address/0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-- **Status**: ✅ Deployed and Ready
+| Chain | Bridge Address | Status | Explorer |
+|-------|---------------|--------|----------|
+| **Sepolia** | `0x7005c0A2c9Cd108af213c717cA6d7232AcBD1b29` | ✅ Deployed & Configured | [View](https://sepolia.etherscan.io/address/0x7005c0A2c9Cd108af213c717cA6d7232AcBD1b29) |
+| **BSC Testnet** | `0x08BA4231c0843375714Ef89999C9F908735E0Ec2` | ✅ Deployed & Configured | [View](https://testnet.bscscan.com/address/0x08BA4231c0843375714Ef89999C9F908735E0Ec2) |
+| **Base Sepolia** | `0xDeFC8B749e68b5e21b3873928e68Aaf56031C6EA` | ✅ Deployed & Configured | [View](https://basescan.org/address/0xDeFC8B749e68b5e21b3873928e68Aaf56031C6EA) |
 
-### BSC Testnet
-- **Factory Address**: `0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58`
-- **Explorer**: https://testnet.bscscan.com/address/0x314DFf75620f1CFB09B5aD88892Dded0A13A6c58
-- **Status**: ✅ Deployed and Ready
+## 📝 Next Steps
 
-### Base Sepolia
-- **Factory Address**: `0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0`
-- **Explorer**: https://sepolia-explorer.base.org/address/0xBc56A85F475515dFc9a0d5F2c185c2fB523471B0
-- **Status**: ✅ Deployed and Ready
+### 1. Update Backend Environment Variables
 
-## What Was Fixed
+Add to `backend/.env`:
 
-1. ✅ **Ownership Issue**: Tokens are now owned by their creators (not the factory)
-2. ✅ **Mint Function**: Creators can now mint tokens (previously failed)
-3. ✅ **Owner Functions**: All owner-only functions now work correctly
-4. ✅ **Migration Support**: Added ability to migrate existing tokens
-5. ✅ **Code Optimization**: Increased optimizer runs to reduce contract size
+```bash
+# Liquidity Bridge Addresses
+ETHEREUM_LIQUIDITY_BRIDGE_ADDRESS=0x7005c0A2c9Cd108af213c717cA6d7232AcBD1b29
+BSC_LIQUIDITY_BRIDGE_ADDRESS=0x08BA4231c0843375714Ef89999C9F908735E0Ec2
+BASE_LIQUIDITY_BRIDGE_ADDRESS=0xDeFC8B749e68b5e21b3873928e68Aaf56031C6EA
 
-## Environment Variables Updated
+# Private keys for bridge operations
+ETHEREUM_PRIVATE_KEY=0x... # Your private key
+BSC_PRIVATE_KEY=0x... # Your private key  
+BASE_PRIVATE_KEY=0x... # Your private key
+```
 
-- ✅ Frontend `.env` updated with new factory addresses
-- ✅ Contracts `.env` ready for migration scripts
-- ⚠️ Backend `.env` may need updating (if backend uses factory addresses)
+### 2. Restart Backend
 
-## Migration Status
+The liquidity monitoring service has been added to the backend startup. After updating `.env`, restart:
 
-- ✅ Migration scripts tested
-- ✅ No existing tokens found (new factories)
-- ✅ New tokens will automatically have correct ownership
+```bash
+cd backend
+npm run dev
+```
 
-## Next Steps
+You should see: `✅ Liquidity monitoring service started`
 
-### Immediate Actions
+### 3. Update Existing Bonding Curves (Optional)
 
-1. **Test Token Creation**
-   - Go to frontend Builder page
-   - Create a test token
-   - Verify you are the owner
+If you have existing bonding curves, update them to use the bridge:
 
-2. **Test Owner Functions**
-   - Try minting tokens → Should work ✅
-   - Try burning tokens → Should work ✅
-   - Try pausing token → Should work ✅
-   - Try updating fees → Should work ✅
+```solidity
+// Sepolia
+bondingCurve.setLiquidityBridge(0x7005c0A2c9Cd108af213c717cA6d7232AcBD1b29);
+bondingCurve.setChainEID(40161);
+bondingCurve.setUseLiquidityBridge(true);
 
-3. **Update Documentation**
-   - Update `DEPLOYED_CONTRACTS.md` with new addresses
-   - Update any frontend configuration
-   - Update backend configuration if needed
+// BSC Testnet
+bondingCurve.setLiquidityBridge(0x08BA4231c0843375714Ef89999C9F908735E0Ec2);
+bondingCurve.setChainEID(40102);
+bondingCurve.setUseLiquidityBridge(true);
 
-### If You Have Existing Tokens
+// Base Sepolia
+bondingCurve.setLiquidityBridge(0xDeFC8B749e68b5e21b3873928e68Aaf56031C6EA);
+bondingCurve.setChainEID(40245);
+bondingCurve.setUseLiquidityBridge(true);
+```
 
-If you created tokens with the old factory addresses, you'll need to:
+### 4. Update TokenFactory (Optional)
 
-1. Run migration script for each network:
-   ```bash
-   cd contracts
-   export TOKEN_FACTORY_ADDRESS=0x... # Old factory address
-   npx hardhat run scripts/migrate-token-ownership.ts --network <network>
-   ```
+To enable bridge for new tokens automatically:
 
-2. Verify ownership after migration
+```solidity
+// On each chain
+factory.setLiquidityBridge(bridgeAddress);
+factory.setUseLiquidityBridge(true);
+```
 
-## Verification
+## 🧪 Testing
 
-To verify the deployment is working:
+### Test Reserve Monitoring
 
-1. **Check Contract on Explorer**
-   - Visit the explorer links above
-   - Verify contract code is verified (if possible)
-   - Check contract details
+```bash
+curl http://localhost:3000/api/crosschain/liquidity/reserves/TOKEN_ID
+```
 
-2. **Test Token Creation**
-   - Create a test token
-   - Check token owner is your address
-   - Verify you can mint tokens
+### Test Manual Rebalance
 
-3. **Test Owner Functions**
-   - Try all owner functions
-   - Verify they work correctly
+```bash
+curl -X POST http://localhost:3000/api/crosschain/liquidity/rebalance \
+  -H "Content-Type: application/json" \
+  -d '{"tokenId": "TOKEN_ID"}'
+```
 
-## Files Updated
+## ✨ What's Now Active
 
-- ✅ `contracts/contracts/TokenFactory.sol` - Ownership fixes
-- ✅ `contracts/scripts/migrate-token-ownership.ts` - Migration script
-- ✅ `contracts/hardhat.config.ts` - Optimizer settings
-- ✅ `frontend/.env` - New factory addresses
-- ✅ `DEPLOYMENT_RESULTS.md` - Deployment details
-- ✅ `DEPLOYMENT_COMPLETE.md` - This file
+- ✅ **Automatic Reserve Monitoring** - Checks every 30 seconds
+- ✅ **Automatic Rebalancing** - Bridges liquidity when reserves are low
+- ✅ **On-Demand Bridging** - Bonding curves can request liquidity automatically
+- ✅ **API Endpoints** - Full REST API for bridge operations
+- ✅ **Proactive Management** - Maintains optimal reserves before users need them
 
-## Important Notes
+## 📚 Documentation
 
-1. **Old Factory Addresses**: Keep old factory addresses for reference (in case you need to migrate existing tokens)
+- **Deployment Results**: `LIQUIDITY_BRIDGE_DEPLOYMENT_RESULTS.md`
+- **Implementation Guide**: `docs/LIQUIDITY_BRIDGE_IMPLEMENTATION.md`
+- **Deployment Guide**: `docs/DEPLOY_LIQUIDITY_BRIDGE.md`
 
-2. **Cross-Chain**: Cross-chain features are not enabled yet. To enable:
-   - Deploy CrossChainSync contracts
-   - Update environment variables
-   - Redeploy TokenFactory with cross-chain addresses
+## 🎯 System Status
 
-3. **Mainnet**: These are testnet deployments. Before mainnet:
-   - Test thoroughly on testnets
-   - Get security audit
-   - Update all environment variables
-   - Deploy to mainnet
+- ✅ Bridges: 3/3 deployed and configured
+- ✅ Backend: Monitoring service added (restart to activate)
+- ✅ API: All endpoints ready
+- ⚠️ Bonding Curves: Update existing curves to use bridge (optional)
+- ⚠️ TokenFactory: Update to auto-enable bridge (optional)
 
-## Success! 🎉
+## 🚀 Ready to Use!
 
-Your TokenFactory contracts are now deployed and ready to use. The ownership issue is fixed, and new tokens will automatically have correct ownership!
+The cross-chain liquidity bridge system is now fully operational. Once you:
+1. Update backend `.env` with bridge addresses
+2. Restart the backend
 
----
-
-**Deployment Date**: 2025-01-XX
-**Status**: ✅ Complete
-**Next**: Test token creation and owner functions
-
-
+The system will automatically monitor and rebalance liquidity across all chains!

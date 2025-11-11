@@ -22,6 +22,7 @@ import { startPriceMonitoring } from './services/unifiedLiquidity';
 import { getCrossChainRelayer } from './services/crossChainRelayer';
 import { startStartupSync } from './services/startupSync';
 import { startHolderCountService } from './services/holderCount';
+import { startLiquidityMonitoringService } from './services/liquidityBridge';
 
 dotenv.config();
 
@@ -161,6 +162,10 @@ async function start() {
     // Start holder count service
     startHolderCountService();
     console.log('✅ Holder count service started');
+
+    // Start liquidity monitoring service (cross-chain bridge)
+    startLiquidityMonitoringService();
+    console.log('✅ Liquidity monitoring service started');
 
     // Start server
     app.listen(PORT, () => {

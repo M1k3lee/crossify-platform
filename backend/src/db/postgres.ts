@@ -355,6 +355,20 @@ export async function initializePostgreSQLSchema(): Promise<void> {
         UNIQUE(presale_id, buyer_address)
       );
 
+      CREATE TABLE IF NOT EXISTS liquidity_requests (
+        id SERIAL PRIMARY KEY,
+        token_id TEXT NOT NULL,
+        target_chain TEXT NOT NULL,
+        source_chain TEXT,
+        amount TEXT NOT NULL,
+        request_id TEXT,
+        tx_hash TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE
+      );
+
       CREATE TABLE IF NOT EXISTS presale_affiliates (
         id SERIAL PRIMARY KEY,
         presale_id TEXT NOT NULL,

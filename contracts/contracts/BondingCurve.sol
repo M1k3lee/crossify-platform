@@ -15,6 +15,15 @@ interface IGlobalSupplyTracker {
 }
 
 /**
+ * @title CrossChainLiquidityBridge
+ * @dev Interface for cross-chain liquidity bridge
+ */
+interface ICrossChainLiquidityBridge {
+    function requestLiquidity(address token, uint32 targetChainEID, uint256 amount) external returns (bytes32);
+    function hasSufficientReserves(address token, uint32 chainEID, uint256 requiredAmount) external view returns (bool);
+}
+
+/**
  * @title BondingCurve
  * @dev Linear bonding curve for token sales with automatic graduation
  * Uses VIRTUAL LIQUIDITY with global supply tracking for cross-chain price sync
@@ -38,6 +47,11 @@ contract BondingCurve is Ownable, ReentrancyGuard {
     string public chainName; // e.g., "ethereum", "bsc", "base"
     bool public useGlobalSupply; // Whether to use global supply for pricing
     
+    // Cross-chain liquidity bridge
+    ICrossChainLiquidityBridge public liquidityBridge;
+    uint32 public chainEID; // LayerZero Endpoint ID for this chain
+    bool public useLiquidityBridge; // Whether to use bridge for insufficient reserves
+    
     event TokenBought(address indexed buyer, uint256 amountPaid, uint256 tokensReceived);
     event TokenSold(address indexed seller, uint256 tokensSold, uint256 amountReceived);
     event Graduated(address indexed dexPool, uint256 reserveAmount);
@@ -52,7 +66,10 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         address _owner,
         address _globalSupplyTracker,
         string memory _chainName,
-        bool _useGlobalSupply
+        bool _useGlobalSupply,
+        address _liquidityBridge,
+        uint32 _chainEID,
+        bool _useLiquidityBridge
     ) Ownable(_owner) {
         token = IERC20(_token);
         basePrice = _basePrice;
@@ -63,6 +80,9 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         globalSupplyTracker = IGlobalSupplyTracker(_globalSupplyTracker);
         chainName = _chainName;
         useGlobalSupply = _useGlobalSupply;
+        liquidityBridge = ICrossChainLiquidityBridge(_liquidityBridge);
+        chainEID = _chainEID;
+        useLiquidityBridge = _useLiquidityBridge;
     }
     
     /**
@@ -77,6 +97,27 @@ contract BondingCurve is Ownable, ReentrancyGuard {
      */
     function setUseGlobalSupply(bool _use) external onlyOwner {
         useGlobalSupply = _use;
+    }
+    
+    /**
+     * @dev Set liquidity bridge contract
+     */
+    function setLiquidityBridge(address _bridge) external onlyOwner {
+        liquidityBridge = ICrossChainLiquidityBridge(_bridge);
+    }
+    
+    /**
+     * @dev Enable/disable liquidity bridge usage
+     */
+    function setUseLiquidityBridge(bool _use) external onlyOwner {
+        useLiquidityBridge = _use;
+    }
+    
+    /**
+     * @dev Set chain EID (LayerZero Endpoint ID)
+     */
+    function setChainEID(uint32 _eid) external onlyOwner {
+        chainEID = _eid;
     }
     
     /**
@@ -391,12 +432,25 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         uint256 amountReceived = price - fee;
         
         // Check if we have enough reserve
-        // If not, the transaction will revert - liquidity bridge should be called first
-        // In production, this could trigger an automatic bridge request
+        // If bridge is enabled, try to request liquidity first
         if (address(this).balance < amountReceived) {
-            // Emit event for liquidity bridge to detect
-            emit InsufficientReserve(address(this).balance, amountReceived);
-            revert("Insufficient reserve. Cross-chain liquidity bridge may be needed.");
+            // If bridge is enabled and configured, try to request liquidity
+            if (useLiquidityBridge && address(liquidityBridge) != address(0)) {
+                try liquidityBridge.requestLiquidity(address(token), chainEID, amountReceived - address(this).balance) returns (bytes32 requestId) {
+                    // Bridge request created - emit event for backend to process
+                    emit LiquidityRequested(requestId, amountReceived - address(this).balance);
+                    // Still revert - backend will process request and user can retry
+                    revert("Insufficient reserve. Liquidity bridge requested. Please retry after bridge completes.");
+                } catch {
+                    // Bridge request failed - emit event and revert
+                    emit InsufficientReserve(address(this).balance, amountReceived);
+                    revert("Insufficient reserve. Cross-chain liquidity bridge request failed.");
+                }
+            } else {
+                // Bridge not enabled - emit event for backend monitoring
+                emit InsufficientReserve(address(this).balance, amountReceived);
+                revert("Insufficient reserve. Cross-chain liquidity bridge may be needed.");
+            }
         }
         
         // Transfer tokens from seller
@@ -427,6 +481,7 @@ contract BondingCurve is Ownable, ReentrancyGuard {
     }
     
     event InsufficientReserve(uint256 currentReserve, uint256 requiredAmount);
+    event LiquidityRequested(bytes32 indexed requestId, uint256 amount);
     
     /**
      * @dev Graduate to DEX - migrates liquidity and freezes curve

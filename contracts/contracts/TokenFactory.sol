@@ -34,6 +34,10 @@ contract TokenFactory is Ownable {
     address public priceOracle;
     uint32 public chainEID; // LayerZero Endpoint ID
     bool public crossChainEnabled;
+    
+    // Liquidity bridge for cross-chain liquidity management
+    address public liquidityBridge;
+    bool public useLiquidityBridge; // Whether to enable liquidity bridge
 
     constructor(
         address initialOwner,
@@ -90,6 +94,20 @@ contract TokenFactory is Ownable {
      */
     function setUseGlobalSupply(bool _use) external onlyOwner {
         useGlobalSupply = _use;
+    }
+    
+    /**
+     * @dev Set liquidity bridge address
+     */
+    function setLiquidityBridge(address _bridge) external onlyOwner {
+        liquidityBridge = _bridge;
+    }
+    
+    /**
+     * @dev Enable/disable liquidity bridge usage
+     */
+    function setUseLiquidityBridge(bool _use) external onlyOwner {
+        useLiquidityBridge = _use;
     }
 
     /**
@@ -164,7 +182,7 @@ contract TokenFactory is Ownable {
         
         tokenAddress = address(token);
 
-        // Deploy bonding curve with global supply tracking
+        // Deploy bonding curve with global supply tracking and liquidity bridge
         BondingCurve curve = new BondingCurve(
             tokenAddress,
             basePrice,
@@ -175,7 +193,10 @@ contract TokenFactory is Ownable {
             msg.sender, // Owner is the token creator
             globalSupplyTracker, // Global supply tracker address
             chainName, // Chain name for supply tracking
-            useGlobalSupply // Whether to use global supply for pricing
+            useGlobalSupply, // Whether to use global supply for pricing
+            liquidityBridge, // Liquidity bridge address (can be zero)
+            chainEID, // Chain EID for bridge
+            useLiquidityBridge // Whether to use liquidity bridge
         );
         curveAddress = address(curve);
 
