@@ -172,11 +172,28 @@ export async function deployTokenOnEVM(
   checkEVMWallet();
 
   const factoryAddress = FACTORY_ADDRESSES[chain];
+  
+  // Enhanced logging to diagnose the issue
+  console.log(`🔍 Factory Address Check for ${chain}:`, {
+    factoryAddress: factoryAddress || 'EMPTY/UNDEFINED',
+    envVar: chain === 'ethereum' ? import.meta.env.VITE_ETH_FACTORY || import.meta.env.VITE_ETHEREUM_FACTORY : import.meta.env[`VITE_${chain.toUpperCase()}_FACTORY`],
+    allEnvVars: {
+      VITE_ETH_FACTORY: import.meta.env.VITE_ETH_FACTORY || 'NOT SET',
+      VITE_ETHEREUM_FACTORY: import.meta.env.VITE_ETHEREUM_FACTORY || 'NOT SET',
+      VITE_BSC_FACTORY: import.meta.env.VITE_BSC_FACTORY || 'NOT SET',
+      VITE_BASE_FACTORY: import.meta.env.VITE_BASE_FACTORY || 'NOT SET',
+    }
+  });
+  
   if (!factoryAddress || factoryAddress === '') {
     const envVarName = chain === 'ethereum' ? 'VITE_ETH_FACTORY or VITE_ETHEREUM_FACTORY' : `VITE_${chain.toUpperCase()}_FACTORY`;
     const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : 'Base Sepolia';
-    throw new Error(`Factory contract address not configured for ${chainName} (${chain}).\n\nPlease add ${envVarName} to your Netlify environment variables.\n\nFactory addresses:\n- Sepolia: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n- BSC Testnet: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n- Base Sepolia: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n\nSee NETLIFY_FACTORY_SETUP.md for setup instructions.`);
+    const errorMsg = `Factory contract address not configured for ${chainName} (${chain}).\n\nPlease add ${envVarName} to your Netlify environment variables.\n\nFactory addresses:\n- Sepolia: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n- BSC Testnet: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n- Base Sepolia: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n\nAfter setting the variables in Netlify, trigger a new deploy.\n\nSee NETLIFY_FACTORY_SETUP.md for setup instructions.`;
+    console.error(`❌ ${errorMsg}`);
+    throw new Error(errorMsg);
   }
+  
+  console.log(`✅ Factory address found for ${chain}: ${factoryAddress}`);
 
   console.log(`📋 Factory address: ${factoryAddress}`);
   
