@@ -323,10 +323,11 @@ export default function Marketplace() {
                             }}
                           />
                         ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center text-2xl font-bold text-white">
-                          {token.symbol?.charAt(0) || 'T'}
-                        </div>
-                      )}
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center text-2xl font-bold text-white">
+                            {token.symbol?.charAt(0) || 'T'}
+                          </div>
+                        );
+                      })()}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-xl font-semibold text-white truncate">{token.name}</h3>
