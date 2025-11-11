@@ -126,19 +126,18 @@ async function triggerLiquidityBridge(
   try {
     console.log(`🌉 Bridging ${amount} from ${sourceChain} to ${targetChain} for token ${tokenId}`);
 
-    // In production, this would:
-    // 1. Call the CrossChainLiquidityBridge contract on source chain
-    // 2. Use LayerZero to send message to target chain
-    // 3. Update reserves on both chains
-    // 4. Record transaction in database
-
-    // For now, log the action
-    console.log(`✅ Liquidity bridge initiated: ${sourceChain} → ${targetChain}, Amount: ${amount}`);
+    // Import bridge service
+    const { executeBridge } = await import('./bridgeService');
     
-    // TODO: Implement actual bridge logic
-    // const { getBlockchainService } = await import('./blockchain');
-    // const service = getBlockchainService(sourceChain);
-    // await service.bridgeLiquidity({ tokenId, targetChain, amount });
+    // Execute the bridge
+    const result = await executeBridge(tokenId, sourceChain, targetChain, amount);
+    
+    if (result.success) {
+      console.log(`✅ Liquidity bridge completed: ${sourceChain} → ${targetChain}, Amount: ${amount}, TX: ${result.txHash}`);
+    } else {
+      console.error(`❌ Liquidity bridge failed: ${result.message}`);
+      throw new Error(result.message);
+    }
   } catch (error) {
     console.error('Error triggering liquidity bridge:', error);
     throw error;

@@ -1,133 +1,141 @@
-# Deployment Checklist
+# Cross-Chain Liquidity Bridge - Deployment Checklist
 
-## Changes Made (All Committed & Pushed)
+Use this checklist to ensure all steps are completed for deploying the liquidity bridge system.
 
-### Frontend Changes (Vercel)
-- ✅ TokenDetail page error handling fixes
-- ✅ ErrorBoundary component
-- ✅ Footer social links (X, Discord, GitHub)
-- ✅ Chain name normalization
-- ✅ Safe property access
-- ✅ All TypeScript errors fixed
+## Pre-Deployment
 
-### Backend Changes (Railway)
-- ✅ Decimals NOT NULL constraint fix
-- ✅ RPC URL fixes (Sepolia, Base Sepolia, BSC Testnet)
-- ✅ Safe JSON parsing
-- ✅ Boolean handling for PostgreSQL
-- ✅ Token visibility management
+- [ ] Review `docs/LIQUIDITY_BRIDGE_IMPLEMENTATION.md` for system overview
+- [ ] Review `docs/DEPLOY_LIQUIDITY_BRIDGE.md` for deployment steps
+- [ ] Ensure sufficient balance on deployer wallet for all chains
+- [ ] Set up environment variables in `contracts/.env`
+- [ ] Set up environment variables in `backend/.env`
 
-## Deployment Status
+## Step 1: Deploy CrossChainSync (if needed)
 
-### Vercel (Frontend)
-**Status**: Should auto-deploy, but check deployment limit
+- [ ] Deploy CrossChainSync on Sepolia
+- [ ] Deploy CrossChainSync on BSC Testnet
+- [ ] Deploy CrossChainSync on Base Sepolia
+- [ ] Save addresses to `.env`:
+  - `CROSS_CHAIN_SYNC_SEPOLIA=0x...`
+  - `CROSS_CHAIN_SYNC_BSC_TESTNET=0x...`
+  - `CROSS_CHAIN_SYNC_BASE_SEPOLIA=0x...`
 
-**Action Required**:
-1. Check if Vercel deployment limit has reset
-2. If limit reset: Vercel will auto-deploy from GitHub
-3. If limit not reset: Wait for limit to reset, or manually trigger deployment
-4. Verify `VITE_API_BASE` environment variable is set in Vercel
+## Step 2: Configure CrossChainSync Trusted Remotes
 
-**Environment Variables** (Verify in Vercel):
-- `VITE_API_BASE`: Should be set to Railway backend URL
-  - Example: `https://crossify-platform-production.up.railway.app`
+- [ ] Set trusted remotes on Sepolia
+- [ ] Set trusted remotes on BSC Testnet
+- [ ] Set trusted remotes on Base Sepolia
+- [ ] Verify all remotes are set correctly
 
-### Railway (Backend)
-**Status**: Should auto-deploy from GitHub
+## Step 3: Deploy Liquidity Bridge
 
-**Action Required**:
-1. Check Railway deployment status
-2. Verify Railway auto-deployed latest changes
-3. If not auto-deployed: Manually trigger deployment
-4. Verify `DATABASE_URL` is set (PostgreSQL)
+- [ ] Deploy bridge on Sepolia
+  - Command: `npx hardhat run scripts/deploy-liquidity-bridge.ts --network sepolia`
+  - Save address: `SEPOLIA_LIQUIDITY_BRIDGE_ADDRESS=0x...`
+- [ ] Deploy bridge on BSC Testnet
+  - Command: `npx hardhat run scripts/deploy-liquidity-bridge.ts --network bscTestnet`
+  - Save address: `BSC_TESTNET_LIQUIDITY_BRIDGE_ADDRESS=0x...`
+- [ ] Deploy bridge on Base Sepolia
+  - Command: `npx hardhat run scripts/deploy-liquidity-bridge.ts --network baseSepolia`
+  - Save address: `BASE_SEPOLIA_LIQUIDITY_BRIDGE_ADDRESS=0x...`
 
-**Environment Variables** (Verify in Railway):
-- `DATABASE_URL`: PostgreSQL connection string
-- All RPC URLs (optional, will use defaults if not set)
-- Factory addresses for each chain
+### Mainnet Deployment (when ready)
 
-## Deployment Steps
+- [ ] Deploy bridge on Ethereum Mainnet
+- [ ] Deploy bridge on BSC Mainnet
+- [ ] Deploy bridge on Base Mainnet
+- [ ] Save all mainnet addresses
 
-### Option 1: Auto-Deploy (Recommended)
-1. **Vercel**: Check if deployment limit reset, then wait for auto-deploy
-2. **Railway**: Check if auto-deployed, verify in logs
-3. If both auto-deployed: ✅ Done!
-4. If not: Use Option 2
+## Step 4: Configure Bridge Contracts
 
-### Option 2: Manual Deploy
-1. **Vercel**:
-   - Go to Vercel dashboard
-   - Select your project
-   - Click "Redeploy" or trigger new deployment
-   - Verify `VITE_API_BASE` environment variable is set
+- [ ] Configure bridge on Sepolia
+  - Command: `npx hardhat run scripts/setup-liquidity-bridge.ts --network sepolia`
+- [ ] Configure bridge on BSC Testnet
+  - Command: `npx hardhat run scripts/setup-liquidity-bridge.ts --network bscTestnet`
+- [ ] Configure bridge on Base Sepolia
+  - Command: `npx hardhat run scripts/setup-liquidity-bridge.ts --network baseSepolia`
+- [ ] Verify configuration (fees, reserves, etc.)
 
-2. **Railway**:
-   - Go to Railway dashboard
-   - Select your project
-   - Click "Redeploy" or trigger new deployment
-   - Verify `DATABASE_URL` is set
-   - Check deployment logs
+## Step 5: Authorize Bonding Curves
 
-## Verification After Deployment
+- [ ] List all bonding curve addresses
+- [ ] Set `BONDING_CURVE_ADDRESSES` in `.env`
+- [ ] Authorize on Sepolia
+  - Command: `npx hardhat run scripts/authorize-bonding-curves-bridge.ts --network sepolia`
+- [ ] Authorize on BSC Testnet
+- [ ] Authorize on Base Sepolia
 
-### Frontend (Vercel)
-1. ✅ Check token detail page loads
-2. ✅ Verify social links in footer
-3. ✅ Test token creation with metadata
-4. ✅ Verify charts load
-5. ✅ Check no console errors
+## Step 6: Update Bonding Curves
 
-### Backend (Railway)
-1. ✅ Check backend logs for startup
-2. ✅ Verify PostgreSQL connection
-3. ✅ Check token sync working
-4. ✅ Test API endpoints
-5. ✅ Verify no errors in logs
+- [ ] Create/update script to set bridge on all curves
+- [ ] Update curves on Sepolia:
+  - `setLiquidityBridge(bridgeAddress)`
+  - `setChainEID(40161)`
+  - `setUseLiquidityBridge(true)`
+- [ ] Update curves on BSC Testnet:
+  - `setChainEID(40102)`
+- [ ] Update curves on Base Sepolia:
+  - `setChainEID(40245)`
 
-## Recommended Action
+## Step 7: Update Backend Configuration
 
-**Deploy Both** (Vercel + Railway):
-- Both have changes that need to be deployed
-- Frontend: UI fixes, error handling, social links
-- Backend: Database fixes, RPC URLs, decimals handling
+- [ ] Add bridge addresses to `backend/.env`:
+  - `ETHEREUM_LIQUIDITY_BRIDGE_ADDRESS=0x...`
+  - `BSC_LIQUIDITY_BRIDGE_ADDRESS=0x...`
+  - `BASE_LIQUIDITY_BRIDGE_ADDRESS=0x...`
+- [ ] Add private keys for bridge operations:
+  - `ETHEREUM_PRIVATE_KEY=0x...`
+  - `BSC_PRIVATE_KEY=0x...`
+  - `BASE_PRIVATE_KEY=0x...`
+  - OR: `BRIDGE_PRIVATE_KEY=0x...` (shared key)
+- [ ] Verify RPC URLs are set
+- [ ] Restart backend to load new configuration
 
-**Deployment Order**:
-1. **Railway first** (Backend): Deploy backend changes
-2. **Vercel second** (Frontend): Deploy frontend changes after backend is ready
+## Step 8: Verification & Testing
 
-**Check Before Deploying**:
-- ✅ All code committed and pushed to GitHub
-- ✅ Vercel deployment limit reset (if it was hit)
-- ✅ Railway auto-deploy enabled (should be by default)
-- ✅ Environment variables set in both platforms
+- [ ] Verify all contracts on block explorers
+- [ ] Test reserve monitoring API:
+  ```bash
+  curl http://localhost:3000/api/crosschain/liquidity/reserves/TOKEN_ID
+  ```
+- [ ] Test manual rebalance:
+  ```bash
+  curl -X POST http://localhost:3000/api/crosschain/liquidity/rebalance \
+    -H "Content-Type: application/json" \
+    -d '{"tokenId": "TOKEN_ID"}'
+  ```
+- [ ] Check backend logs for monitoring service:
+  - Should see: "✅ Liquidity monitoring service started"
+- [ ] Test with small amounts first
+- [ ] Monitor for any errors
 
-## Quick Check Commands
+## Step 9: Production Readiness
 
-### Check Recent Commits
-```bash
-git log --oneline -5
-```
+- [ ] All contracts verified on block explorers
+- [ ] All environment variables documented
+- [ ] Monitoring and alerting set up
+- [ ] Documentation updated with actual addresses
+- [ ] Team trained on bridge operations
+- [ ] Emergency procedures documented
 
-### Check if Changes are Pushed
-```bash
-git status
-```
+## Post-Deployment
 
-### Verify Environment Variables
-- **Vercel**: Check dashboard → Settings → Environment Variables
-- **Railway**: Check dashboard → Variables tab
+- [ ] Monitor bridge operations for 24-48 hours
+- [ ] Check reserve levels are being maintained
+- [ ] Verify automatic rebalancing is working
+- [ ] Test edge cases (large amounts, multiple chains)
+- [ ] Gather user feedback
+- [ ] Document any issues and resolutions
 
-## Summary
+## Rollback Plan (if needed)
 
-**Answer: Deploy Both (Vercel + Railway)**
+- [ ] Disable bridge on bonding curves: `setUseLiquidityBridge(false)`
+- [ ] Stop monitoring service (if issues)
+- [ ] Document issues for future fixes
 
-1. **Railway**: Deploy backend changes (decimals fix, RPC URLs)
-2. **Vercel**: Deploy frontend changes (error handling, social links)
+## Notes
 
-**Deployment Method**:
-- If auto-deploy enabled: Wait for auto-deploy, then verify
-- If auto-deploy not working: Manually trigger deployment in both platforms
-
-**Priority**: 
-- Railway first (backend must be ready)
-- Vercel second (frontend depends on backend)
+- Keep all contract addresses in a secure location
+- Document any deviations from standard deployment
+- Test thoroughly on testnets before mainnet deployment
+- Have rollback plan ready before production deployment

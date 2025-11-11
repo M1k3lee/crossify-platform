@@ -38,7 +38,7 @@ export default function Docs() {
         },
         {
           title: 'Price Formula',
-          description: 'Price = Base Price + (Slope × Supply Sold)\n\n• Base Price: Starting price per token\n• Slope: Price increase per token sold\n• Supply Sold: Total tokens purchased from the curve',
+          description: 'Price = Base Price + (Slope × Supply Sold)\n\n• Base Price: Starting price per token (in wei)\n• Slope: Price increase per token sold (in wei per token)\n• Supply Sold: Total tokens purchased from the curve (in base units, not wei)\n\nNote: The contract converts supply from wei (1e18) to base token units for calculation. The formula ensures linear price discovery as more tokens are sold.',
         },
         {
           title: 'Graduation Threshold',
@@ -46,7 +46,7 @@ export default function Docs() {
         },
         {
           title: 'Fees',
-          description: '• Buy Fee: Applied when purchasing tokens (default: 2%)\n• Sell Fee: Applied when selling tokens (default: 3%)\n• Platform Fee: One-time fee during token creation (FREE on testnet)',
+          description: '• Buy Fee: Applied when purchasing tokens (configurable, default: 0%)\n• Sell Fee: Applied when selling tokens (configurable, default: 0%)\n• Cross-Chain Sync Fee: 0.5% fee on DEX trades to fund LayerZero messaging\n• Platform Fee: One-time fee during token creation (FREE on testnet)\n\nNote: Buy and sell fees are set by the token creator during deployment. They can range from 0% to 10%.',
         },
       ],
     },
@@ -94,7 +94,7 @@ export default function Docs() {
         },
         {
           title: 'Chain Selection & Cross-Chain Option',
-          description: 'Select which chains to deploy on:\n• Ethereum (Sepolia testnet)\n• BSC (BSC Testnet)\n• Base (Base Sepolia)\n• Solana (Devnet)\n\nYou can deploy to all chains simultaneously!\n\nCross-Chain Sync: When deploying to 2+ chains, you can enable cross-chain price synchronization. This uses LayerZero to keep prices consistent across all chains automatically.',
+          description: 'Select which chains to deploy on:\n• Ethereum (Sepolia testnet)\n• BSC (BSC Testnet)\n• Base (Base Sepolia)\n• Solana (Devnet)\n\nYou can deploy to all chains simultaneously!\n\nCross-Chain Sync: When deploying to 2+ chains, you can enable cross-chain price synchronization. This uses LayerZero v2 to keep prices consistent across all chains automatically. The system tracks global supply across all chains and ensures unified pricing.\n\nNote: Currently deployed on testnets only. Mainnet deployment coming after security audits.',
         },
         {
           title: 'Metadata',
@@ -110,7 +110,7 @@ export default function Docs() {
       content: [
         {
           title: 'Deployed Contracts on Testnet',
-          description: 'All our contracts are deployed and verified on testnets. You can view them on block explorers:\n\n🔗 Ethereum Sepolia:\n• TokenFactory: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n  View: https://sepolia.etherscan.io/address/0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n\n🔗 BSC Testnet:\n• TokenFactory: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n  View: https://testnet.bscscan.com/address/0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n\n🔗 Base Sepolia:\n• TokenFactory: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n  View: https://sepolia-explorer.base.org/address/0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58',
+          description: 'All our contracts are deployed and verified on testnets. You can view them on block explorers:\n\n🔗 Ethereum Sepolia:\n• TokenFactory: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n  View: https://sepolia.etherscan.io/address/0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n\n🔗 BSC Testnet:\n• TokenFactory: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n  View: https://testnet.bscscan.com/address/0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n\n🔗 Base Sepolia:\n• TokenFactory: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n  View: https://sepolia-explorer.base.org/address/0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n\nNote: Mainnet deployment will occur after comprehensive testing and security audits.',
         },
         {
           title: 'TokenFactory - The Foundation',
@@ -166,7 +166,7 @@ export default function Docs() {
         },
         {
           title: 'Revenue Model',
-          description: 'Platform fees are collected from:\n• Token Creation: 0.01 ETH per token\n• Mint Operations: 0.1% of minted tokens\n• Cross-Chain Sync: 0.5% of DEX trade value\n• Liquidity Bridge: 0.1% + LayerZero costs\n\nFee Distribution:\n• 50% → CFY Buyback\n• 30% → Liquidity Provision\n• 10% → Token Burns\n• 10% → Operations & Treasury',
+          description: 'Platform fees are collected from:\n• Token Creation: 0.01 ETH per token\n• Mint Operations: 0.1% of minted tokens\n• Cross-Chain Sync: 0.5% of DEX trade value\n• Liquidity Bridge: 0.1% + LayerZero costs\n\nFee Distribution:\n• 50% → CFY Buyback (80% to liquidity, 20% burned)\n• 30% → Liquidity Provision\n• 10% → Token Burns\n• 7% → Operations\n• 3% → Treasury',
         },
         {
           title: 'Presale System',
