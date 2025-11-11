@@ -339,6 +339,11 @@ export default function BuyWidget({
     // Get chain symbol for this transaction (outside try block so it's available in catch)
     const chainSymbol = getChainSymbol(chain);
     
+    // Determine if this is a testnet (used throughout the function)
+    const isTestnet = chain.toLowerCase().includes('testnet') || 
+                     chain.toLowerCase().includes('sepolia') || 
+                     chain.toLowerCase() === 'base-sepolia';
+    
     try {
       setLoading(true);
       
@@ -454,9 +459,7 @@ export default function BuyWidget({
         // For testnet: Maximum reasonable price per token should be very low (e.g., $0.10 max)
         // At ETH price ~$3000, that's about 0.000033 ETH per token max for testnet
         // For mainnet, we allow higher prices but still need reasonable limits
-        const isTestnet = chain.toLowerCase().includes('testnet') || 
-                         chain.toLowerCase().includes('sepolia') || 
-                         chain.toLowerCase() === 'base-sepolia';
+        // isTestnet is already declared at function level
         
         // Maximum reasonable price per token (in ETH)
         // Testnet: ~$0.10 per token max = 0.000033 ETH (at $3000/ETH)
@@ -553,9 +556,7 @@ export default function BuyWidget({
           // The contract's getPriceForAmount() is the source of truth, but we must validate it's reasonable
           // For testnet: Maximum $30 per transaction (~0.01 ETH at $3000/ETH)
           // For mainnet: Maximum $300 per transaction (~0.1 ETH at $3000/ETH)
-          const isTestnet = chain.toLowerCase().includes('testnet') || 
-                           chain.toLowerCase().includes('sepolia') || 
-                           chain.toLowerCase() === 'base-sepolia';
+          // isTestnet is already declared at function level
           
           const estimatedPriceUSD = priceEth * 3000; // Rough ETH price estimate
           const absoluteMaxPrice = isTestnet ? 0.01 : 0.1; // Much stricter limits
@@ -722,9 +723,7 @@ export default function BuyWidget({
       // Final validation: price should be reasonable (before fees)
       const finalPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
       const finalPriceUSD = finalPriceEth * 3000; // Rough ETH price estimate
-      const isTestnet = chain.toLowerCase().includes('testnet') || 
-                       chain.toLowerCase().includes('sepolia') || 
-                       chain.toLowerCase() === 'base-sepolia';
+      // isTestnet is already declared at function level
       const maxFinalPrice = isTestnet ? 0.01 : 0.1; // Much stricter limits
       const maxFinalUSD = isTestnet ? 30 : 300;
       
@@ -788,11 +787,8 @@ export default function BuyWidget({
       // For testnet: Maximum $30 per transaction (~0.01 ETH)
       // For mainnet: Maximum $300 per transaction (~0.1 ETH)
       const totalCostUSD = totalCostEth * 3000; // Rough ETH price estimate
-      const isTestnet = chain.toLowerCase().includes('testnet') || 
-                       chain.toLowerCase().includes('sepolia') || 
-                       chain.toLowerCase() === 'base-sepolia';
+      // Reuse isTestnet and maxFinalUSD from earlier in the function
       const maxFinalPriceWithFee = isTestnet ? 0.01 : 0.1; // Much stricter than contract's 100 ETH limit
-      const maxFinalUSD = isTestnet ? 30 : 300;
       
       if (totalCostEth > maxFinalPriceWithFee || totalCostUSD > maxFinalUSD || isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
         // Calculate maximum amount user can buy
