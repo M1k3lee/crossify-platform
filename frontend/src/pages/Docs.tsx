@@ -169,8 +169,8 @@ export default function Docs() {
           description: 'Platform fees are collected from:\n• Token Creation: 0.01 ETH per token\n• Mint Operations: 0.1% of minted tokens\n• Cross-Chain Sync: 0.5% of DEX trade value\n• Liquidity Bridge: 0.1% + LayerZero costs\n\nFee Distribution:\n• 50% → CFY Buyback\n• 30% → Liquidity Provision\n• 10% → Token Burns\n• 10% → Operations & Treasury',
         },
         {
-          title: 'Presale Information',
-          description: 'Public Presale (200M CFY):\n• Tier 1: $0.01/CFY (First 50M)\n• Tier 2: $0.015/CFY (Next 50M)\n• Tier 3: $0.02/CFY (Next 50M)\n• Tier 4: $0.025/CFY (Last 50M)\n• Vesting: 20% TGE, 80% linear over 12 months\n\nPrivate Sale (100M CFY):\n• Price: $0.008/CFY (20% discount)\n• Vesting: 6-month cliff, 18-month linear',
+          title: 'Presale System',
+          description: 'Crossify includes a complete Solana presale system for any token:\n\n💰 Features:\n• Real-time SOL transaction monitoring\n• Automatic token allocation tracking\n• Configurable pricing (SOL per token)\n• Min/max purchase limits\n• Affiliate/referral system with rewards\n• Fund allocation (liquidity, dev, marketing)\n• Beautiful presale page with live updates\n\n📊 Vesting Schedule:\n• 20% released at Token Generation Event (TGE)\n• 80% linear vesting over 18 months\n• Protects long-term value and prevents dumps\n\n💡 How It Works:\n1. Creator sets up presale with token details and SOL price\n2. Users send SOL to presale wallet address\n3. System automatically tracks contributions\n4. Tokens allocated based on SOL contributed\n5. Vesting schedule applied when tokens are distributed\n\n🔗 Access: Visit /presale?id=presale-id to view any active presale',
         },
         {
           title: 'Value Creation Cycle',
