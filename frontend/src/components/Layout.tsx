@@ -1,8 +1,8 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Home, Coins, Rocket, LayoutDashboard, LogIn } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { Home, Coins, Rocket, LayoutDashboard, LogIn, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import Logo from './Logo';
 import Footer from './Footer';
 import { useWalletTracking } from '../hooks/useWalletTracking';
@@ -17,6 +17,7 @@ export default function Layout({ children }: LayoutProps) {
   const [, setAppLaunched] = useState(() => {
     return localStorage.getItem('appLaunched') === 'true';
   });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Track wallet connections
   useWalletTracking();
@@ -37,14 +38,22 @@ export default function Layout({ children }: LayoutProps) {
   // Check if we're on the homepage
   const isHomepage = location.pathname === '/';
   
+  // Check if we're on the presale page (hide EVM wallet button here)
+  const isPresalePage = location.pathname === '/presale' || location.pathname.startsWith('/presale');
+  
   // Show full navigation menu on app pages (marketplace, builder, dashboard, etc.), but not on homepage
   const showFullNav = !isHomepage;
   
-  // Show wallet buttons on app pages (not on homepage)
+  // Show wallet buttons on app pages (not on homepage, and not on presale page for EVM)
   const showWalletButtons = showFullNav || 
     location.pathname === '/builder' || 
     location.pathname === '/dashboard' || 
     location.pathname.startsWith('/token/');
+  
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
@@ -104,9 +113,84 @@ export default function Layout({ children }: LayoutProps) {
                         );
                       })}
                   </div>
+                </>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Mobile: Burger menu + Wallet button */}
+              {showFullNav && (
+                <>
+                  {/* Mobile burger menu button */}
+                  <button
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                    aria-label="Toggle menu"
+                  >
+                    {mobileMenuOpen ? (
+                      <X className="w-5 h-5" />
+                    ) : (
+                      <Menu className="w-5 h-5" />
+                    )}
+                  </button>
                   
-                  {/* Mobile navigation menu - show as dropdown or always visible on small screens */}
-                  <div className="md:hidden flex items-center gap-1 ml-2 overflow-x-auto scrollbar-hide">
+                  {/* EVM Wallet (RainbowKit) - hide on presale page */}
+                  {!isPresalePage && showWalletButtons && (
+                    <div className="hidden md:block">
+                      <ConnectButton showBalance={false} />
+                    </div>
+                  )}
+                  
+                  {/* Mobile wallet button - hide on presale page */}
+                  {!isPresalePage && showWalletButtons && (
+                    <div className="md:hidden">
+                      <ConnectButton showBalance={false} />
+                    </div>
+                  )}
+                </>
+              )}
+              
+              {/* Homepage or pages without wallet buttons */}
+              {!showFullNav && (
+                <>
+                  {isHomepage ? (
+                    // On homepage, show "Launch App" button
+                    <button
+                      onClick={handleLaunchApp}
+                      className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                    >
+                      <Rocket className="w-4 h-4" />
+                      <span className="hidden sm:inline">Launch App</span>
+                      <span className="sm:hidden">Launch</span>
+                    </button>
+                  ) : (
+                    // Fallback: show Launch App button if not on homepage and wallet buttons not shown
+                    <button
+                      onClick={handleLaunchApp}
+                      className="px-4 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      <span className="hidden sm:inline">Launch App</span>
+                      <span className="sm:hidden">Launch</span>
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* Mobile menu dropdown */}
+          {showFullNav && (
+            <AnimatePresence>
+              {mobileMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="md:hidden overflow-hidden border-t border-gray-800/50"
+                >
+                  <div className="py-2 space-y-1">
                     {navItems
                       .filter(item => item.path !== '/') // Hide Home link in nav menu
                       .map((item) => {
@@ -118,52 +202,23 @@ export default function Layout({ children }: LayoutProps) {
                           <Link
                             key={item.path}
                             to={item.path}
-                            className={`relative inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex-shrink-0 ${
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                               isActive
                                 ? 'text-white bg-primary-500/20'
-                                : 'text-gray-400 hover:text-gray-300'
+                                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/50'
                             }`}
                           >
-                            <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
-                            <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                            <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
+                            <span>{item.label}</span>
                           </Link>
                         );
                       })}
                   </div>
-                </>
+                </motion.div>
               )}
-            </div>
-            
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {isHomepage ? (
-                // On homepage, show "Launch App" button
-                <button
-                  onClick={handleLaunchApp}
-                  className="px-6 py-2.5 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-                >
-                  <Rocket className="w-4 h-4" />
-                  <span className="hidden sm:inline">Launch App</span>
-                  <span className="sm:hidden">Launch</span>
-                </button>
-              ) : showWalletButtons ? (
-                // On app pages, show wallet connect
-                <>
-                  {/* EVM Wallet (RainbowKit) - handles all EVM chains (Ethereum, BSC, Base) */}
-                  <ConnectButton showBalance={false} />
-                </>
-              ) : (
-                // Fallback: show Launch App button if not on homepage and wallet buttons not shown
-                <button
-                  onClick={handleLaunchApp}
-                  className="px-4 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden sm:inline">Launch App</span>
-                  <span className="sm:hidden">Launch</span>
-                </button>
-              )}
-            </div>
-          </div>
+            </AnimatePresence>
+          )}
         </div>
       </nav>
       
