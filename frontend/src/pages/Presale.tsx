@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -64,7 +63,6 @@ export default function Presale() {
   const [copied, setCopied] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [userReferralCode, setUserReferralCode] = useState('');
-  const [showAffiliate, setShowAffiliate] = useState(false);
 
   // Get presale ID from URL or use default
   const presaleId = new URLSearchParams(window.location.search).get('id') || 'default';

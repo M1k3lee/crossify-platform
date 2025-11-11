@@ -3,10 +3,9 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  Coins, TrendingUp, Lock, Gift, Wallet, ArrowRight,
-  Zap, PieChart, Activity, RefreshCw
+  Coins, Lock, Gift, Wallet, ArrowRight,
+  Zap, PieChart, RefreshCw
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import axios from 'axios';
 import QuantumBackground from '../components/QuantumBackground';
 import SEO from '../components/SEO';
@@ -14,7 +13,7 @@ import { API_BASE } from '../config/api';
 
 export default function CFYDashboard() {
   const { publicKey, connect, connected } = useWallet();
-  const [cfyBalance, setCfyBalance] = useState<string>('0');
+  const [cfyBalance] = useState<string>('0');
   const [vestingData, setVestingData] = useState<any>(null);
   const [stakingData, setStakingData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

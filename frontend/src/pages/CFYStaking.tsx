@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { motion } from 'framer-motion';
 import {
-  Coins, TrendingUp, Lock, Unlock, Gift, Clock,
-  AlertCircle, RefreshCw, Wallet, Zap
+  Coins, Lock, Unlock, RefreshCw, Wallet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';

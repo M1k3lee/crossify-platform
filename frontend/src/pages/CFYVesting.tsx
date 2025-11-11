@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { motion } from 'framer-motion';
 import {
-  Lock, Calendar, TrendingUp, CheckCircle, Clock,
-  Gift, AlertCircle, RefreshCw, ExternalLink
+  Lock, CheckCircle, Clock,
+  Gift, AlertCircle, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
