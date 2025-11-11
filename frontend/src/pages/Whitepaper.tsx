@@ -179,6 +179,9 @@ export default function Whitepaper() {
                   <code className="text-primary-400 text-lg font-mono">
                     Price = Base Price + (Slope × Global Supply Sold)
                   </code>
+                  <p className="text-gray-300 text-sm mt-3">
+                    Where supply is converted from wei (1e18) to base token units. The formula ensures linear price discovery based on global supply across all chains.
+                  </p>
                 </div>
               </div>
               <div>
@@ -272,33 +275,35 @@ export default function Whitepaper() {
                 <ul className="space-y-3 text-gray-300">
                   <li>
                     <strong className="text-white">TokenFactory:</strong> Factory contract for creating tokens and 
-                    bonding curves on each EVM chain. Supports both standard and cross-chain token deployments.
+                    bonding curves on each EVM chain. Supports both standard and cross-chain token deployments. Deployed on Sepolia, BSC Testnet, and Base Sepolia.
                   </li>
                   <li>
                     <strong className="text-white">CrossChainToken:</strong> Advanced ERC20 token with built-in cross-chain 
-                    synchronization. Automatically detects DEX trades and triggers price sync across all chains via LayerZero.
+                    synchronization. Automatically detects DEX trades and triggers price sync across all chains via LayerZero v2. Collects 0.5% fee on DEX trades.
                   </li>
                   <li>
-                    <strong className="text-white">CrossChainSync:</strong> Central contract that manages LayerZero messaging 
+                    <strong className="text-white">CrossChainSync:</strong> Central contract that manages LayerZero v2 messaging 
                     for cross-chain supply and price synchronization. Handles message routing and fee collection.
                   </li>
                   <li>
-                    <strong className="text-white">BondingCurve:</strong> Manages token sales, fee collection, and 
-                    graduation logic. Integrates with global supply tracking for cross-chain price consistency. Enhanced 
-                    with liquidity bridge support for cross-chain reserve management.
+                    <strong className="text-white">GlobalSupplyTracker:</strong> Tracks global token supply across all chains. 
+                    BondingCurve queries this contract to ensure unified pricing based on total supply sold across all networks.
                   </li>
                   <li>
-                    <strong className="text-white">CrossChainLiquidityBridge:</strong> Handles cross-chain reserve transfers 
-                    to ensure all chains maintain sufficient liquidity. Automatically bridges reserves when needed and manages 
-                    proactive rebalancing to prevent liquidity shortages.
+                    <strong className="text-white">BondingCurve:</strong> Manages token sales, fee collection, and 
+                    graduation logic. Uses global supply for pricing to ensure cross-chain consistency. Includes maximum price protection (100 ETH limit per transaction).
+                  </li>
+                  <li>
+                    <strong className="text-white">CrossChainLiquidityBridge:</strong> Contract designed to handle cross-chain reserve transfers 
+                    to ensure all chains maintain sufficient liquidity. Currently in development - will automatically bridge reserves when needed.
                   </li>
                   <li>
                     <strong className="text-white">CrossifyToken:</strong> Standard ERC20 token with metadata and advanced 
                     features (mintable, burnable, pausable) for single-chain deployments.
                   </li>
                   <li>
-                    <strong className="text-white">CFY Token (CrossifyToken):</strong> Platform token with advanced tokenomics 
-                    including automatic buyback (50% of fees), liquidity provision (30%), deflationary burns (10%), staking rewards, 
+                    <strong className="text-white">CFY Token (CFYToken):</strong> Platform token with advanced tokenomics 
+                    including automatic buyback (50% of fees), liquidity provision (30%), deflationary burns (10%), operations (7%), treasury (3%), staking rewards, 
                     fee discounts, and governance. Powers the entire Crossify ecosystem.
                   </li>
                   <li>
@@ -322,10 +327,11 @@ export default function Whitepaper() {
                       LayerZero's secure message passing ensures that price updates are reliably broadcast across networks.
                     </p>
                     <ul className="space-y-2 text-gray-300 ml-4">
-                      <li>• <strong>LayerZero Endpoint V2:</strong> Secure cross-chain message delivery</li>
-                      <li>• <strong>Automatic Message Routing:</strong> Messages automatically routed to all target chains</li>
-                      <li>• <strong>Fee Collection:</strong> 0.5% fee on DEX trades covers LayerZero messaging costs</li>
-                      <li>• <strong>Trusted Remote Verification:</strong> Secure message validation using trusted remote addresses</li>
+                    <li>• <strong>LayerZero Endpoint V2:</strong> Secure cross-chain message delivery using LayerZero v2 protocol</li>
+                    <li>• <strong>Automatic Message Routing:</strong> Messages automatically routed to all target chains via LayerZero</li>
+                    <li>• <strong>Fee Collection:</strong> 0.5% fee (50 basis points) on DEX trades covers LayerZero messaging costs</li>
+                    <li>• <strong>Trusted Remote Verification:</strong> Secure message validation using LayerZero's trusted remote addresses</li>
+                    <li>• <strong>Global Supply Tracking:</strong> All chains query GlobalSupplyTracker for unified pricing</li>
                     </ul>
                   </div>
                   <div>
@@ -382,19 +388,24 @@ export default function Whitepaper() {
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                    <span className="text-gray-300">Ethereum (Mainnet & Sepolia)</span>
+                    <span className="text-gray-300">Ethereum Sepolia (Testnet)</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-                    <span className="text-gray-300">BSC (Mainnet & Testnet)</span>
+                    <span className="text-gray-300">BSC Testnet</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-purple-500 rounded-full" />
-                    <span className="text-gray-300">Solana (Mainnet & Devnet)</span>
+                    <span className="text-gray-300">Solana Devnet</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-indigo-500 rounded-full" />
-                    <span className="text-gray-300">Base (Mainnet & Sepolia)</span>
+                    <span className="text-gray-300">Base Sepolia (Testnet)</span>
+                  </div>
+                  <div className="mt-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                    <p className="text-yellow-300 text-sm">
+                      <strong>Current Status:</strong> Platform is live on testnets. Mainnet deployment will occur after comprehensive security audits and testing.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -504,38 +515,52 @@ export default function Whitepaper() {
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-3 h-3 bg-green-500 rounded-full" />
-                  <h3 className="text-xl font-semibold text-white">Q1 2024 - Testnet Launch</h3>
+                  <h3 className="text-xl font-semibold text-white">Q4 2024 - Testnet Launch ✅</h3>
                 </div>
                 <ul className="space-y-2 text-gray-300 ml-6">
-                  <li>• Deploy contracts to testnets</li>
-                  <li>• Launch beta platform</li>
+                  <li>• Deployed contracts to testnets (Sepolia, BSC Testnet, Base Sepolia)</li>
+                  <li>• Launched beta platform on testnets</li>
                   <li>• Community testing and feedback</li>
-                  <li>• Security audits</li>
+                  <li>• Security audits in progress</li>
                 </ul>
               </div>
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
-                  <h3 className="text-xl font-semibold text-white">Q2 2024 - Mainnet Launch</h3>
+                  <h3 className="text-xl font-semibold text-white">Q1 2025 - Mainnet Launch 🚀</h3>
                 </div>
                 <ul className="space-y-2 text-gray-300 ml-6">
-                  <li>• Mainnet deployment</li>
-                  <li>• Public token sale</li>
-                  <li>• DEX integrations</li>
+                  <li>• Complete security audits</li>
+                  <li>• Mainnet contract deployment</li>
+                  <li>• Public token presale</li>
+                  <li>• DEX integrations (Uniswap, PancakeSwap)</li>
                   <li>• Advanced features rollout</li>
                 </ul>
               </div>
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-3 h-3 bg-gray-500 rounded-full" />
-                  <h3 className="text-xl font-semibold text-white">Q3-Q4 2024 - Expansion</h3>
+                  <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                  <h3 className="text-xl font-semibold text-white">Q2 2025 - Expansion</h3>
                 </div>
                 <ul className="space-y-2 text-gray-300 ml-6">
                   <li>• Additional chain support (Polygon, Avalanche, Arbitrum)</li>
-                  <li>• Mobile app launch</li>
+                  <li>• Mobile app development</li>
                   <li>• Advanced analytics dashboard</li>
-                  <li>• Governance platform</li>
+                  <li>• Governance platform launch</li>
                   <li>• Strategic partnerships</li>
+                </ul>
+              </div>
+              <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-3 h-3 bg-gray-500 rounded-full" />
+                  <h3 className="text-xl font-semibold text-white">Q3-Q4 2025 - Growth & Innovation</h3>
+                </div>
+                <ul className="space-y-2 text-gray-300 ml-6">
+                  <li>• Mobile app launch (iOS & Android)</li>
+                  <li>• Advanced cross-chain features</li>
+                  <li>• Enterprise solutions</li>
+                  <li>• Global expansion</li>
+                  <li>• Community-driven development</li>
                 </ul>
               </div>
             </div>
