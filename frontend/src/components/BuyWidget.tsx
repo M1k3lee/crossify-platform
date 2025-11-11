@@ -32,6 +32,13 @@ export default function BuyWidget({
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [realCurrentPrice, setRealCurrentPrice] = useState<number | null>(null);
+  const [debugInfo, setDebugInfo] = useState<{
+    basePrice: string;
+    slope: string;
+    localSupply: string;
+    globalSupply: string | null;
+    useGlobalSupply: boolean;
+  } | null>(null);
   const [tab, setTab] = useState<'buy' | 'sell'>('buy');
   const [priceEstimate, setPriceEstimate] = useState<number | null>(null);
   const [tokensEstimate, setTokensEstimate] = useState<number | null>(null);
@@ -82,7 +89,7 @@ export default function BuyWidget({
     return 'https://base-sepolia-rpc.publicnode.com';
   };
 
-  // Fetch real current price from contract
+  // Fetch real current price and debug info from contract
   useEffect(() => {
     const fetchCurrentPrice = async () => {
       if (!curveAddress || curveAddress === '0x0000000000000000000000000000000000000000' || !ethers.isAddress(curveAddress)) {
@@ -92,15 +99,68 @@ export default function BuyWidget({
       try {
         const rpcUrl = getRpcUrlForChain(chain);
         const ethersProvider = new ethers.JsonRpcProvider(rpcUrl);
-        const bondingCurveABI = ['function getCurrentPrice() external view returns (uint256)'];
+        const bondingCurveABI = [
+          'function getCurrentPrice() external view returns (uint256)',
+          'function basePrice() external view returns (uint256)',
+          'function slope() external view returns (uint256)',
+          'function totalSupplySold() external view returns (uint256)',
+          'function useGlobalSupply() external view returns (bool)',
+          'function globalSupplyTracker() external view returns (address)',
+          'function getSupplyForPricing() external view returns (uint256)',
+        ];
         const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, ethersProvider);
         
-        const currentPriceWei = await curveContract.getCurrentPrice();
+        // Get all values in parallel
+        const [currentPriceWei, basePriceWei, slopeWei, localSupplyWei, useGlobalSupply, globalSupplyTrackerAddr, supplyForPricingWei] = await Promise.all([
+          curveContract.getCurrentPrice(),
+          curveContract.basePrice(),
+          curveContract.slope(),
+          curveContract.totalSupplySold(),
+          curveContract.useGlobalSupply(),
+          curveContract.globalSupplyTracker(),
+          curveContract.getSupplyForPricing().catch(() => null),
+        ]);
+        
         const currentPriceEth = parseFloat(ethers.formatEther(currentPriceWei));
+        const basePriceEth = parseFloat(ethers.formatEther(basePriceWei));
+        const slopeEth = parseFloat(ethers.formatEther(slopeWei));
+        const localSupplyTokens = parseFloat(ethers.formatEther(localSupplyWei));
+        const supplyForPricingTokens = supplyForPricingWei ? parseFloat(ethers.formatEther(supplyForPricingWei)) : null;
+        
         // Convert to USD (ETH price ~$3000)
         const currentPriceUSD = currentPriceEth * 3000;
         setRealCurrentPrice(currentPriceUSD);
+        
+        // Calculate expected price to verify
+        const expectedPrice = basePriceEth + (slopeEth * (supplyForPricingTokens ?? localSupplyTokens));
+        const expectedPriceUSD = expectedPrice * 3000;
+        
+        // Set debug info
+        setDebugInfo({
+          basePrice: basePriceEth.toFixed(8),
+          slope: slopeEth.toFixed(8),
+          localSupply: localSupplyTokens.toFixed(2),
+          globalSupply: supplyForPricingTokens !== null && supplyForPricingTokens !== localSupplyTokens 
+            ? supplyForPricingTokens.toFixed(2) 
+            : null,
+          useGlobalSupply: useGlobalSupply,
+        });
+        
         console.log(`💰 Real current price from contract: ${currentPriceEth} ETH ($${currentPriceUSD.toFixed(6)} per token)`);
+        console.log(`📊 Debug Info:`);
+        console.log(`   Base Price: ${basePriceEth} ETH ($${(basePriceEth * 3000).toFixed(6)})`);
+        console.log(`   Slope: ${slopeEth} ETH per token ($${(slopeEth * 3000).toFixed(6)} per token)`);
+        console.log(`   Local Supply: ${localSupplyTokens.toFixed(2)} tokens`);
+        if (supplyForPricingTokens !== null && supplyForPricingTokens !== localSupplyTokens) {
+          console.log(`   Global Supply: ${supplyForPricingTokens.toFixed(2)} tokens (⚠️ Using global supply!)`);
+        }
+        console.log(`   Expected Price: ${expectedPrice} ETH ($${expectedPriceUSD.toFixed(6)})`);
+        console.log(`   Actual Price: ${currentPriceEth} ETH ($${currentPriceUSD.toFixed(6)})`);
+        
+        // Warn if there's a significant discrepancy
+        if (Math.abs(expectedPrice - currentPriceEth) > 0.0001) {
+          console.warn(`⚠️ Price mismatch! Expected: ${expectedPrice} ETH, Actual: ${currentPriceEth} ETH`);
+        }
       } catch (error: any) {
         console.warn(`⚠️ Could not fetch real current price from contract:`, error.message);
         // Don't set realCurrentPrice on error, will use fallback
@@ -1070,6 +1130,42 @@ export default function BuyWidget({
               <p className="text-xs text-yellow-400 mt-1">
                 (Displayed: ${currentPrice.toFixed(6)} may be outdated)
               </p>
+            )}
+            {debugInfo && (
+              <div className="mt-3 pt-3 border-t border-gray-700/50">
+                <p className="text-xs text-gray-400 mb-2">📊 Bonding Curve Parameters:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-500">Base Price:</span>
+                    <span className="text-white ml-1">${(parseFloat(debugInfo.basePrice) * 3000).toFixed(6)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Slope:</span>
+                    <span className="text-white ml-1">${(parseFloat(debugInfo.slope) * 3000).toFixed(6)}/token</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Local Supply:</span>
+                    <span className="text-white ml-1">{debugInfo.localSupply} tokens</span>
+                  </div>
+                  {debugInfo.globalSupply && (
+                    <div>
+                      <span className="text-yellow-400">Global Supply:</span>
+                      <span className="text-yellow-400 ml-1">{debugInfo.globalSupply} tokens ⚠️</span>
+                    </div>
+                  )}
+                </div>
+                {debugInfo.useGlobalSupply && debugInfo.globalSupply && (
+                  <p className="text-xs text-yellow-400 mt-2">
+                    ⚠️ Using global supply (cross-chain sync enabled). Price includes tokens from all chains.
+                  </p>
+                )}
+                {debugInfo && realCurrentPrice && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Price = ${(parseFloat(debugInfo.basePrice) * 3000).toFixed(6)} + (${(parseFloat(debugInfo.slope) * 3000).toFixed(6)} × {(debugInfo.globalSupply || debugInfo.localSupply)})
+                    {' = '}${realCurrentPrice.toFixed(6)}
+                  </p>
+                )}
+              </div>
             )}
           </div>
           <div className="text-right">
