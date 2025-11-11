@@ -17,26 +17,19 @@
           return;
         }
         
-        // Determine base path based on current hostname
-        // If on custom domain (crossify.io), use root. Otherwise use /crossify-platform
-        var isCustomDomain = l.hostname === 'crossify.io' || l.hostname === 'www.crossify.io';
-        var base = isCustomDomain ? '' : '/crossify-platform';
+        // With custom domain, we always use root base
+        var base = '';
         
-        // Remove base from path if present
-        if (base && path.startsWith(base)) {
-          path = path.slice(base.length);
-        }
+        // Remove leading /index.html or /index.htm if present (prevent loops)
+        path = path.replace(/^\/index\.html?\/?/i, '/');
         
         // Ensure path starts with /
         if (!path.startsWith('/')) {
           path = '/' + path;
         }
         
-        // Remove leading /index.html or /index.htm if present (prevent loops)
-        path = path.replace(/^\/index\.html?\/?/i, '/');
-        
-        // Build redirect URL
-        var redirectPath = base + '/index.html?/' + path.slice(1) + l.search + l.hash;
+        // Build redirect URL - use root base for custom domain
+        var redirectPath = '/index.html?/' + path.slice(1) + l.search + l.hash;
         
         // Only redirect if we're not already there
         if (l.pathname + l.search + l.hash !== redirectPath) {

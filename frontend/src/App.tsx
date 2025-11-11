@@ -45,15 +45,10 @@ function App() {
     []
   );
 
-  // Determine basename dynamically based on hostname
-  // Custom domain (crossify.io) uses root, GitHub Pages uses /crossify-platform
+  // Use root basename for custom domain (crossify.io)
+  // BASE_URL is set to '/' in build, so we use that
   const basename = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const isCustomDomain = window.location.hostname === 'crossify.io' || 
-                            window.location.hostname === 'www.crossify.io';
-      return isCustomDomain ? '' : (import.meta.env.BASE_URL?.replace(/\/$/, '') || '/crossify-platform');
-    }
-    return import.meta.env.BASE_URL?.replace(/\/$/, '') || '/crossify-platform';
+    return import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
   }, []);
 
   return (
