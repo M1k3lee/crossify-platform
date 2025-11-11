@@ -18,7 +18,9 @@ export default function BannerUpload({ value, onChange, label = 'Banner Image (O
     if (val.startsWith('http')) return val;
     if (val.startsWith('mock_')) return null; // Mock CIDs don't work
     // It's a filename, construct API URL using /upload/file/:filename endpoint
-    return `${API_BASE.replace('/api', '')}/upload/file/${val}`;
+    // API_BASE already includes /api, so we can use it directly
+    // Route is: /api/upload/file/:filename
+    return `${API_BASE}/upload/file/${val}`;
   };
   const [preview, setPreview] = useState<string | null>(getPreviewUrl(value));
 
@@ -38,15 +40,18 @@ export default function BannerUpload({ value, onChange, label = 'Banner Image (O
       return;
     }
 
-    // Create preview
+    // Upload to backend first
+    setUploading(true);
+    let dataUrl: string | null = null;
+    
+    // Create preview from file (keep this for immediate display)
     const reader = new FileReader();
     reader.onloadend = () => {
-      setPreview(reader.result as string);
+      dataUrl = reader.result as string;
+      setPreview(dataUrl); // Set preview immediately from file
     };
     reader.readAsDataURL(file);
 
-    // Upload to backend
-    setUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -58,11 +63,31 @@ export default function BannerUpload({ value, onChange, label = 'Banner Image (O
       if (response.data.cid || response.data.filename) {
         const fileId = response.data.filename || response.data.cid;
         onChange(fileId);
-        // Update preview with the new URL
+        
+        // Try to load the image from the server URL to verify it works
         const previewUrl = getPreviewUrl(fileId);
         if (previewUrl) {
-          setPreview(previewUrl);
+          // Test if the URL loads successfully
+          const img = new Image();
+          img.onload = () => {
+            // Image loaded successfully from server, use server URL
+            setPreview(previewUrl);
+          };
+          img.onerror = () => {
+            // Image failed to load from server, keep the data URL preview
+            console.warn('Failed to load image from server, keeping data URL preview');
+            if (dataUrl) {
+              setPreview(dataUrl);
+            }
+          };
+          img.src = previewUrl;
+        } else {
+          // No preview URL, keep data URL if available
+          if (dataUrl) {
+            setPreview(dataUrl);
+          }
         }
+        
         toast.success('Banner uploaded successfully');
       } else {
         throw new Error('No file ID returned');
@@ -70,7 +95,10 @@ export default function BannerUpload({ value, onChange, label = 'Banner Image (O
     } catch (error: any) {
       console.error('Banner upload failed:', error);
       toast.error(error.response?.data?.error || 'Failed to upload banner');
-      setPreview(null);
+      // Keep the data URL preview if upload fails, don't clear it
+      if (!dataUrl) {
+        setPreview(null);
+      }
     } finally {
       setUploading(false);
     }

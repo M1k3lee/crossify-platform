@@ -529,6 +529,36 @@ export default function BuyWidget({
           priceEstimateWei = priceFromContract;
           console.log(`✅ Using contract price: ${priceEth} ${chainSymbol}`);
         } catch (priceErr: any) {
+          // Check if the error is due to the 100 ETH maximum limit
+          const errorMessage = priceErr.message || priceErr.reason || '';
+          const errorData = priceErr.data || priceErr.revert?.args?.[0] || '';
+          const isMaxPriceExceeded = errorMessage.includes('100 ETH') || 
+                                     errorMessage.includes('Total price exceeds maximum') ||
+                                     errorData.includes('100 ETH') ||
+                                     errorData.includes('Total price exceeds maximum');
+          
+          if (isMaxPriceExceeded) {
+            // Calculate maximum amount user can buy based on 100 ETH limit
+            // Use current price as baseline (conservative estimate)
+            const maxPriceWei = ethers.parseEther('100'); // 100 ETH/BNB limit
+            // Estimate: maxAmount = maxPrice / currentPrice (conservative, actual will be slightly less due to curve)
+            // For safety, use 90 ETH to account for curve effect
+            const safeMaxPriceWei = ethers.parseEther('90'); // 90 ETH/BNB to be safe
+            const estimatedMaxAmountWei = (safeMaxPriceWei * ethers.parseEther('1')) / currentPriceWei;
+            const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei));
+            
+            console.error(`❌ Purchase amount exceeds contract's 100 ETH maximum limit`);
+            console.error(`   Requested: ${amount} tokens`);
+            console.error(`   Estimated maximum: ~${Math.floor(estimatedMaxAmount)} tokens (at current price)`);
+            
+            throw new Error(
+              `Purchase amount too large: The contract has a maximum limit of 100 ${chainSymbol} per transaction.\n\n` +
+              `You're trying to buy ${amount} tokens, which would exceed this limit.\n\n` +
+              `Please try a smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price).\n\n` +
+              `The price increases with the bonding curve, so the maximum may be even lower.`
+            );
+          }
+          
           // Fallback: use improved approximation that accounts for bonding curve
           console.warn('⚠️ Contract price call failed, using fallback calculation');
           console.warn(`   Reason: ${priceErr.message || 'Contract price validation failed'}`);
@@ -543,9 +573,37 @@ export default function BuyWidget({
             // Linear approximation: currentPrice * amount
             const linearPriceWei = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
             
+            // Check if even the linear price would exceed 100 ETH limit
+            const maxPriceWei = ethers.parseEther('100');
+            if (linearPriceWei > maxPriceWei) {
+              // Calculate maximum amount user can buy
+              const safeMaxPriceWei = ethers.parseEther('90'); // 90 ETH/BNB to be safe
+              const estimatedMaxAmountWei = (safeMaxPriceWei * ethers.parseEther('1')) / currentPriceWei;
+              const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei));
+              
+              throw new Error(
+                `Purchase amount would exceed contract's 100 ${chainSymbol} maximum limit.\n\n` +
+                `Please try a smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price).`
+              );
+            }
+            
             // Add 50% buffer to account for bonding curve (price increases with supply)
             // This is conservative - the actual price could be even higher
             priceEstimateWei = (linearPriceWei * BigInt(150)) / BigInt(100);
+            
+            // Check if the buffered price exceeds 100 ETH limit
+            if (priceEstimateWei > maxPriceWei) {
+              // Calculate maximum amount user can buy (accounting for 50% buffer)
+              const safeMaxPriceWei = ethers.parseEther('90'); // 90 ETH/BNB to account for buffer
+              const estimatedMaxAmountWei = (safeMaxPriceWei * ethers.parseEther('1')) / currentPriceWei;
+              // Account for the 50% buffer in the calculation
+              const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei)) * 0.67; // 1/1.5 ≈ 0.67
+              
+              throw new Error(
+                `Purchase amount would exceed contract's 100 ${chainSymbol} maximum limit (even with fallback calculation).\n\n` +
+                `Please try a smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price).`
+              );
+            }
             
             const fallbackPriceEth = parseFloat(ethers.formatEther(priceEstimateWei));
             console.log(`💰 Fallback price estimate (with 50% curve buffer): ${priceEstimateWei.toString()} wei (${fallbackPriceEth} ${chainSymbol})`);
@@ -555,17 +613,25 @@ export default function BuyWidget({
               throw new Error(`Invalid fallback price calculation: ${fallbackPriceEth}`);
             }
             
-            // Calculate maximum reasonable fallback price
-            const maxFallbackPrice = 0.1; // 0.1 ETH/BNB absolute max
+            // Calculate maximum reasonable fallback price (respect 100 ETH contract limit)
+            const maxFallbackPrice = 90; // 90 ETH/BNB to stay under 100 ETH limit
             if (fallbackPriceEth > maxFallbackPrice) {
-              throw new Error(`Fallback price too high: ${fallbackPriceEth.toFixed(6)} ${chainSymbol} for ${amount} tokens. Current price per token: ${currentPriceEth.toFixed(6)} ${chainSymbol}. Please try a much smaller amount (e.g., ${Math.floor(parseFloat(amount) * maxFallbackPrice / fallbackPriceEth)} tokens) or contact support.`);
+              // Calculate maximum amount user can buy
+              const estimatedMaxAmountWei = (ethers.parseEther('90') * ethers.parseEther('1')) / currentPriceWei;
+              const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei)) * 0.67; // Account for buffer
+              
+              throw new Error(
+                `Fallback price too high: ${fallbackPriceEth.toFixed(6)} ${chainSymbol} for ${amount} tokens exceeds the 100 ${chainSymbol} contract limit.\n\n` +
+                `Current price per token: ${currentPriceEth.toFixed(6)} ${chainSymbol}.\n\n` +
+                `Please try a much smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens) or contact support.`
+              );
             }
             
             console.log(`✅ Using fallback price: ${fallbackPriceEth} ${chainSymbol}`);
             console.warn(`⚠️ WARNING: This is an approximation. The transaction may still fail if the actual price is higher.`);
           } catch (fallbackErr: any) {
             console.error('❌ Fallback calculation failed:', fallbackErr);
-            throw new Error(`Failed to calculate price: ${fallbackErr.message}. Please try a much smaller amount (e.g., 100 tokens) or contact support.`);
+            throw new Error(fallbackErr.message || `Failed to calculate price. Please try a much smaller amount (e.g., 100 tokens) or contact support.`);
           }
         }
       } catch (err: any) {
@@ -608,9 +674,18 @@ export default function BuyWidget({
       console.log(`💰 Total cost with 2% buffer: ${totalCostEth.toFixed(6)} ${chainSymbol}`);
       
       // Final validation before sending - must be within reasonable limits
-      const maxFinalPriceWithFee = 0.1; // 0.1 ETH/BNB absolute max (including fees)
+      // Contract has a 100 ETH/BNB maximum limit, so we enforce 90 ETH to be safe (accounting for fees and rounding)
+      const maxFinalPriceWithFee = 90; // 90 ETH/BNB max to stay under contract's 100 ETH limit (including fees)
       if (totalCostEth > maxFinalPriceWithFee || isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
-        throw new Error(`Total cost too high: ${totalCostEth.toFixed(6)} ${chainSymbol} (max allowed: ${maxFinalPriceWithFee} ${chainSymbol}). Please try a much smaller amount or contact support.`);
+        // Calculate maximum amount user can buy
+        const safeMaxPriceWei = ethers.parseEther('90');
+        const estimatedMaxAmountWei = (safeMaxPriceWei * ethers.parseEther('1')) / currentPriceWei;
+        const estimatedMaxAmount = parseFloat(ethers.formatEther(estimatedMaxAmountWei));
+        
+        throw new Error(
+          `Total cost too high: ${totalCostEth.toFixed(6)} ${chainSymbol} exceeds the contract's 100 ${chainSymbol} maximum limit.\n\n` +
+          `Please try a much smaller amount (suggested maximum: ~${Math.floor(estimatedMaxAmount)} tokens at current price).`
+        );
       }
       
       console.log(`🚀 Sending buy transaction with value: ${totalCostWei.toString()} wei (${totalCostEth.toFixed(6)} ${chainSymbol})`);
@@ -685,6 +760,10 @@ export default function BuyWidget({
         });
       } else if (error.message?.includes('graduated')) {
         toast.error('Token has graduated to DEX. Please use a DEX to buy.', { id: 'buy-tx' });
+      } else if (error.message?.includes('100 ETH') || error.message?.includes('100 BNB') || error.message?.includes('maximum limit')) {
+        // Show the error message with line breaks for better readability
+        const errorMsg = error.message.replace(/\n\n/g, '\n');
+        toast.error(errorMsg, { id: 'buy-tx', duration: 10000 });
       } else {
         toast.error(error.message || 'Failed to buy tokens', { id: 'buy-tx' });
       }

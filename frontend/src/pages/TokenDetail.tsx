@@ -305,7 +305,9 @@ export default function TokenDetail() {
       // If it's a mock CID (old format), skip it
       if (imageId.startsWith('mock_')) return null;
       // It's a filename, construct API URL
-      return `${API_BASE.replace('/api', '')}/upload/file/${imageId}`;
+      // API_BASE already includes /api, so we can use it directly
+      // Route is: /api/upload/file/:filename
+      return `${API_BASE}/upload/file/${imageId}`;
     };
   }, []);
 
