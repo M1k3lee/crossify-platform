@@ -109,36 +109,40 @@ export default function Docs() {
       color: 'from-red-500 to-orange-600',
       content: [
         {
-          title: 'TokenFactory',
-          description: 'The main factory contract that creates tokens and bonding curves. Deployed on each EVM chain (Ethereum, BSC, Base). Supports both standard (CrossifyToken) and cross-chain (CrossChainToken) deployments based on user preference.',
+          title: 'Deployed Contracts on Testnet',
+          description: 'All our contracts are deployed and verified on testnets. You can view them on block explorers:\n\n🔗 Ethereum Sepolia:\n• TokenFactory: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n  View: https://sepolia.etherscan.io/address/0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n\n🔗 BSC Testnet:\n• TokenFactory: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n  View: https://testnet.bscscan.com/address/0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n\n🔗 Base Sepolia:\n• TokenFactory: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n  View: https://sepolia-explorer.base.org/address/0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58',
         },
         {
-          title: 'CrossChainToken',
-          description: 'Advanced ERC20 token with built-in cross-chain synchronization. Automatically detects DEX trades and triggers price sync across all chains via LayerZero. Includes all standard ERC20 features plus cross-chain capabilities.',
+          title: 'TokenFactory - The Foundation',
+          description: 'TokenFactory is the core contract that creates all tokens on Crossify. When you deploy a token, the factory:\n\n1. Deploys your token contract (CrossChainToken or CrossifyToken)\n2. Deploys a BondingCurve contract for initial sales\n3. Links them together for seamless trading\n4. Registers the token for cross-chain synchronization\n\nEach chain has its own TokenFactory, but they all work together through LayerZero to keep prices synchronized. The factory is Ownable, meaning only authorized addresses can create tokens, ensuring security and preventing spam.',
         },
         {
-          title: 'CrossChainSync',
-          description: 'Central contract managing LayerZero messaging for cross-chain synchronization. Handles supply updates, price broadcasts, and fee collection. Implements LayerZero v2 interfaces for secure message passing.',
+          title: 'CrossChainToken - Smart ERC20 with Cross-Chain Magic',
+          description: 'CrossChainToken is an advanced ERC20 that automatically syncs prices across all chains:\n\n✨ Key Features:\n• Standard ERC20 functionality (transfer, approve, etc.)\n• Built-in DEX detection - automatically recognizes Uniswap, PancakeSwap, etc.\n• Transfer hooks - detects when tokens move to/from DEX pairs\n• Automatic price sync - triggers LayerZero messages on every DEX trade\n• Fee collection - collects 0.5% fee on DEX trades to fund cross-chain sync\n• Global supply tracking - queries GlobalSupplyTracker for unified pricing\n\n🔧 How It Works:\nWhen someone trades your token on Uniswap (Ethereum), the token contract detects the transfer, calculates the new supply, and sends a LayerZero message to all other chains. Within seconds, prices update on BSC, Base, and Solana automatically!',
         },
         {
-          title: 'BondingCurve',
-          description: 'Manages token sales through bonding curve mechanics. Handles buy/sell operations, fee collection, and graduation to DEX. Integrates with global supply tracking for cross-chain price consistency.',
+          title: 'BondingCurve - Automated Market Making',
+          description: 'BondingCurve creates a fair, transparent market for your token before it graduates to a DEX:\n\n📊 Price Formula:\nPrice = Base Price + (Slope × Global Supply Sold)\n\nThe curve uses GLOBAL supply, meaning if someone buys on Ethereum, the price increases on ALL chains instantly!\n\n💰 Features:\n• Linear price increase - fair and predictable\n• Buy/Sell operations - users can trade directly\n• Fee collection - configurable buy/sell fees\n• Graduation - automatically migrates to DEX at threshold\n• Global supply integration - queries GlobalSupplyTracker for unified pricing\n• Maximum price protection - prevents purchases exceeding 100 ETH total\n\n🎯 The Magic:\nEvery token deployed via Crossify gets its own BondingCurve. When you buy tokens, the curve calculates price based on GLOBAL supply across all chains, ensuring perfect price consistency.',
         },
         {
-          title: 'CrossifyToken',
-          description: 'Standard ERC20 token contract with metadata URI support. Includes burnable, pausable, and mintable functionality. Used for single-chain deployments without cross-chain features.',
+          title: 'CrossChainSync - LayerZero Message Router',
+          description: 'CrossChainSync is the central hub that manages all cross-chain communication:\n\n🌐 Responsibilities:\n• Receives supply updates from tokens on any chain\n• Validates updates using LayerZero security\n• Broadcasts updates to all other chains\n• Manages LayerZero endpoint IDs for each chain\n• Handles fee collection and distribution\n• Implements LayerZero v2 interfaces for maximum security\n\n💸 Fee Mechanism:\nWhen a user trades on a DEX, CrossChainToken collects a 0.5% fee. This fee is used to:\n• Pay LayerZero messaging costs\n• Fund cross-chain operations\n• Ensure sustainable synchronization\n\nThe user pays this fee automatically - no extra steps required!',
         },
         {
-          title: 'CFY Platform Token',
-          description: 'The Crossify Token (CFY) is our native platform token with advanced tokenomics:\n\n• Automatic Buyback: 50% of platform fees used to buy back CFY\n• Liquidity Provision: 30% of fees added to CFY liquidity pools\n• Deflationary Burns: 10% of fees used for permanent token burns\n• Staking Rewards: Up to 100% APY on LP staking\n• Fee Discounts: Hold CFY to receive discounts on platform fees\n• Governance: Vote on platform decisions (1 CFY = 1 vote)\n\nTotal Supply: 1 billion CFY\nDistribution: Presale (30%), Liquidity (25%), Team (15%), Ecosystem (15%), Staking (10%), Treasury (5%)',
+          title: 'How Contracts Work Together - The Cross-Chain Flow',
+          description: 'Here\'s exactly how the magic happens when someone buys your token:\n\n1️⃣ User buys tokens on Ethereum via BondingCurve\n   → BondingCurve calculates price using GlobalSupplyTracker\n   → Tokens transferred to user\n   → GlobalSupplyTracker updates global supply\n\n2️⃣ CrossChainToken detects the supply change\n   → Triggers CrossChainSync.syncSupplyUpdate()\n   → Collects 0.5% fee from the trade\n\n3️⃣ CrossChainSync sends LayerZero message\n   → Message contains: token address, new supply, source chain\n   → LayerZero securely delivers to all other chains\n\n4️⃣ Other chains receive the update\n   → BSC, Base, Solana all update their GlobalSupplyTracker\n   → BondingCurves on all chains now show the new price\n   → Price is synchronized across ALL chains!\n\n⚡ Result: Perfect price consistency across Ethereum, BSC, Base, and Solana in seconds!',
         },
         {
-          title: 'BuybackContract & LiquidityProvisionContract',
-          description: 'Advanced contracts that manage CFY token economics:\n\n• BuybackContract: Automatically buys CFY using platform fees, distributing 80% to liquidity and 20% for burns\n• LiquidityProvisionContract: Automatically adds liquidity to CFY pools across all chains, ensuring deep liquidity\n\nThese contracts work together to create a sustainable tokenomics model where platform fees drive token value.',
+          title: 'LayerZero Integration - Secure Cross-Chain Messaging',
+          description: 'We use LayerZero v2, the industry-leading cross-chain protocol:\n\n🔒 Security:\n• LayerZero uses decentralized oracles and relayers\n• Messages are cryptographically verified\n• No single point of failure\n• Battle-tested with billions in value secured\n\n⚡ Performance:\n• Messages delivered in seconds\n• Low gas costs\n• Reliable delivery guarantees\n• Supports all major chains\n\n💰 Cost:\n• LayerZero fees are minimal\n• Covered by the 0.5% DEX trade fee\n• Users don\'t pay extra - it\'s built into every trade\n• Sustainable model for long-term operation',
         },
         {
-          title: 'Security & Partners',
-          description: '• Built on OpenZeppelin audited contracts\n• LayerZero secure messaging infrastructure\n• ReentrancyGuard protection\n• Ownable access control\n• Comprehensive testing\n• Technology partners: LayerZero, OpenZeppelin, Supra Oracles',
+          title: 'Fee Payment Flow - How Users Pay for Cross-Chain Sync',
+          description: 'Users automatically pay for cross-chain synchronization:\n\n💳 On BondingCurve Purchases:\n• User buys tokens from BondingCurve\n• BondingCurve collects buy fee (e.g., 2%)\n• Part of this fee funds cross-chain operations\n• No extra steps - it\'s automatic!\n\n💳 On DEX Trades:\n• User trades on Uniswap/PancakeSwap/etc.\n• CrossChainToken detects the transfer\n• Automatically collects 0.5% fee from the trade\n• Fee is used to send LayerZero messages\n• Price syncs across all chains\n• User sees updated prices everywhere!\n\n✅ Benefits:\n• No upfront costs\n• Pay-as-you-go model\n• Fees are transparent\n• Sustainable for long-term operation',
+        },
+        {
+          title: 'Security & Auditing',
+          description: 'Our contracts are built with security as the top priority:\n\n🛡️ Security Features:\n• OpenZeppelin audited contracts (ERC20, Ownable, ReentrancyGuard)\n• LayerZero v2 secure messaging\n• Comprehensive input validation\n• Maximum price protection (100 ETH limit)\n• Access control (Ownable pattern)\n• Reentrancy protection on all external calls\n\n🔍 Auditing:\n• Built on battle-tested OpenZeppelin contracts\n• LayerZero infrastructure audited by top security firms\n• Comprehensive test coverage\n• Continuous security monitoring\n\n🤝 Technology Partners:\n• LayerZero - Cross-chain messaging\n• OpenZeppelin - Security standards\n• Supra Oracles - Price feeds (future)',
         },
       ],
     },
@@ -181,24 +185,48 @@ export default function Docs() {
       color: 'from-indigo-500 to-blue-600',
       content: [
         {
-          title: 'Base URL',
-          description: 'All API endpoints are prefixed with `/api`\n\nExample: `https://crossify.io/api/tokens`',
+          title: 'Base URL & Authentication',
+          description: 'Base URL: `https://crossify-platform-production.up.railway.app/api`\n\nAll endpoints are prefixed with `/api`\n\n🔐 Authentication:\n• Most endpoints are public\n• Some endpoints require `x-creator-address` header\n• Rate limiting: 100 requests per 15 minutes per IP\n• CORS enabled for crossify.io and localhost',
         },
         {
-          title: 'Create Token',
-          description: 'POST /api/tokens/create\n\nCreates a new token with bonding curve configuration.',
+          title: 'Token Management',
+          description: 'POST /api/tokens/create\nCreate a new token\n\nRequest Body:\n{\n  "name": "My Token",\n  "symbol": "MTK",\n  "initialSupply": "1000000",\n  "basePrice": 0.0001,\n  "slope": 0.00001,\n  "crossChainEnabled": true\n}\n\nResponse: { "id": "uuid", "name": "My Token", ... }\n\n---\n\nGET /api/tokens/:id/status\nGet token deployment status\n\nResponse: {\n  "id": "uuid",\n  "deployments": [...],\n  "priceSync": {...}\n}\n\n---\n\nPOST /api/tokens/:id/deploy\nDeploy token to chains\n\nRequest: { "chains": ["ethereum", "bsc", "base"] }\n\n---\n\nGET /api/tokens/marketplace\nGet all tokens in marketplace\n\nQuery Params: ?search=term&verified=true&chain=ethereum',
         },
         {
-          title: 'Deploy Token',
-          description: 'POST /api/tokens/:id/deploy\n\nDeploys a token to specified chains.',
+          title: 'Token Analytics & Data',
+          description: 'GET /api/tokens/:id/analytics\nGet token analytics (volume, transactions, price change)\n\nResponse: {\n  "totalVolume": "100.5",\n  "buyCount": 50,\n  "sellCount": 20,\n  "priceChange24h": 15.5\n}\n\n---\n\nGET /api/tokens/:id/related\nGet related tokens (similar tokens)\n\nResponse: [{ "id": "...", "name": "...", ... }]\n\n---\n\nGET /api/tokens/:id/metadata\nGet token metadata (logo, banner, colors, etc.)\n\n---\n\nGET /api/tokens/:id/market-depth\nGet market depth data for charts\n\n---\n\nGET /api/tokens/:id/price-sync\nGet cross-chain price synchronization status',
         },
         {
-          title: 'Get Token Status',
-          description: 'GET /api/tokens/:id/status\n\nReturns deployment status across all chains.',
+          title: 'Transactions',
+          description: 'GET /api/transactions\nGet transaction history\n\nQuery Params:\n• ?tokenId=uuid - Filter by token\n• ?chain=ethereum - Filter by chain\n• ?type=buy - Filter by type (buy/sell)\n• ?address=0x... - Filter by wallet address\n\nResponse: [{\n  "id": "...",\n  "tokenId": "uuid",\n  "chain": "ethereum",\n  "type": "buy",\n  "amount": "100",\n  "price": "0.001",\n  "txHash": "0x...",\n  "timestamp": "2024-01-01T00:00:00Z"\n}]\n\n---\n\nPOST /api/transactions\nRecord a new transaction (usually called by frontend after blockchain confirmation)',
         },
         {
-          title: 'Price Sync',
-          description: 'GET /api/tokens/:id/price-sync\n\nReturns current prices across all chains with synchronization status.',
+          title: 'File Uploads',
+          description: 'POST /api/upload/logo\nUpload token logo\n\nContent-Type: multipart/form-data\nBody: file (image file)\n\nResponse: {\n  "success": true,\n  "filename": "abc123.jpg",\n  "url": "https://.../upload/file/abc123.jpg"\n}\n\n---\n\nPOST /api/upload/banner\nUpload token banner\n\nSame format as logo upload\n\n---\n\nGET /api/upload/file/:filename\nServe uploaded file\n\nReturns the image file with proper CORS headers',
+        },
+        {
+          title: 'Admin Endpoints',
+          description: 'POST /api/admin/login\nAdmin login\n\nBody: { "password": "..." }\n\n---\n\nGET /api/admin/dashboard\nGet admin dashboard statistics\n\nRequires: Admin authentication\n\nResponse: {\n  "totalTokens": 100,\n  "totalTransactions": 5000,\n  "totalVolume": "1000.5",\n  "verifiedTokens": 25\n}\n\n---\n\nPOST /api/admin/tokens/:id/verify\nVerify a token (add verified badge)\n\nRequires: Admin authentication\n\n---\n\nPATCH /api/admin/tokens/:id\nUpdate token status (archive, pin, delete, visible)\n\nRequires: Admin authentication',
+        },
+        {
+          title: 'Health & Debug',
+          description: 'GET /api/health\nHealth check endpoint\n\nResponse: { "status": "ok", "timestamp": "..." }\n\n---\n\nGET /api/health-check\nDetailed health check\n\nResponse: {\n  "status": "ok",\n  "database": { "connected": true },\n  "redis": { "connected": true }\n}\n\n---\n\nGET /api/debug/tokens\nDebug endpoint for token data\n\n---\n\nPOST /api/debug/sync-tokens\nManually trigger token sync from blockchain',
+        },
+        {
+          title: 'Cross-Chain Endpoints',
+          description: 'GET /api/crosschain/status\nGet cross-chain synchronization status\n\nResponse: {\n  "tokens": [...],\n  "count": 10\n}\n\n---\n\nPOST /api/crosschain/swap\nManually trigger fee swap for a token',
+        },
+        {
+          title: 'CFY Token Endpoints',
+          description: 'GET /api/cfy/vesting\nGet CFY vesting information\n\n---\n\nPOST /api/cfy/stake\nStake CFY tokens\n\nBody: { "amount": "1000", "lockPeriod": 30 }\n\n---\n\nGET /api/cfy/staking\nGet staking information\n\n---\n\nPOST /api/cfy/unstake\nUnstake CFY tokens',
+        },
+        {
+          title: 'Presale Endpoints',
+          description: 'GET /api/presale\nGet all presales or specific presale\n\nQuery: ?id=presale-id\n\n---\n\nPOST /api/presale\nCreate a new presale\n\n---\n\nPOST /api/presale/:id/purchase\nPurchase presale tokens',
+        },
+        {
+          title: 'Using the API',
+          description: '📝 Example: Create a token\n\n```javascript\nconst response = await fetch(\'https://crossify-platform-production.up.railway.app/api/tokens/create\', {\n  method: \'POST\',\n  headers: { \'Content-Type\': \'application/json\' },\n  body: JSON.stringify({\n    name: "My Token",\n    symbol: "MTK",\n    initialSupply: "1000000",\n    basePrice: 0.0001,\n    slope: 0.00001\n  })\n});\nconst token = await response.json();\n```\n\n📝 Example: Get token analytics\n\n```javascript\nconst response = await fetch(\'https://crossify-platform-production.up.railway.app/api/tokens/{id}/analytics\');\nconst analytics = await response.json();\n```\n\n✅ All endpoints return JSON\n✅ CORS enabled for crossify.io\n✅ Rate limited: 100 req/15min per IP',
         },
       ],
     },
@@ -296,7 +324,36 @@ export default function Docs() {
                     {section.content.map((item, itemIdx) => (
                       <div key={itemIdx} className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                         <h3 className="text-xl font-semibold text-white mb-3">{item.title}</h3>
-                        <p className="text-gray-300 leading-relaxed whitespace-pre-line">{item.description}</p>
+                        <div className="text-gray-300 leading-relaxed whitespace-pre-line">
+                          {item.description.split('\n').map((line, lineIdx) => {
+                            // Check if line contains a URL
+                            const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+                            if (urlMatch) {
+                              const parts = line.split(urlMatch[0]);
+                              return (
+                                <span key={lineIdx}>
+                                  {parts[0]}
+                                  <a
+                                    href={urlMatch[0]}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary-400 hover:text-primary-300 underline break-all"
+                                  >
+                                    {urlMatch[0]}
+                                  </a>
+                                  {parts[1]}
+                                  {lineIdx < item.description.split('\n').length - 1 && <br />}
+                                </span>
+                              );
+                            }
+                            return (
+                              <span key={lineIdx}>
+                                {line}
+                                {lineIdx < item.description.split('\n').length - 1 && <br />}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </div>
                     ))}
                   </div>
