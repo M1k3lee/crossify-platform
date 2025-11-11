@@ -19,6 +19,23 @@ import { trackTokenCreation, trackButtonClick } from '../components/GoogleAnalyt
 import BannerUpload from '../components/BannerUpload';
 import ColorPicker from '../components/ColorPicker';
 
+// Map generic chain names to testnet names for database storage
+// We only deploy to testnets, so we need to use testnet names in the database
+function getTestnetChainName(chain: string): string {
+  switch (chain.toLowerCase()) {
+    case 'ethereum':
+      return 'sepolia';
+    case 'bsc':
+      return 'bsc-testnet';
+    case 'base':
+      return 'base-sepolia';
+    case 'solana':
+      return 'solana'; // Solana doesn't have a separate testnet name in our system
+    default:
+      return chain; // Return as-is if unknown
+  }
+}
+
 interface TokenData {
   name: string;
   symbol: string;
@@ -434,8 +451,10 @@ export default function Builder() {
             }
 
             const mockAddress = `${Math.random().toString(36).substring(2, 44)}`;
+            // Use testnet chain name for database storage (Solana doesn't change)
+            const testnetChainName = getTestnetChainName(chain);
             deployments.push({
-              chain,
+              chain: testnetChainName, // Store testnet name in database
               tokenAddress: mockAddress,
               curveAddress: `${Math.random().toString(36).substring(2, 44)}`,
               status: 'pending',
@@ -482,8 +501,10 @@ export default function Builder() {
                 }
               );
 
+              // Use testnet chain name for database storage
+              const testnetChainName = getTestnetChainName(chain);
               deployments.push({
-                chain,
+                chain: testnetChainName, // Store testnet name in database
                 tokenAddress: result.tokenAddress,
                 curveAddress: result.curveAddress,
                 status: 'deployed',
@@ -511,15 +532,19 @@ export default function Builder() {
                   `Factory address not configured for ${chainName}.\n\nCheck Netlify environment variable: ${envVarName}\nExpected: ${correctAddresses[chain as keyof typeof correctAddresses]}\n\nAfter updating, trigger a new deploy in Netlify.`,
                   { id: `deploy-${chain}`, duration: 15000 }
                 );
+                // Use testnet chain name for database storage
+                const testnetChainName = getTestnetChainName(chain);
                 deployments.push({
-                  chain,
+                  chain: testnetChainName, // Store testnet name in database
                   error: deployError.message,
                   status: 'failed',
                 });
               } else if (deployError.message?.includes('rejected')) {
                 toast.error(`Transaction rejected for ${chain}`, { id: `deploy-${chain}` });
+                // Use testnet chain name for database storage
+                const testnetChainName = getTestnetChainName(chain);
                 deployments.push({
-                  chain,
+                  chain: testnetChainName, // Store testnet name in database
                   error: 'Transaction rejected by user',
                   status: 'failed',
                 });
@@ -531,8 +556,10 @@ export default function Builder() {
         } catch (error: any) {
           console.error(`Error deploying to ${chain}:`, error);
           toast.error(`Failed to deploy to ${chain}: ${error.message}`, { id: `deploy-${chain}` });
+          // Use testnet chain name for database storage
+          const testnetChainName = getTestnetChainName(chain);
           deployments.push({
-            chain,
+            chain: testnetChainName, // Store testnet name in database
             error: error.message || 'Unknown error',
             status: 'failed',
           });

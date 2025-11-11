@@ -337,17 +337,17 @@ export default function TokenDetail() {
   // Get banner URL from multiple sources
   const bannerUrl = useMemo(() => {
     try {
-      // Priority: metadata bannerUrl > customization bannerImageIpfs > token banner_image_ipfs
-      if (metadata?.bannerUrl) {
-        // If it's a full URL, use it; otherwise it might be a filename in the URL
-        if (metadata.bannerUrl.startsWith('http')) {
-          return metadata.bannerUrl;
-        }
-        // Extract filename from URL if needed
-        const filename = metadata.bannerUrl.split('/').pop();
-        return filename ? getImageUrl(filename) : null;
+      // Priority: metadata bannerUrl (if full URL) > metadata bannerImageIpfs > customization bannerImageIpfs > token banner_image_ipfs
+      if (metadata?.bannerUrl && metadata.bannerUrl.startsWith('http')) {
+        // Full URL from metadata
+        return metadata.bannerUrl;
+      }
+      if (metadata?.bannerImageIpfs) {
+        // Filename from metadata - construct URL
+        return getImageUrl(metadata.bannerImageIpfs);
       }
       if (customization?.bannerImageIpfs) {
+        // Filename from customization - construct URL
         return getImageUrl(customization.bannerImageIpfs);
       }
       // Check token directly
@@ -359,17 +359,19 @@ export default function TokenDetail() {
       console.error('Error constructing banner URL:', e);
       return null;
     }
-  }, [metadata?.bannerUrl, customization?.bannerImageIpfs, token, getImageUrl]);
+  }, [metadata?.bannerUrl, metadata?.bannerImageIpfs, customization?.bannerImageIpfs, token, getImageUrl]);
 
   // Get logo URL from multiple sources
   const logoUrl = useMemo(() => {
     try {
-      if (metadata?.logoUrl) {
-        if (metadata.logoUrl.startsWith('http')) {
-          return metadata.logoUrl;
-        }
-        const filename = metadata.logoUrl.split('/').pop();
-        return filename ? getImageUrl(filename) : null;
+      // Priority: metadata logoUrl (if full URL) > metadata logoIpfs > token logo_ipfs
+      if (metadata?.logoUrl && metadata.logoUrl.startsWith('http')) {
+        // Full URL from metadata
+        return metadata.logoUrl;
+      }
+      if (metadata?.logoIpfs) {
+        // Filename from metadata - construct URL
+        return getImageUrl(metadata.logoIpfs);
       }
       // Check token directly for logo_ipfs
       if ((token as any)?.logo_ipfs) {
@@ -380,7 +382,7 @@ export default function TokenDetail() {
       console.error('Error constructing logo URL:', e);
       return null;
     }
-  }, [metadata?.logoUrl, token, getImageUrl]);
+  }, [metadata?.logoUrl, metadata?.logoIpfs, token, getImageUrl]);
   
   // Check if current user is the token creator (after token is loaded)
   const isCreator = useMemo(() => {

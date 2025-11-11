@@ -1156,8 +1156,12 @@ router.get('/:id/metadata', async (req: Request, res: Response) => {
       name: token.name,
       symbol: token.symbol,
       description: token.description,
-      logoUrl: token.logo_ipfs ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null,
-      bannerUrl: token.banner_image_ipfs ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null,
+      // Return logoIpfs and bannerImageIpfs as filenames, let frontend construct URLs
+      // Only return full URLs if they're already URLs or mock CIDs
+      logoIpfs: token.logo_ipfs || null,
+      logoUrl: token.logo_ipfs && (token.logo_ipfs.startsWith('http') || token.logo_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.logo_ipfs}` : null, // Frontend will construct URL from filename if not mock
+      bannerImageIpfs: token.banner_image_ipfs || null,
+      bannerUrl: token.banner_image_ipfs && (token.banner_image_ipfs.startsWith('http') || token.banner_image_ipfs.startsWith('mock_')) ? `https://ipfs.io/ipfs/${token.banner_image_ipfs}` : null, // Frontend will construct URL from filename if not mock
       twitterUrl: token.twitter_url,
       discordUrl: token.discord_url,
       telegramUrl: token.telegram_url,
