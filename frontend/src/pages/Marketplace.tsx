@@ -332,7 +332,9 @@ export default function Marketplace() {
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-xl font-semibold text-white truncate">{token.name}</h3>
                           {token.verified && (
-                            <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0" title="Verified Token" />
+                            <div title="Verified Token">
+                              <CheckCircle className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                            </div>
                           )}
                         </div>
                         <p className="text-sm text-gray-400">{token.symbol}</p>

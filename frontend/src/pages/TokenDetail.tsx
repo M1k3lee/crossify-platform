@@ -126,15 +126,60 @@ export default function TokenDetail() {
     retry: false,
   });
 
+  // Compute selectedChain early for queries (will be recomputed later)
+  const selectedChainForQueries = useMemo(() => {
+    if (!status?.deployments?.length) return null;
+    const deployments = status.deployments || [];
+    const selectedChainFromUrl = searchParams.get('chain');
+    
+    // Try to find deployment matching URL chain
+    if (selectedChainFromUrl) {
+      const normalizedUrlChain = selectedChainFromUrl.toLowerCase().trim();
+      const found = deployments.find((dep: any) => {
+        const depChain = (dep.chain || '').toLowerCase().trim();
+        return depChain === normalizedUrlChain || 
+               depChain.includes(normalizedUrlChain) || 
+               normalizedUrlChain.includes(depChain);
+      });
+      if (found) {
+        const chain = found.chain?.toLowerCase() || 'ethereum';
+        if (chain.includes('base-sepolia') || chain === 'base-sepolia') return 'base-sepolia';
+        if (chain.includes('bsc-testnet') || chain === 'bsc-testnet') return 'bsc-testnet';
+        if (chain.includes('sepolia') && !chain.includes('base')) return 'sepolia';
+        if (chain.includes('base')) return 'base';
+        if (chain.includes('bsc') || chain.includes('binance')) return 'bsc';
+        if (chain.includes('ethereum') || chain === 'eth') return 'ethereum';
+        return chain;
+      }
+    }
+    
+    // Use first valid deployment
+    const firstValid = deployments.find((dep: any) => 
+      dep.curveAddress && dep.tokenAddress && (dep.status === 'deployed' || !dep.status)
+    );
+    if (firstValid?.chain) {
+      const chain = firstValid.chain.toLowerCase();
+      if (chain.includes('base-sepolia') || chain === 'base-sepolia') return 'base-sepolia';
+      if (chain.includes('bsc-testnet') || chain === 'bsc-testnet') return 'bsc-testnet';
+      if (chain.includes('sepolia') && !chain.includes('base')) return 'sepolia';
+      if (chain.includes('base')) return 'base';
+      if (chain.includes('bsc') || chain.includes('binance')) return 'bsc';
+      if (chain.includes('ethereum') || chain === 'eth') return 'ethereum';
+      return chain;
+    }
+    
+    return deployments[0]?.chain?.toLowerCase() || 'ethereum';
+  }, [status?.deployments, searchParams]);
+
   // Fetch recent transactions
   const { data: transactionsData } = useQuery({
-    queryKey: ['token-transactions', id, selectedChain],
+    queryKey: ['token-transactions', id, selectedChainForQueries],
     queryFn: async () => {
       try {
         const response = await axios.get(`${API_BASE}/transactions`, {
           params: {
             tokenId: id,
-            chain: selectedChain,
+            chain: selectedChainForQueries,
             limit: 10,
           },
         });
@@ -144,7 +189,7 @@ export default function TokenDetail() {
         return { transactions: [], count: 0 };
       }
     },
-    enabled: !!id && !!selectedChain,
+    enabled: !!id && !!selectedChainForQueries,
     refetchInterval: 15000,
   });
 

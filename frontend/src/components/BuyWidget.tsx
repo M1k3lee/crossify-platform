@@ -674,7 +674,12 @@ export default function BuyWidget({
         toast.error('Transaction rejected by user', { id: 'buy-tx' });
       } else if (error.message?.includes('insufficient') || error.code === 'INSUFFICIENT_FUNDS' || error.info?.error?.message?.includes('insufficient')) {
         const testnetInfo = getTestnetInfo(chain as any);
-        const faucetLink = testnetInfo?.faucet ? ` Get testnet tokens: ${testnetInfo.faucet}` : '';
+        const faucetLinks = {
+          ethereum: 'https://sepoliafaucet.com',
+          bsc: 'https://testnet.bnbchain.org/faucet-smart',
+          base: 'https://www.coinbase.com/faucets/base-ethereum-goerli-faucet',
+        };
+        const faucetLink = faucetLinks[chain as keyof typeof faucetLinks] ? ` Get testnet tokens: ${faucetLinks[chain as keyof typeof faucetLinks]}` : '';
         toast.error(`Insufficient funds. You need more ${chainSymbol} to complete this transaction.${faucetLink}`, { 
           id: 'buy-tx',
           duration: 6000 

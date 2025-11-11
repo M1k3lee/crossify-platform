@@ -60,13 +60,13 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
     if (validData.length === 0) return null;
     
     return {
-      prices: validData.map(p => parseFloat(p.close) || 0),
-      opens: validData.map(p => parseFloat(p.open) || 0),
-      highs: validData.map(p => parseFloat(p.high) || 0),
-      lows: validData.map(p => parseFloat(p.low) || 0),
-      closes: validData.map(p => parseFloat(p.close) || 0),
-      volumes: validData.map(p => parseFloat(p.volume) || 0),
-      times: validData.map(p => parseFloat(p.time) || 0),
+      prices: validData.map(p => typeof p.close === 'number' ? p.close : parseFloat(String(p.close)) || 0),
+      opens: validData.map(p => typeof p.open === 'number' ? p.open : parseFloat(String(p.open)) || 0),
+      highs: validData.map(p => typeof p.high === 'number' ? p.high : parseFloat(String(p.high)) || 0),
+      lows: validData.map(p => typeof p.low === 'number' ? p.low : parseFloat(String(p.low)) || 0),
+      closes: validData.map(p => typeof p.close === 'number' ? p.close : parseFloat(String(p.close)) || 0),
+      volumes: validData.map(p => typeof p.volume === 'number' ? p.volume : parseFloat(String(p.volume)) || 0),
+      times: validData.map(p => typeof p.time === 'number' ? p.time : parseFloat(String(p.time)) || 0),
     };
   }, [priceHistory]);
 
