@@ -8,10 +8,10 @@ name: Deploy to GitHub Pages
 # 4. Uncomment the on: section below
 
 on:
-  workflow_dispatch:  # Only manual trigger - Netlify handles automatic deployment
-  # push:
-  #   branches:
-  #     - main
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
