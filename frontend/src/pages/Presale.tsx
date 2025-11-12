@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Connection, PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Transaction as SolanaTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -40,14 +40,7 @@ interface PresaleConfig {
   };
 }
 
-interface Allocation {
-  total_sol_contributed: number;
-  total_tokens_allocated: string;
-  transaction_count: number;
-  transactions?: Transaction[];
-}
-
-interface Transaction {
+interface PresaleTransaction {
   id: number;
   solana_tx_hash: string;
   buyer_address: string;
@@ -55,6 +48,13 @@ interface Transaction {
   token_amount: string;
   status: string;
   created_at: string;
+}
+
+interface Allocation {
+  total_sol_contributed: number;
+  total_tokens_allocated: string;
+  transaction_count: number;
+  transactions?: PresaleTransaction[];
 }
 
 export default function Presale() {
@@ -172,7 +172,9 @@ export default function Presale() {
     // If not connected, show manual instructions
     if (!connected || !publicKey) {
       setSendMode('manual');
-      toast.info('Please connect your wallet to send SOL directly, or copy the address to send manually');
+      toast('Please connect your wallet to send SOL directly, or copy the address to send manually', {
+        icon: 'ℹ️',
+      });
       return;
     }
 
@@ -187,7 +189,7 @@ export default function Presale() {
       const { blockhash } = await connection.getLatestBlockhash('confirmed');
 
       // Create transaction
-      const transaction = new Transaction().add(
+      const transaction = new SolanaTransaction().add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
           toPubkey: new PublicKey(presale.solana_address),
