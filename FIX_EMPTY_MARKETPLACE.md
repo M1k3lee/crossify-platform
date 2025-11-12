@@ -60,7 +60,7 @@ After Railway redeploys, check the logs:
 Use the diagnostic endpoint to check database status:
 
 ```bash
-curl https://your-railway-url.up.railway.app/api/health/database-diagnostic
+curl https://crossify-platform-production.up.railway.app/api/health/database-diagnostic
 ```
 
 This will show:
