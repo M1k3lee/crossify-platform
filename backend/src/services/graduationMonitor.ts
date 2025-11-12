@@ -234,13 +234,129 @@ export async function checkAndGraduate(tokenId: string, chain: string): Promise<
 }
 
 /**
+ * Check and graduate a token on multiple chains in parallel
+ * This handles cross-chain tokens efficiently by graduating all eligible chains simultaneously
+ */
+export async function checkAndGraduateTokenOnAllChains(tokenId: string): Promise<{
+  totalChains: number;
+  eligibleChains: number;
+  successful: number;
+  failed: number;
+  results: Array<{ chain: string; success: boolean; error?: string }>;
+}> {
+  try {
+    // Get all deployments for this token
+    const deployments = await dbAll(
+      `SELECT chain, token_address, reserve_balance, current_supply, is_graduated, curve_address
+       FROM token_deployments 
+       WHERE token_id = ? AND status = 'deployed' 
+         AND (is_graduated = 0 OR is_graduated IS NULL OR is_graduated = '0')
+         AND curve_address IS NOT NULL`,
+      [tokenId]
+    ) as any[];
+
+    if (deployments.length === 0) {
+      return { totalChains: 0, eligibleChains: 0, successful: 0, failed: 0, results: [] };
+    }
+
+    // Check graduation status for all chains in parallel
+    const statusChecks = await Promise.allSettled(
+      deployments.map(dep => checkGraduationStatus(tokenId, dep.chain))
+    );
+
+    // Identify chains that need graduation
+    const eligibleChains: Array<{ deployment: any; status: GraduationStatus }> = [];
+    
+    for (let i = 0; i < deployments.length; i++) {
+      const dep = deployments[i];
+      const statusResult = statusChecks[i];
+      
+      if (statusResult.status === 'fulfilled' && statusResult.value?.needsGraduation) {
+        eligibleChains.push({
+          deployment: dep,
+          status: statusResult.value,
+        });
+      }
+    }
+
+    if (eligibleChains.length === 0) {
+      return {
+        totalChains: deployments.length,
+        eligibleChains: 0,
+        successful: 0,
+        failed: 0,
+        results: deployments.map(d => ({ chain: d.chain, success: false, error: 'Not ready for graduation' })),
+      };
+    }
+
+    console.log(`🎓 Token ${tokenId}: ${eligibleChains.length} of ${deployments.length} chains ready for graduation`);
+
+    // Graduate all eligible chains in parallel
+    const graduationResults = await Promise.allSettled(
+      eligibleChains.map(({ deployment, status }) =>
+        checkAndGraduate(tokenId, deployment.chain)
+      )
+    );
+
+    // Process results
+    const results: Array<{ chain: string; success: boolean; error?: string }> = [];
+    let successful = 0;
+    let failed = 0;
+
+    for (let i = 0; i < eligibleChains.length; i++) {
+      const { deployment } = eligibleChains[i];
+      const result = graduationResults[i];
+
+      if (result.status === 'fulfilled' && result.value === true) {
+        successful++;
+        results.push({ chain: deployment.chain, success: true });
+        console.log(`✅ Token ${tokenId} graduated on ${deployment.chain}`);
+      } else {
+        failed++;
+        const error = result.status === 'rejected' 
+          ? result.reason?.message || 'Unknown error'
+          : 'Graduation failed';
+        results.push({ chain: deployment.chain, success: false, error });
+        console.error(`❌ Token ${tokenId} graduation failed on ${deployment.chain}: ${error}`);
+      }
+    }
+
+    // Add chains that weren't eligible
+    const eligibleChainNames = new Set(eligibleChains.map(c => c.deployment.chain));
+    for (const dep of deployments) {
+      if (!eligibleChainNames.has(dep.chain)) {
+        results.push({ chain: dep.chain, success: false, error: 'Not ready for graduation' });
+      }
+    }
+
+    return {
+      totalChains: deployments.length,
+      eligibleChains: eligibleChains.length,
+      successful,
+      failed,
+      results,
+    };
+  } catch (error: any) {
+    console.error(`Error checking/graduating token ${tokenId} on all chains:`, error);
+    return {
+      totalChains: 0,
+      eligibleChains: 0,
+      successful: 0,
+      failed: 0,
+      results: [],
+    };
+  }
+}
+
+/**
  * Monitor all tokens for graduation
+ * Enhanced to handle cross-chain tokens with parallel execution
  */
 export async function monitorAllTokens(): Promise<void> {
   try {
     // Get all tokens with graduation threshold > 0 and not yet graduated
     const tokens = await dbAll(`
-      SELECT DISTINCT t.id, t.graduation_threshold
+      SELECT DISTINCT t.id, t.graduation_threshold, t.cross_chain_enabled
       FROM tokens t
       INNER JOIN token_deployments td ON t.id = td.token_id
       WHERE t.graduation_threshold > 0
@@ -251,20 +367,27 @@ export async function monitorAllTokens(): Promise<void> {
 
     console.log(`🔍 Monitoring ${tokens.length} tokens for graduation...`);
 
-    for (const token of tokens) {
-      // Get all deployments for this token
-      const deployments = await dbAll(
-        'SELECT chain FROM token_deployments WHERE token_id = ? AND status = ? AND (is_graduated = 0 OR is_graduated IS NULL)',
-        [token.id, 'deployed']
-      ) as any[];
-
-      for (const dep of deployments) {
-        try {
-          await checkAndGraduate(token.id, dep.chain);
-        } catch (error) {
-          console.error(`Error monitoring token ${token.id} on ${dep.chain}:`, error);
-        }
-      }
+    // Process tokens in parallel batches (max 5 at a time to avoid overwhelming the system)
+    const batchSize = 5;
+    for (let i = 0; i < tokens.length; i += batchSize) {
+      const batch = tokens.slice(i, i + batchSize);
+      
+      await Promise.allSettled(
+        batch.map(async (token) => {
+          try {
+            const result = await checkAndGraduateTokenOnAllChains(token.id);
+            
+            if (result.eligibleChains > 0) {
+              console.log(
+                `📊 Token ${token.id}: ${result.successful}/${result.eligibleChains} chains graduated successfully` +
+                (result.failed > 0 ? `, ${result.failed} failed` : '')
+              );
+            }
+          } catch (error) {
+            console.error(`Error monitoring token ${token.id}:`, error);
+          }
+        })
+      );
     }
   } catch (error) {
     console.error('Error in graduation monitoring:', error);

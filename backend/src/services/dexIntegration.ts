@@ -20,7 +20,46 @@ interface DEXPoolResult {
 }
 
 /**
+ * Get the appropriate DEX name for a chain
+ */
+export function getDEXNameForChain(chain: string): string {
+  const chainLower = chain.toLowerCase();
+  
+  if (chainLower.includes('solana')) {
+    return 'raydium';
+  } else if (chainLower.includes('ethereum') || chainLower.includes('sepolia')) {
+    return 'uniswap-v3';
+  } else if (chainLower.includes('bsc') || chainLower.includes('binance')) {
+    return 'pancakeswap';
+  } else if (chainLower.includes('base')) {
+    return 'baseswap'; // BaseSwap or Uniswap V3 on Base
+  }
+  
+  return 'unknown';
+}
+
+/**
+ * Validate chain support for DEX graduation
+ */
+export function isChainSupportedForGraduation(chain: string): boolean {
+  const chainLower = chain.toLowerCase();
+  const supportedChains = [
+    'solana',
+    'ethereum',
+    'sepolia',
+    'bsc',
+    'bsc-testnet',
+    'binance',
+    'base',
+    'base-sepolia',
+  ];
+  
+  return supportedChains.some(supported => chainLower.includes(supported));
+}
+
+/**
  * Create DEX pool based on chain
+ * Enhanced with chain validation and better error messages
  */
 export async function createDEXPool(
   tokenId: string,
@@ -31,26 +70,49 @@ export async function createDEXPool(
 ): Promise<DEXPoolResult> {
   const chainLower = chain.toLowerCase();
 
+  // Validate chain support
+  if (!isChainSupportedForGraduation(chain)) {
+    return {
+      success: false,
+      error: `DEX integration not supported for chain: ${chain}. Supported chains: Solana, Ethereum, BSC, Base`,
+      dexName: 'unknown',
+    };
+  }
+
   try {
+    const dexName = getDEXNameForChain(chain);
+    console.log(`🔄 Creating ${dexName} pool for token ${tokenId} on ${chain}...`);
+
+    let result: DEXPoolResult;
+    
     if (chainLower.includes('solana')) {
-      return await createRaydiumPool(tokenAddress, reserveAmount, tokenAmount);
+      result = await createRaydiumPool(tokenAddress, reserveAmount, tokenAmount);
     } else if (chainLower.includes('ethereum') || chainLower.includes('sepolia')) {
-      return await createUniswapV3Pool(tokenAddress, reserveAmount, tokenAmount, chain);
+      result = await createUniswapV3Pool(tokenAddress, reserveAmount, tokenAmount, chain);
     } else if (chainLower.includes('bsc') || chainLower.includes('binance')) {
-      return await createPancakeSwapPool(tokenAddress, reserveAmount, tokenAmount, chain);
+      result = await createPancakeSwapPool(tokenAddress, reserveAmount, tokenAmount, chain);
     } else if (chainLower.includes('base')) {
-      return await createBaseSwapPool(tokenAddress, reserveAmount, tokenAmount, chain);
+      result = await createBaseSwapPool(tokenAddress, reserveAmount, tokenAmount, chain);
     } else {
-      return {
+      result = {
         success: false,
         error: `DEX integration not supported for chain: ${chain}`,
+        dexName: 'unknown',
       };
     }
+
+    // Ensure dexName is set
+    if (!result.dexName) {
+      result.dexName = dexName;
+    }
+
+    return result;
   } catch (error: any) {
     console.error(`Error creating DEX pool for ${chain}:`, error);
     return {
       success: false,
       error: error.message || 'Failed to create DEX pool',
+      dexName: getDEXNameForChain(chain),
     };
   }
 }
