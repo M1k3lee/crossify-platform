@@ -431,3 +431,204 @@ router.get('/:id/stats', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * PATCH /api/presale/:id/wallets
+ * Update wallet addresses for fund splitting
+ */
+router.patch('/:id/wallets', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { liquidity_wallet, dev_wallet, marketing_wallet, auto_split_enabled, split_threshold_sol } = req.body;
+
+    const presale = await pgGet('SELECT * FROM presale_config WHERE id = $1', [id]);
+    if (!presale) {
+      return res.status(404).json({ error: 'Presale not found' });
+    }
+
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (liquidity_wallet !== undefined) {
+      updates.push(`liquidity_wallet = $${paramIndex++}`);
+      values.push(liquidity_wallet);
+    }
+    if (dev_wallet !== undefined) {
+      updates.push(`dev_wallet = $${paramIndex++}`);
+      values.push(dev_wallet);
+    }
+    if (marketing_wallet !== undefined) {
+      updates.push(`marketing_wallet = $${paramIndex++}`);
+      values.push(marketing_wallet);
+    }
+    if (auto_split_enabled !== undefined) {
+      updates.push(`auto_split_enabled = $${paramIndex++}`);
+      values.push(auto_split_enabled);
+    }
+    if (split_threshold_sol !== undefined) {
+      updates.push(`split_threshold_sol = $${paramIndex++}`);
+      values.push(split_threshold_sol);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(id);
+
+    await pgRun(
+      `UPDATE presale_config SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+      values
+    );
+
+    res.json({ message: 'Wallet addresses updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating wallets:', error);
+    res.status(500).json({ error: error.message || 'Failed to update wallets' });
+  }
+});
+
+/**
+ * POST /api/presale/:id/split
+ * Manually trigger fund splitting
+ */
+router.post('/:id/split', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { amount } = req.body;
+
+    const { getPresaleFundSplitter } = await import('../services/presaleFundSplitter');
+    const splitter = getPresaleFundSplitter();
+
+    const result = await splitter.splitFunds(id, amount);
+
+    if (result.success) {
+      res.json({
+        message: 'Funds split successfully',
+        splitId: result.splitId,
+        txHashes: result.txHashes,
+      });
+    } else {
+      res.status(400).json({ error: result.error });
+    }
+  } catch (error: any) {
+    console.error('Error splitting funds:', error);
+    res.status(500).json({ error: error.message || 'Failed to split funds' });
+  }
+});
+
+/**
+ * GET /api/presale/:id/splits
+ * Get split history for a presale
+ */
+router.get('/:id/splits', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { limit = '50' } = req.query;
+
+    const { getPresaleFundSplitter } = await import('../services/presaleFundSplitter');
+    const splitter = getPresaleFundSplitter();
+
+    const splits = await splitter.getSplitHistory(id, parseInt(limit as string));
+    res.json(splits);
+  } catch (error: any) {
+    console.error('Error fetching splits:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch splits' });
+  }
+});
+
+/**
+ * GET /api/presale/:id/unsplit
+ * Get accumulated unsplit funds
+ */
+router.get('/:id/unsplit', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const { getPresaleFundSplitter } = await import('../services/presaleFundSplitter');
+    const splitter = getPresaleFundSplitter();
+
+    const unsplit = await splitter.getUnsplitFunds(id);
+    res.json(unsplit || { accumulated_sol: 0 });
+  } catch (error: any) {
+    console.error('Error fetching unsplit funds:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch unsplit funds' });
+  }
+});
+
+/**
+ * POST /api/presale/:id/distribute-tokens
+ * Distribute CFY tokens to presale buyers
+ */
+router.post('/:id/distribute-tokens', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { batch_size, max_recipients, tge_only, tge_percentage } = req.body;
+
+    const { getCFYTokenDistributionService } = await import('../services/cfyTokenDistribution');
+    const distributionService = getCFYTokenDistributionService();
+
+    let result;
+    if (tge_only) {
+      // Distribute only TGE (Token Generation Event) tokens
+      result = await distributionService.distributeTGE(id, tge_percentage || 20);
+    } else {
+      // Full batch distribution
+      result = await distributionService.batchDistribute(
+        id,
+        batch_size || 10,
+        max_recipients
+      );
+    }
+
+    res.json({
+      message: 'Token distribution completed',
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('Error distributing tokens:', error);
+    res.status(500).json({ error: error.message || 'Failed to distribute tokens' });
+  }
+});
+
+/**
+ * GET /api/presale/:id/distribution-status
+ * Get token distribution status
+ */
+router.get('/:id/distribution-status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const { getCFYTokenDistributionService } = await import('../services/cfyTokenDistribution');
+    const distributionService = getCFYTokenDistributionService();
+
+    const status = await distributionService.getDistributionStatus(id);
+    res.json(status);
+  } catch (error: any) {
+    console.error('Error fetching distribution status:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch distribution status' });
+  }
+});
+
+/**
+ * GET /api/presale/:id/unclaimed-allocations
+ * Get list of unclaimed token allocations
+ */
+router.get('/:id/unclaimed-allocations', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { limit = '100' } = req.query;
+
+    const { getCFYTokenDistributionService } = await import('../services/cfyTokenDistribution');
+    const distributionService = getCFYTokenDistributionService();
+
+    const allocations = await distributionService.getUnclaimedAllocations(id, parseInt(limit as string));
+    res.json(allocations);
+  } catch (error: any) {
+    console.error('Error fetching unclaimed allocations:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch unclaimed allocations' });
+  }
+});
+
