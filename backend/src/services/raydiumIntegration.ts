@@ -105,13 +105,9 @@ export async function migrateLiquidityToRaydium(
   chain: string
 ): Promise<RaydiumPoolResult> {
   try {
-    if (!chain.toLowerCase().includes('solana')) {
-      return {
-        success: false,
-        error: 'Raydium migration only supported for Solana tokens',
-      };
-    }
-
+    // Use the unified DEX integration service
+    const { createDEXPool } = await import('./dexIntegration');
+    
     // Get token deployment info
     const { dbGet } = await import('../db/adapter');
     const deployment = await dbGet(
@@ -135,18 +131,23 @@ export async function migrateLiquidityToRaydium(
       };
     }
 
-    // Get reserve and supply amounts
-    const reserveAmount = BigInt(Math.floor(parseFloat(deployment.reserve_balance || '0') * 1e9)); // Convert to lamports
-    const tokenAmount = BigInt(Math.floor(parseFloat(deployment.current_supply || '0') * 1e9)); // Assuming 9 decimals
-
-    // Create Raydium pool
-    const result = await createRaydiumPool(
+    // Create DEX pool using unified service
+    const result = await createDEXPool(
+      tokenId,
+      chain,
       deployment.token_address,
-      reserveAmount,
-      tokenAmount
+      deployment.reserve_balance || '0',
+      deployment.current_supply || '0'
     );
 
-    return result;
+    // Convert to RaydiumPoolResult format
+    return {
+      success: result.success,
+      poolAddress: result.poolAddress,
+      txHash: result.txHash,
+      liquidity: result.liquidity ? BigInt(result.liquidity) : undefined,
+      error: result.error,
+    };
   } catch (error: any) {
     console.error('Error migrating liquidity to Raydium:', error);
     return {

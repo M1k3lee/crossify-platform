@@ -1073,6 +1073,30 @@ router.get('/:id/graduation-status', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/analytics/graduation - Get graduation analytics
+router.get('/analytics/graduation', async (req: Request, res: Response) => {
+  try {
+    const { getGraduationStats, getPostGraduationPerformance, getGraduationTimeline, getGraduationRateByThreshold } = await import('../services/graduationAnalytics');
+    
+    const [stats, performance, timeline, rateByThreshold] = await Promise.all([
+      getGraduationStats(),
+      getPostGraduationPerformance(),
+      getGraduationTimeline(30),
+      getGraduationRateByThreshold(),
+    ]);
+
+    res.json({
+      stats,
+      performance,
+      timeline,
+      rateByThreshold,
+    });
+  } catch (error) {
+    console.error('Error fetching graduation analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch graduation analytics' });
+  }
+});
+
 // GET /tokens/:id/status - Must be before /:id route
 router.get('/:id/status', async (req: Request, res: Response) => {
   try {

@@ -170,32 +170,49 @@ export async function checkAndGraduate(tokenId: string, chain: string): Promise<
     console.log(`   Market Cap: $${status.currentMarketCap.toFixed(2)}`);
     console.log(`   Threshold: $${status.graduationThreshold.toFixed(2)}`);
 
-    // For Solana tokens, trigger Raydium deployment
-    if (chain.toLowerCase().includes('solana')) {
-      try {
-        const { migrateLiquidityToRaydium } = await import('./raydiumIntegration');
-        const result = await migrateLiquidityToRaydium(tokenId, chain);
+    // Trigger DEX deployment based on chain
+    try {
+      const { createDEXPool } = await import('./dexIntegration');
+      
+      // Get deployment info
+      const deployment = await dbGet(
+        `SELECT token_address, reserve_balance, current_supply 
+         FROM token_deployments 
+         WHERE token_id = ? AND chain = ?`,
+        [tokenId, chain]
+      ) as any;
+
+      if (deployment && deployment.token_address) {
+        const result = await createDEXPool(
+          tokenId,
+          chain,
+          deployment.token_address,
+          deployment.reserve_balance || '0',
+          deployment.current_supply || '0'
+        );
         
-        if (result.success) {
+        if (result.success && result.poolAddress) {
           // Update database with graduation status and DEX pool
           await dbRun(
             `UPDATE token_deployments 
              SET is_graduated = 1, 
                  dex_pool_address = ?,
-                 dex_name = 'raydium',
+                 dex_name = ?,
                  graduated_at = CURRENT_TIMESTAMP,
                  graduation_tx_hash = ?
              WHERE token_id = ? AND chain = ?`,
-            [result.poolAddress, result.txHash, tokenId, chain]
+            [result.poolAddress, result.dexName || 'dex', result.txHash, tokenId, chain]
           );
 
-          console.log(`✅ Token ${tokenId} graduated to Raydium! Pool: ${result.poolAddress}`);
+          console.log(`✅ Token ${tokenId} graduated to ${result.dexName || 'DEX'}! Pool: ${result.poolAddress}`);
           return true;
+        } else {
+          console.warn(`⚠️ DEX pool creation failed for ${tokenId} on ${chain}: ${result.error}`);
         }
-      } catch (error) {
-        console.error(`Error migrating to Raydium for ${tokenId}:`, error);
-        // Still mark as graduated in contract, even if Raydium deployment fails
       }
+    } catch (error) {
+      console.error(`Error migrating to DEX for ${tokenId}:`, error);
+      // Still mark as graduated in contract, even if DEX deployment fails
     }
 
     // For EVM chains, just mark as graduated (DEX deployment handled separately)
