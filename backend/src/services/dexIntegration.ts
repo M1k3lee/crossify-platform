@@ -65,7 +65,8 @@ async function createRaydiumPool(
 ): Promise<DEXPoolResult> {
   try {
     const { Connection, PublicKey, Keypair } = await import('@solana/web3.js');
-    const { RaydiumSDK } = await import('@raydium-io/raydium-sdk');
+    // Note: @raydium-io/raydium-sdk is optional - only needed for Solana DEX graduation
+    // If not installed, this function will return an error which is handled gracefully
     
     const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
     const connection = new Connection(rpcUrl, 'confirmed');
@@ -80,7 +81,7 @@ async function createRaydiumPool(
     }
 
     // Parse private key (supports multiple formats)
-    let payer: Keypair;
+    let payer: InstanceType<typeof Keypair>;
     try {
       const bs58 = (await import('bs58')).default;
       if (privateKey.length >= 80) {
@@ -102,10 +103,37 @@ async function createRaydiumPool(
     
     // Initialize Raydium SDK v2
     // Note: Raydium SDK v2 uses Raydium.load() instead of new RaydiumSDK()
+    // @raydium-io/raydium-sdk is optional - if not installed, return error
+    // Use type assertion to avoid TypeScript errors for optional dependency
+    let Raydium: any;
     try {
-      const { Raydium } = await import('@raydium-io/raydium-sdk');
+      // Dynamic import with error handling for optional dependency
+      // Use string literal to avoid TypeScript checking at compile time
+      const raydiumModule = await import('@raydium-io/raydium-sdk' as string).catch(() => null) as any;
+      if (!raydiumModule) {
+        return {
+          success: false,
+          error: 'Raydium SDK not available. Install @raydium-io/raydium-sdk for Solana DEX support.',
+        };
+      }
+      Raydium = raydiumModule.Raydium || raydiumModule.default?.Raydium;
       
-      const raydium = await Raydium.load({
+      if (!Raydium) {
+        return {
+          success: false,
+          error: 'Raydium SDK not available. Install @raydium-io/raydium-sdk for Solana DEX support.',
+        };
+      }
+    } catch (importError: any) {
+      return {
+        success: false,
+        error: `Raydium SDK import failed: ${importError.message}. Install @raydium-io/raydium-sdk for Solana DEX support.`,
+      };
+    }
+    
+    try {
+      // Raydium SDK is optional dependency, types may not be available
+      const raydium = await (Raydium as any).load({
         connection,
         owner: payer.publicKey,
         disableLoadToken: false,
