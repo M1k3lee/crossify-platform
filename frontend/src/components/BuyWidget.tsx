@@ -818,7 +818,9 @@ export default function BuyWidget({
       console.log(`💰 Total cost with 2% buffer: ${totalCostEth.toFixed(6)} ${chainSymbol}`);
       
       // Final validation before sending - must be valid and within contract limits
-      const totalCostUSD = totalCostEth * 3000; // Rough ETH price estimate
+      // Use correct price for chain: BNB ~$600, ETH ~$3000
+      const nativeTokenPriceUSD = chainSymbol === 'BNB' ? 600 : 3000;
+      const totalCostUSD = totalCostEth * nativeTokenPriceUSD;
       
       // Only validate that total cost is a valid number and within contract's 100 ETH/BNB limit
       if (isNaN(totalCostEth) || !isFinite(totalCostEth) || totalCostWei <= 0) {
@@ -850,6 +852,39 @@ export default function BuyWidget({
       }
       
       console.log(`🚀 Sending buy transaction with value: ${totalCostWei.toString()} wei (${totalCostEth.toFixed(6)} ${chainSymbol})`);
+      
+      // CRITICAL: Validate transaction value is reasonable before sending
+      // Check if price seems way too high (likely due to wrong basePrice/slope in contract)
+      const estimatedCostUSD = totalCostEth * (chainSymbol === 'BNB' ? 600 : 3000);
+      if (estimatedCostUSD > 1000) {
+        console.warn(`⚠️ WARNING: Transaction cost is very high: ${totalCostEth.toFixed(6)} ${chainSymbol} (~$${estimatedCostUSD.toFixed(2)})`);
+        console.warn(`   This might indicate the contract has incorrect basePrice/slope values.`);
+        console.warn(`   The contract may have been deployed with USD values instead of native token values.`);
+        
+        // Show user-friendly warning
+        const userConfirmed = window.confirm(
+          `⚠️ High Transaction Cost Warning\n\n` +
+          `You're about to send: ${totalCostEth.toFixed(6)} ${chainSymbol} (~$${estimatedCostUSD.toFixed(2)})\n\n` +
+          `This seems unusually high for ${amount} tokens.\n\n` +
+          `This might be because the token was deployed with incorrect price parameters.\n\n` +
+          `Do you want to proceed anyway?`
+        );
+        
+        if (!userConfirmed) {
+          throw new Error('Transaction cancelled by user due to high cost warning');
+        }
+      }
+      
+      // Additional validation: Check if value exceeds reasonable limits
+      // For BSC: 1 BNB max (~$600), For ETH: 0.1 ETH max (~$300) for testnet
+      const maxReasonableValue = chainSymbol === 'BNB' ? 1 : 0.1;
+      if (totalCostEth > maxReasonableValue) {
+        throw new Error(
+          `Transaction value too high: ${totalCostEth.toFixed(6)} ${chainSymbol} exceeds reasonable limit of ${maxReasonableValue} ${chainSymbol}.\n\n` +
+          `This likely indicates the contract has incorrect basePrice/slope values.\n\n` +
+          `Please contact the token creator or try a much smaller amount.`
+        );
+      }
       
       const tx = await curveContract.buy(tokenAmount, {
         value: totalCostWei,
