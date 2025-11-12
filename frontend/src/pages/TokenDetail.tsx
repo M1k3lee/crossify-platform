@@ -2162,6 +2162,9 @@ export default function TokenDetail() {
         />
         )}
 
+      {/* Graduation Confetti Animation */}
+      <GraduationConfetti trigger={showConfetti} />
+
       {/* Graduation Celebration Modal */}
       <GraduationCelebration
         isVisible={showCelebration}
