@@ -96,25 +96,56 @@ async function createRaydiumPool(
       };
     }
 
-    const raydiumSDK = new RaydiumSDK({ connection });
-    
     // Convert amounts to proper units
     const solAmount = BigInt(Math.floor(parseFloat(reserveAmount) * 1e9)); // SOL to lamports
     const tokenAmountBig = BigInt(Math.floor(parseFloat(tokenAmount) * 1e9)); // Assuming 9 decimals
     
-    // Create pool using Raydium SDK
-    // Note: This is a simplified version - actual implementation may vary based on SDK version
-    const poolInfo = await raydiumSDK.liquidity.createPool({
-      baseMint: new PublicKey(tokenMint),
-      quoteMint: new PublicKey('So11111111111111111111111111111111111111112'), // SOL mint
-      baseAmount: tokenAmountBig,
-      quoteAmount: solAmount,
-      feeRate: 25, // 0.25% fee (standard for Raydium)
-    });
+    // Initialize Raydium SDK v2
+    // Note: Raydium SDK v2 uses Raydium.load() instead of new RaydiumSDK()
+    try {
+      const { Raydium } = await import('@raydium-io/raydium-sdk');
+      
+      const raydium = await Raydium.load({
+        connection,
+        owner: payer.publicKey,
+        disableLoadToken: false,
+      });
 
-    // Send transaction
-    const tx = await poolInfo.send({ payer });
-    
+      // Create pool - Raydium SDK v2 structure
+      const SOL_MINT = new PublicKey('So11111111111111111111111111111111111111112');
+      const TOKEN_MINT = new PublicKey(tokenMint);
+      
+      // Create liquidity pool
+      // Note: Actual method may vary - consult latest Raydium SDK docs
+      const createPoolResult = await raydium.liquidity.createPool({
+        baseMint: TOKEN_MINT,
+        quoteMint: SOL_MINT,
+        baseAmount: tokenAmountBig,
+        quoteAmount: solAmount,
+        feeRate: 25, // 0.25% fee
+      });
+
+      // Build and send transaction
+      const { txId } = await createPoolResult.send({ payer });
+      
+      // Get pool address from result
+      const poolAddress = createPoolResult.poolAddress?.toString() || 'pending';
+      
+      return {
+        success: true,
+        poolAddress,
+        txHash: txId,
+        liquidity: (solAmount + tokenAmountBig).toString(),
+        dexName: 'raydium',
+      };
+    } catch (sdkError: any) {
+      console.error('Raydium SDK error:', sdkError);
+      return {
+        success: false,
+        error: `Raydium SDK error: ${sdkError.message}. Please verify SDK version, RPC URL, and private key.`,
+        dexName: 'raydium',
+      };
+    }
   } catch (error: any) {
     console.error('Error creating Raydium pool:', error);
     return {
