@@ -448,7 +448,7 @@ export default function Presale() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => {
-                          // This will trigger wallet connection via WalletMultiButton
+                          // Show wallet selection UI
                           setSendMode('connect');
                         }}
                         className="flex-1 px-4 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
@@ -464,9 +464,17 @@ export default function Presale() {
                         Send Manually
                       </button>
                     </div>
-                    {sendMode === 'connect' && (
-                      <div className="flex justify-center">
-                        <WalletMultiButton className="!bg-gradient-to-r !from-primary-600 !to-blue-600 hover:!from-primary-700 hover:!to-blue-700 !text-white !font-semibold !rounded-lg !transition-all" />
+                    {sendMode === 'connect' && !connected && (
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                        <p className="text-sm text-blue-300 mb-3 text-center">Select your wallet to connect and send SOL:</p>
+                        <div className="flex justify-center">
+                          <WalletMultiButton className="!bg-gradient-to-r !from-primary-600 !to-blue-600 hover:!from-primary-700 hover:!to-blue-700 !text-white !font-semibold !rounded-lg !transition-all" />
+                        </div>
+                      </div>
+                    )}
+                    {sendMode === 'manual' && (
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+                        <p className="text-sm text-gray-300 mb-2">Copy the address below and send SOL from your wallet:</p>
                       </div>
                     )}
                   </div>
