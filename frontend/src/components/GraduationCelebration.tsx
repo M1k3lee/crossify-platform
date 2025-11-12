@@ -17,7 +17,7 @@ export default function GraduationCelebration({
   isVisible,
   tokenName,
   tokenSymbol,
-  chain,
+  chain: _chain,
   dexPoolAddress,
   dexName = 'DEX',
   onClose,

@@ -298,25 +298,6 @@ export default function TokenDetail() {
 
   // Detect graduation status change and show celebration
   const [showConfetti, setShowConfetti] = useState(false);
-  
-  useEffect(() => {
-    const currentIsGraduated = someGraduated || (selectedDeployment?.isGraduated === true);
-    
-    // If token just graduated (wasn't graduated before, but is now)
-    if (currentIsGraduated && !previousGraduationStatus.current) {
-      console.log('🎉 Token has graduated! Showing celebration...');
-      setShowCelebration(true);
-      setShowConfetti(true);
-      
-      // Hide confetti after animation completes
-      setTimeout(() => {
-        setShowConfetti(false);
-      }, 3000);
-    }
-    
-    // Update previous status
-    previousGraduationStatus.current = currentIsGraduated;
-  }, [someGraduated, selectedDeployment?.isGraduated]);
 
   // Extract customization data with safe fallbacks
   const customization = useMemo(() => {
@@ -574,6 +555,26 @@ export default function TokenDetail() {
     console.log('⚠️ Using first deployment (may not have addresses):', deployments[0]?.chain);
     return deployments[0] || null;
   }, [deployments, selectedChainFromUrl]);
+  
+  // Detect graduation status change and show celebration (after selectedDeployment is defined)
+  useEffect(() => {
+    const currentIsGraduated = someGraduated || (selectedDeployment?.isGraduated === true);
+    
+    // If token just graduated (wasn't graduated before, but is now)
+    if (currentIsGraduated && !previousGraduationStatus.current) {
+      console.log('🎉 Token has graduated! Showing celebration...');
+      setShowCelebration(true);
+      setShowConfetti(true);
+      
+      // Hide confetti after animation completes
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 3000);
+    }
+    
+    // Update previous status
+    previousGraduationStatus.current = currentIsGraduated;
+  }, [someGraduated, selectedDeployment?.isGraduated]);
   
   // Normalize chain name for components (map testnet names to mainnet names)
   const selectedChain = useMemo(() => {
