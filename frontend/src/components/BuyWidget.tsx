@@ -105,19 +105,17 @@ export default function BuyWidget({
           'function slope() external view returns (uint256)',
           'function totalSupplySold() external view returns (uint256)',
           'function useGlobalSupply() external view returns (bool)',
-          'function globalSupplyTracker() external view returns (address)',
           'function getSupplyForPricing() external view returns (uint256)',
         ];
         const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, ethersProvider);
         
         // Get all values in parallel
-        const [currentPriceWei, basePriceWei, slopeWei, localSupplyWei, useGlobalSupply, globalSupplyTrackerAddr, supplyForPricingWei] = await Promise.all([
+        const [currentPriceWei, basePriceWei, slopeWei, localSupplyWei, useGlobalSupply, supplyForPricingWei] = await Promise.all([
           curveContract.getCurrentPrice(),
           curveContract.basePrice(),
           curveContract.slope(),
           curveContract.totalSupplySold(),
           curveContract.useGlobalSupply(),
-          curveContract.globalSupplyTracker(),
           curveContract.getSupplyForPricing().catch(() => null),
         ]);
         
