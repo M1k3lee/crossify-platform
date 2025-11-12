@@ -157,8 +157,11 @@ async function getMarketCapFromContract(curveAddress: string, chain: string): Pr
 
 /**
  * Check if token needs graduation and trigger if needed
+ * Enhanced with better error handling and retry logic
  */
-export async function checkAndGraduate(tokenId: string, chain: string): Promise<boolean> {
+export async function checkAndGraduate(tokenId: string, chain: string, retryCount: number = 0): Promise<boolean> {
+  const maxRetries = 3;
+  
   try {
     const status = await checkGraduationStatus(tokenId, chain);
     
@@ -169,6 +172,14 @@ export async function checkAndGraduate(tokenId: string, chain: string): Promise<
     console.log(`🎓 Token ${tokenId} on ${chain} has reached graduation threshold!`);
     console.log(`   Market Cap: $${status.currentMarketCap.toFixed(2)}`);
     console.log(`   Threshold: $${status.graduationThreshold.toFixed(2)}`);
+    console.log(`   Chain: ${chain} → DEX: ${getDEXNameForChain(chain)}`);
+
+    // Validate chain support
+    const { isChainSupportedForGraduation } = await import('./dexIntegration');
+    if (!isChainSupportedForGraduation(chain)) {
+      console.warn(`⚠️ Chain ${chain} not supported for DEX graduation`);
+      return false;
+    }
 
     // Trigger DEX deployment based on chain
     try {
@@ -182,55 +193,131 @@ export async function checkAndGraduate(tokenId: string, chain: string): Promise<
         [tokenId, chain]
       ) as any;
 
-      if (deployment && deployment.token_address) {
-        const result = await createDEXPool(
-          tokenId,
-          chain,
-          deployment.token_address,
-          deployment.reserve_balance || '0',
-          deployment.current_supply || '0'
-        );
-        
-        if (result.success && result.poolAddress) {
-          // Update database with graduation status and DEX pool
-          await dbRun(
-            `UPDATE token_deployments 
-             SET is_graduated = 1, 
-                 dex_pool_address = ?,
-                 dex_name = ?,
-                 graduated_at = CURRENT_TIMESTAMP,
-                 graduation_tx_hash = ?
-             WHERE token_id = ? AND chain = ?`,
-            [result.poolAddress, result.dexName || 'dex', result.txHash, tokenId, chain]
-          );
-
-          console.log(`✅ Token ${tokenId} graduated to ${result.dexName || 'DEX'}! Pool: ${result.poolAddress}`);
-          return true;
-        } else {
-          console.warn(`⚠️ DEX pool creation failed for ${tokenId} on ${chain}: ${result.error}`);
-        }
+      if (!deployment || !deployment.token_address) {
+        console.warn(`⚠️ No deployment found for token ${tokenId} on ${chain}`);
+        return false;
       }
-    } catch (error) {
-      console.error(`Error migrating to DEX for ${tokenId}:`, error);
-      // Still mark as graduated in contract, even if DEX deployment fails
+
+      // Check minimum liquidity requirement (0.1 native token)
+      const reserveAmount = parseFloat(deployment.reserve_balance || '0');
+      const minLiquidity = 0.1;
+      
+      if (reserveAmount < minLiquidity) {
+        console.warn(
+          `⚠️ Insufficient liquidity for ${tokenId} on ${chain}: ` +
+          `${reserveAmount} < ${minLiquidity} (minimum required)`
+        );
+        return false;
+      }
+
+      // Create DEX pool
+      const result = await createDEXPool(
+        tokenId,
+        chain,
+        deployment.token_address,
+        deployment.reserve_balance || '0',
+        deployment.current_supply || '0'
+      );
+      
+      if (result.success && result.poolAddress) {
+        // Update database with graduation status and DEX pool
+        await dbRun(
+          `UPDATE token_deployments 
+           SET is_graduated = 1, 
+               dex_pool_address = ?,
+               dex_name = ?,
+               graduated_at = CURRENT_TIMESTAMP,
+               graduation_tx_hash = ?
+           WHERE token_id = ? AND chain = ?`,
+          [
+            result.poolAddress,
+            result.dexName || getDEXNameForChain(chain),
+            result.txHash || null,
+            tokenId,
+            chain
+          ]
+        );
+
+        console.log(
+          `✅ Token ${tokenId} graduated on ${chain} to ${result.dexName || getDEXNameForChain(chain)}! ` +
+          `Pool: ${result.poolAddress}`
+        );
+        return true;
+      } else {
+        const errorMsg = result.error || 'Unknown error';
+        console.warn(`⚠️ DEX pool creation failed for ${tokenId} on ${chain}: ${errorMsg}`);
+        
+        // Retry if we haven't exceeded max retries
+        if (retryCount < maxRetries) {
+          const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+          console.log(`🔄 Retrying graduation for ${tokenId} on ${chain} in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return await checkAndGraduate(tokenId, chain, retryCount + 1);
+        }
+        
+        return false;
+      }
+    } catch (error: any) {
+      console.error(`Error migrating to DEX for ${tokenId} on ${chain}:`, error);
+      
+      // Retry on transient errors
+      if (retryCount < maxRetries && isRetryableError(error)) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`🔄 Retrying graduation for ${tokenId} on ${chain} in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return await checkAndGraduate(tokenId, chain, retryCount + 1);
+      }
+      
+      return false;
     }
-
-    // For EVM chains, just mark as graduated (DEX deployment handled separately)
-    // The contract already set isGraduated = true, we just need to update DB
-    await dbRun(
-      `UPDATE token_deployments 
-       SET is_graduated = 1, 
-           graduated_at = CURRENT_TIMESTAMP
-       WHERE token_id = ? AND chain = ?`,
-      [tokenId, chain]
-    );
-
-    console.log(`✅ Token ${tokenId} on ${chain} marked as graduated in database`);
-    return true;
   } catch (error) {
     console.error(`Error checking/graduating token ${tokenId} on ${chain}:`, error);
     return false;
   }
+}
+
+/**
+ * Get DEX name for a chain
+ */
+function getDEXNameForChain(chain: string): string {
+  const chainLower = chain.toLowerCase();
+  
+  if (chainLower.includes('solana')) {
+    return 'raydium';
+  } else if (chainLower.includes('ethereum') || chainLower.includes('sepolia')) {
+    return 'uniswap-v3';
+  } else if (chainLower.includes('bsc') || chainLower.includes('binance')) {
+    return 'pancakeswap';
+  } else if (chainLower.includes('base')) {
+    return 'baseswap'; // or 'uniswap-v3' if using Uniswap on Base
+  }
+  
+  return 'unknown';
+}
+
+/**
+ * Check if an error is retryable
+ */
+function isRetryableError(error: any): boolean {
+  if (!error) return false;
+  
+  const errorMsg = error.message?.toLowerCase() || '';
+  const retryablePatterns = [
+    'network',
+    'timeout',
+    'connection',
+    'econnrefused',
+    'etimedout',
+    'rate limit',
+    'temporary',
+    '503',
+    '502',
+    '504',
+  ];
+  
+  return retryablePatterns.some(pattern => errorMsg.includes(pattern));
 }
 
 /**
