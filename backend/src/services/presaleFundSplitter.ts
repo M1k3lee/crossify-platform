@@ -170,9 +170,9 @@ export class PresaleFundSplitter {
       const fromWallet = this.operatorWallet; // In production, this should be the presale wallet's keypair
 
       const txHashes: string[] = [];
-      const liquidityPubkey = new PublicKey(config.liquidity_wallet);
-      const devPubkey = new PublicKey(config.dev_wallet);
-      const marketingPubkey = new PublicKey(config.marketing_wallet);
+      const liquidityPubkey = new PublicKey(config.liquidity_wallet!);
+      const devPubkey = new PublicKey(config.dev_wallet!);
+      const marketingPubkey = new PublicKey(config.marketing_wallet!);
 
       // Create transactions for each transfer
       // Note: We'll do them separately to track each one
@@ -372,4 +372,7 @@ export function getPresaleFundSplitter(): PresaleFundSplitter {
   }
   return splitterInstance;
 }
+
+
+
 

@@ -312,6 +312,21 @@ export class PresaleSolanaMonitor {
           transactionId
         );
       }
+
+      // Accumulate funds for splitting and check if auto-split should trigger
+      try {
+        const { getPresaleFundSplitter } = await import('./presaleFundSplitter');
+        const splitter = getPresaleFundSplitter();
+        
+        // Accumulate funds
+        await splitter.accumulateFunds(presaleId, transaction.sol_amount, transactionId);
+        
+        // Check if auto-split should trigger
+        await splitter.checkAndAutoSplit(presaleId);
+      } catch (error) {
+        console.error('⚠️  Error in fund splitting (non-fatal):', error);
+        // Don't throw - fund splitting failure shouldn't break transaction recording
+      }
     } catch (error) {
       console.error('❌ Error recording transaction:', error);
       throw error;

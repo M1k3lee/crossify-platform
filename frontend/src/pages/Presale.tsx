@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { Connection, PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
   Clock, Zap, TrendingUp, Users, Lock, Gift, ArrowRight, 
   Copy, Check, Wallet, ExternalLink, Share2, DollarSign,
-  Activity, Award, PieChart, AlertCircle, RefreshCw, Shield, Coins
+  Activity, Award, PieChart, AlertCircle, RefreshCw, Shield, Coins, Send, Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
@@ -57,13 +58,16 @@ interface Transaction {
 }
 
 export default function Presale() {
-  const { publicKey, connected, disconnect } = useWallet();
+  const { publicKey, connected, disconnect, sendTransaction } = useWallet();
   const [presale, setPresale] = useState<PresaleConfig | null>(null);
   const [allocation, setAllocation] = useState<Allocation | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [userReferralCode, setUserReferralCode] = useState('');
+  const [solAmount, setSolAmount] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendMode, setSendMode] = useState<'connect' | 'manual'>('connect');
 
   // Get presale ID from URL or use default
   const presaleId = new URLSearchParams(window.location.search).get('id') || 'default';
@@ -140,6 +144,93 @@ export default function Presale() {
     if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
     if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';
     return n.toFixed(2);
+  };
+
+  const quickAmounts = [0.5, 1, 3, 5, 10, 25, 50];
+
+  const handleSendSOL = async () => {
+    if (!presale) return;
+
+    const amount = parseFloat(solAmount);
+    
+    // Validation
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    if (amount < presale.min_purchase_sol) {
+      toast.error(`Minimum purchase is ${presale.min_purchase_sol} SOL`);
+      return;
+    }
+
+    if (presale.max_purchase_sol && amount > presale.max_purchase_sol) {
+      toast.error(`Maximum purchase is ${presale.max_purchase_sol} SOL`);
+      return;
+    }
+
+    // If not connected, show manual instructions
+    if (!connected || !publicKey) {
+      setSendMode('manual');
+      toast.info('Please connect your wallet to send SOL directly, or copy the address to send manually');
+      return;
+    }
+
+    try {
+      setSending(true);
+      
+      // Get connection (use mainnet or devnet based on environment)
+      const rpcUrl = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+      const connection = new Connection(rpcUrl, 'confirmed');
+
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash('confirmed');
+
+      // Create transaction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: new PublicKey(presale.solana_address),
+          lamports: amount * LAMPORTS_PER_SOL,
+        })
+      );
+
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      // Add memo if referral code exists
+      if (referralCode) {
+        // Create memo instruction manually (SPL Memo program)
+        const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+        const memoInstruction = {
+          programId: MEMO_PROGRAM_ID,
+          keys: [],
+          data: Buffer.from(`REF: ${referralCode}`, 'utf-8'),
+        };
+        transaction.add(memoInstruction);
+      }
+
+      // Sign and send transaction
+      const signature = await sendTransaction(transaction, connection);
+
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed');
+
+      toast.success(`Successfully sent ${amount} SOL!`);
+      setSolAmount('');
+      
+      // Refresh allocation after a short delay
+      setTimeout(() => {
+        loadPresale();
+        loadUserAllocation();
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('Error sending SOL:', error);
+      toast.error(error.message || 'Failed to send SOL');
+    } finally {
+      setSending(false);
+    }
   };
 
   // Check for referral code in URL
@@ -348,66 +439,195 @@ export default function Presale() {
                 </div>
               </div>
 
-              {/* Wallet Connection */}
-              {!connected ? (
-                <div className="w-full flex justify-center">
-                  <WalletMultiButton className="!bg-gradient-to-r !from-primary-600 !to-blue-600 hover:!from-primary-700 hover:!to-blue-700 !text-white !font-semibold !rounded-lg !transition-all" />
-                </div>
-              ) : (
-                <div className="bg-gray-800/50 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-sm">Connected</span>
-                    <button
-                      onClick={() => disconnect()}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                  <p className="text-white font-mono text-sm break-all">
-                    {publicKey?.toString().slice(0, 8)}...{publicKey?.toString().slice(-8)}
-                  </p>
-                </div>
-              )}
-
-              {/* Presale Address */}
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Send SOL to this address:
-                </label>
-                <div className="flex items-center gap-2 bg-gray-900/50 rounded-lg p-3 border border-gray-700">
-                  <code className="flex-1 text-sm text-white font-mono break-all">
-                    {presale.solana_address}
-                  </code>
-                  <button
-                    onClick={() => copyToClipboard(presale.solana_address)}
-                    className="p-2 hover:bg-gray-800 rounded-lg transition"
-                  >
-                    {copied ? (
-                      <Check className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-gray-400" />
+              {/* Wallet Connection & Send SOL Section */}
+              <div className="space-y-4">
+                {!connected ? (
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          // This will trigger wallet connection via WalletMultiButton
+                          setSendMode('connect');
+                        }}
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <Wallet className="w-5 h-5" />
+                        Connect & Send SOL
+                      </button>
+                      <button
+                        onClick={() => setSendMode('manual')}
+                        className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <Send className="w-5 h-5" />
+                        Send Manually
+                      </button>
+                    </div>
+                    {sendMode === 'connect' && (
+                      <div className="flex justify-center">
+                        <WalletMultiButton className="!bg-gradient-to-r !from-primary-600 !to-blue-600 hover:!from-primary-700 hover:!to-blue-700 !text-white !font-semibold !rounded-lg !transition-all" />
+                      </div>
                     )}
-                  </button>
-                  <a
-                    href={`https://solscan.io/account/${presale.solana_address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 hover:bg-gray-800 rounded-lg transition"
-                  >
-                    <ExternalLink className="w-4 h-4 text-gray-400" />
-                  </a>
-                </div>
-                {referralCode && (
-                  <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                    <p className="text-xs text-blue-300">
-                      💡 Using referral code: <strong>{referralCode}</strong>
-                    </p>
-                    <p className="text-xs text-blue-300/70 mt-1">
-                      Include this in your transaction memo: <code className="bg-gray-900/50 px-2 py-1 rounded">REF: {referralCode}</code>
+                  </div>
+                ) : (
+                  <div className="bg-gray-800/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-gray-400 text-sm">Connected</span>
+                      <button
+                        onClick={() => disconnect()}
+                        className="text-xs text-red-400 hover:text-red-300"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                    <p className="text-white font-mono text-sm break-all mb-3">
+                      {publicKey?.toString().slice(0, 8)}...{publicKey?.toString().slice(-8)}
                     </p>
                   </div>
                 )}
+
+                {/* SOL Amount Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Amount to Send (SOL)
+                  </label>
+                  
+                  {/* Quick Amount Buttons */}
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {quickAmounts.map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => setSolAmount(amount.toString())}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                          solAmount === amount.toString()
+                            ? 'bg-yellow-500 text-white'
+                            : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        }`}
+                      >
+                        {amount}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setSolAmount('')}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                        solAmount === '' || !quickAmounts.includes(parseFloat(solAmount) || 0)
+                          ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                          : 'bg-gray-800 text-gray-400'
+                      }`}
+                    >
+                      Custom
+                    </button>
+                  </div>
+
+                  {/* Amount Input */}
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={solAmount}
+                      onChange={(e) => setSolAmount(e.target.value)}
+                      placeholder="Enter amount"
+                      min={presale.min_purchase_sol}
+                      max={presale.max_purchase_sol || undefined}
+                      step="0.1"
+                      className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">SOL</span>
+                  </div>
+
+                  {/* Amount Info */}
+                  <div className="mt-2 text-xs text-gray-400">
+                    Min: {presale.min_purchase_sol} SOL
+                    {presale.max_purchase_sol && ` • Max: ${presale.max_purchase_sol} SOL`}
+                    {solAmount && (
+                      <span className="block mt-1 text-green-400">
+                        ≈ {formatNumber((parseFloat(solAmount) || 0) / presale.presale_price)} {presale.token_symbol}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Send Button */}
+                  {connected && publicKey && (
+                    <button
+                      onClick={handleSendSOL}
+                      disabled={sending || !solAmount || parseFloat(solAmount) <= 0}
+                      className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      {sending ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          Send {solAmount || '0'} SOL
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Presale Address (for manual sending) */}
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Presale Address {sendMode === 'manual' && '(Copy this address)'}
+                  </label>
+                  <div className="flex items-center gap-2 bg-gray-900/50 rounded-lg p-3 border border-gray-700">
+                    <code className="flex-1 text-sm text-white font-mono break-all">
+                      {presale.solana_address}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(presale.solana_address)}
+                      className="p-2 hover:bg-gray-800 rounded-lg transition"
+                      title="Copy address"
+                    >
+                      {copied ? (
+                        <Check className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+                    <a
+                      href={`https://solscan.io/account/${presale.solana_address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 hover:bg-gray-800 rounded-lg transition"
+                      title="View on Solscan"
+                    >
+                      <ExternalLink className="w-4 h-4 text-gray-400" />
+                    </a>
+                  </div>
+                  
+                  {/* Auto-Split Info */}
+                  <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-blue-300">
+                        <p className="font-semibold mb-1">💡 Automatic Fund Splitting</p>
+                        <p className="text-blue-300/80">
+                          When SOL is received at this address, it's automatically split:
+                          <span className="block mt-1">
+                            • {presale.liquidity_percentage}% → Liquidity • {presale.dev_percentage}% → Dev • {presale.marketing_percentage}% → Marketing
+                          </span>
+                          <span className="block mt-1 text-blue-300/70">
+                            This happens automatically via our backend service monitoring transactions.
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {referralCode && (
+                    <div className="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                      <p className="text-xs text-green-300">
+                        💡 Using referral code: <strong>{referralCode}</strong>
+                      </p>
+                      <p className="text-xs text-green-300/70 mt-1">
+                        {connected ? 'Will be included automatically' : 'Include in transaction memo: '}
+                        {!connected && <code className="bg-gray-900/50 px-2 py-1 rounded">REF: {referralCode}</code>}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
 
