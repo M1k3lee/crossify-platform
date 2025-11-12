@@ -275,37 +275,33 @@ export default function Marketplace() {
             <p className="text-gray-400 text-lg mb-2">No tokens found</p>
             <p className="text-gray-500 text-sm mb-4">Try adjusting your search or filters</p>
             
-            {/* Diagnostic information */}
-            <div className="mt-6 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg max-w-md mx-auto">
-              <p className="text-yellow-400 text-sm font-semibold mb-2">⚠️ Database Status</p>
-              <p className="text-gray-400 text-xs mb-3">
-                If you created tokens before, they may have been lost due to SQLite ephemeral storage on Railway.
-                Data is deleted on every redeploy with SQLite.
-              </p>
-              <div className="space-y-2 text-xs">
-                <p className="text-gray-500">
-                  <strong className="text-gray-400">Solution:</strong> Set up PostgreSQL on Railway for persistent storage.
+            {/* Diagnostic information - only show if no tokens found after a moment */}
+            {tokens.length === 0 && (
+              <div className="mt-6 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg max-w-md mx-auto">
+                <p className="text-yellow-400 text-sm font-semibold mb-2">ℹ️ No Tokens Found</p>
+                <p className="text-gray-400 text-xs mb-3">
+                  The marketplace is currently empty. This could mean:
                 </p>
-                <p className="text-gray-500">
-                  Check database status: <a 
-                    href={`${API_BASE}/health/tokens`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary-400 hover:text-primary-300 underline"
-                  >
-                    {API_BASE}/health/tokens
-                  </a>
-                </p>
-                <p className="text-gray-500">
-                  See <a 
-                    href="/docs" 
-                    className="text-primary-400 hover:text-primary-300 underline"
-                  >
-                    Documentation
-                  </a> for PostgreSQL setup instructions.
-                </p>
+                <div className="space-y-2 text-xs">
+                  <p className="text-gray-500">
+                    • No tokens have been created yet
+                  </p>
+                  <p className="text-gray-500">
+                    • Tokens may be hidden or deleted
+                  </p>
+                  <p className="text-gray-500">
+                    Check database status: <a 
+                      href={`${API_BASE}/health/tokens`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary-400 hover:text-primary-300 underline"
+                    >
+                      {API_BASE}/health/tokens
+                    </a>
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

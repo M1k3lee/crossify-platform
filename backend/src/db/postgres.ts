@@ -248,6 +248,7 @@ export async function initializePostgreSQLSchema(): Promise<void> {
       -- Add new columns if they don't exist (for existing databases)
       DO $$ 
       BEGIN
+        -- Token deployments columns
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'token_deployments' AND column_name = 'dex_pool_address') THEN
           ALTER TABLE token_deployments ADD COLUMN dex_pool_address TEXT;
         END IF;
@@ -259,6 +260,17 @@ export async function initializePostgreSQLSchema(): Promise<void> {
         END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'token_deployments' AND column_name = 'graduation_tx_hash') THEN
           ALTER TABLE token_deployments ADD COLUMN graduation_tx_hash TEXT;
+        END IF;
+        
+        -- Tokens table columns
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tokens' AND column_name = 'verified') THEN
+          ALTER TABLE tokens ADD COLUMN verified INTEGER NOT NULL DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tokens' AND column_name = 'verified_at') THEN
+          ALTER TABLE tokens ADD COLUMN verified_at TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tokens' AND column_name = 'verified_by') THEN
+          ALTER TABLE tokens ADD COLUMN verified_by TEXT;
         END IF;
       END $$;
 
