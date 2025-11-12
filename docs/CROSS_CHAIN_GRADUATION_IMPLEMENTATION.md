@@ -6,8 +6,13 @@ This document describes the implementation of a robust cross-chain DEX graduatio
 
 ## Key Features
 
-### ✅ Independent Per-Chain Graduation
-- Each chain graduates **independently** when its own market cap reaches the threshold
+### ✅ Coordinated Graduation for Cross-Chain Tokens
+- **Cross-chain tokens** (`cross_chain_enabled = true`): ALL chains graduate **simultaneously** when ANY chain hits threshold
+- **Maintains price consistency**: Prevents price divergence between chains
+- **Preserves selling point**: "Same price across all chains" remains true after graduation
+
+### ✅ Independent Graduation for Single-Chain Tokens
+- **Single-chain tokens**: Each chain graduates **independently** when its own market cap reaches the threshold
 - No artificial delays waiting for other chains
 - Natural progression per chain based on local market conditions
 
@@ -46,35 +51,37 @@ This document describes the implementation of a robust cross-chain DEX graduatio
 4. Creates Raydium pool with SOL + Token
 5. Updates database: `is_graduated = true`, `dex_pool_address = <raydium_pool>`, `dex_name = 'raydium'`
 
-### Cross-Chain Token Example
+### Cross-Chain Token Example (Coordinated Graduation)
 
 **Scenario**: User launches a cross-chain token on Solana, Ethereum, BSC, and Base
 
-1. Token is deployed on all 4 chains
+1. Token is deployed on all 4 chains with `cross_chain_enabled = true`
 2. Each chain's market cap grows independently:
-   - Solana: $60,000 (ready)
+   - Solana: $60,000 (ready - hit threshold!)
    - Ethereum: $45,000 (not ready)
    - BSC: $55,000 (ready)
    - Base: $30,000 (not ready)
 
-3. System checks all chains in parallel:
+3. System detects: **ANY chain hit threshold** → Trigger coordinated graduation
    ```
-   ✅ Solana: Ready for graduation
-   ❌ Ethereum: Not ready (45k < 50k threshold)
-   ✅ BSC: Ready for graduation
-   ❌ Base: Not ready (30k < 50k threshold)
+   🌐 Cross-chain token: Chain hit threshold!
+   Graduating ALL 4 chains simultaneously to maintain price consistency
    ```
 
-4. Graduates eligible chains in parallel:
-   - Solana → Raydium pool creation
-   - BSC → PancakeSwap pair creation
-   - Both execute simultaneously
+4. Graduates ALL chains in parallel (coordinated):
+   - Solana → Raydium pool creation (ready)
+   - Ethereum → Uniswap V3 pool creation (coordinated)
+   - BSC → PancakeSwap pair creation (ready)
+   - Base → BaseSwap pool creation (coordinated)
+   - All execute simultaneously
 
 5. Results:
-   - Solana: ✅ Success → Raydium pool created
-   - BSC: ✅ Success → PancakeSwap pair created
-   - Ethereum: ⏳ Waiting (will graduate when it hits $50k)
-   - Base: ⏳ Waiting (will graduate when it hits $50k)
+   - Solana: ✅ Success → Raydium pool created (ready)
+   - Ethereum: ✅ Success → Uniswap V3 pool created (coordinated)
+   - BSC: ✅ Success → PancakeSwap pair created (ready)
+   - Base: ✅ Success → BaseSwap pool created (coordinated)
+   
+6. **Price Consistency Maintained**: All chains move from bonding curve to DEX at the same time!
 
 6. Database updated per chain:
    ```sql
