@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { TrendingUp, Sparkles, Rocket, Coins, Zap, Settings, Pin, Archive, Trash2, X, Globe } from 'lucide-react';
+import { TrendingUp, Sparkles, Rocket, Coins, Zap, Settings, Pin, Archive, Trash2, X, Globe, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
+import GraduationAnalytics from '../components/GraduationAnalytics';
 import axios from 'axios';
 import { useAccount, useChainId } from 'wagmi';
 import toast from 'react-hot-toast';
@@ -32,6 +33,7 @@ function getChainNamesFromChainId(chainId: number): string[] {
 export default function Dashboard() {
   const { address } = useAccount();
   const chainId = useChainId();
+  const [showAnalytics, setShowAnalytics] = useState(false);
   
   // Get chain names based on connected chain, default to testnet
   const chains = chainId ? getChainNamesFromChainId(chainId) : ['base-sepolia', 'sepolia', 'bsc-testnet'];
