@@ -295,6 +295,20 @@ export default function TokenDetail() {
     }
   }, [deployments]);
 
+  // Detect graduation status change and show celebration
+  useEffect(() => {
+    const currentIsGraduated = someGraduated || (selectedDeployment?.isGraduated === true);
+    
+    // If token just graduated (wasn't graduated before, but is now)
+    if (currentIsGraduated && !previousGraduationStatus.current) {
+      console.log('🎉 Token has graduated! Showing celebration...');
+      setShowCelebration(true);
+    }
+    
+    // Update previous status
+    previousGraduationStatus.current = currentIsGraduated;
+  }, [someGraduated, selectedDeployment?.isGraduated]);
+
   // Extract customization data with safe fallbacks
   const customization = useMemo(() => {
     try {
