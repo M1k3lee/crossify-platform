@@ -20,7 +20,7 @@ export default function GraduationProgress({
   isGraduated: initialIsGraduated,
 }: GraduationProgressProps) {
   // Fetch real-time graduation status
-  const { data: graduationStatus, isLoading } = useQuery({
+  const { data: graduationStatus } = useQuery({
     queryKey: ['graduation-status', tokenId, chain],
     queryFn: async () => {
       try {
