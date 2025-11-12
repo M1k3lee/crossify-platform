@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Rocket, Zap, Globe, TrendingUp, Sparkles, ArrowRight, Network, Layers, Shield, CheckCircle, Trophy, BarChart3, Target, PartyPopper, Gauge } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
+import PresaleBanner from '../components/PresaleBanner';
 import SEO, { generateOrganizationSchema, generateWebSiteSchema, generateSoftwareApplicationSchema, generateHowToSchema, generateFAQSchema } from '../components/SEO';
 
 export default function Home() {
@@ -79,6 +80,9 @@ export default function Home() {
       <QuantumBackground />
       
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">
+        {/* Presale Banner - Prominent Promotion */}
+        <PresaleBanner />
+
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
