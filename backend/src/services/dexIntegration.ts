@@ -115,13 +115,6 @@ async function createRaydiumPool(
     // Send transaction
     const tx = await poolInfo.send({ payer });
     
-    return {
-      success: true,
-      poolAddress: poolInfo.poolAddress.toString(),
-      txHash: tx.signature,
-      liquidity: (solAmount + tokenAmountBig).toString(),
-      dexName: 'raydium',
-    };
   } catch (error: any) {
     console.error('Error creating Raydium pool:', error);
     return {
