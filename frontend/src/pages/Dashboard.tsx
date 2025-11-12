@@ -88,18 +88,40 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 bg-gradient-to-br from-primary-500 to-blue-600 rounded-xl">
-              <Sparkles className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-primary-500 to-blue-600 rounded-xl">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-400 to-blue-400 bg-clip-text text-transparent">
+                  Dashboard
+                </h1>
+                <p className="text-gray-400">Overview of your token launches and analytics</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-400 to-blue-400 bg-clip-text text-transparent">
-                Dashboard
-              </h1>
-              <p className="text-gray-400">Overview of your token launches and analytics</p>
-            </div>
+            <button
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 rounded-lg transition"
+            >
+              <BarChart3 className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-purple-300">
+                {showAnalytics ? 'Hide' : 'Show'} Analytics
+              </span>
+            </button>
           </div>
         </motion.div>
+
+        {/* Graduation Analytics */}
+        {showAnalytics && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <GraduationAnalytics />
+          </motion.div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
