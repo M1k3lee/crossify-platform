@@ -679,6 +679,42 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
   }
 });
 
+// POST /tokens/restore-deleted - Restore all deleted tokens (admin/creator action)
+// This endpoint allows restoring deleted tokens if they were accidentally deleted
+router.post('/restore-deleted', async (req: Request, res: Response) => {
+  try {
+    const creatorAddress = req.headers['x-creator-address'] as string;
+    const { restoreAll = false } = req.body;
+    
+    if (!creatorAddress && !restoreAll) {
+      return res.status(401).json({ error: 'Creator address is required, or set restoreAll=true' });
+    }
+    
+    let query = 'UPDATE tokens SET deleted = 0, updated_at = CURRENT_TIMESTAMP WHERE deleted = 1';
+    const params: any[] = [];
+    
+    // If restoreAll is not true, only restore tokens owned by the creator
+    if (!restoreAll && creatorAddress) {
+      query += ' AND LOWER(creator_address) = LOWER(?)';
+      params.push(creatorAddress);
+    }
+    
+    const result = await dbRun(query, params);
+    const restoredCount = (result as any)?.changes ?? (result as any)?.rowCount ?? 0;
+    
+    console.log(`✅ Restored ${restoredCount} deleted token(s)`);
+    
+    res.json({
+      success: true,
+      message: `Restored ${restoredCount} deleted token(s)`,
+      restoredCount,
+    });
+  } catch (error) {
+    console.error('Error restoring deleted tokens:', error);
+    res.status(500).json({ error: 'Failed to restore deleted tokens' });
+  }
+});
+
 // GET /tokens/marketplace
 router.get('/marketplace', async (req: Request, res: Response) => {
   try {
