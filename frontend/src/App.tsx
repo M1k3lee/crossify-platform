@@ -34,7 +34,35 @@ import ErrorBoundary from './components/ErrorBoundary';
 import '@rainbow-me/rainbowkit/styles.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // Don't retry on 404 (not found) or 401 (unauthorized)
+        if (error?.response?.status === 404 || error?.response?.status === 401) {
+          return false;
+        }
+        // Retry 429 (rate limit) errors with exponential backoff
+        if (error?.response?.status === 429) {
+          // Retry up to 3 times with exponential backoff
+          return failureCount < 3;
+        }
+        // Retry other errors up to 2 times
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex, error: any) => {
+        // For 429 errors, use exponential backoff: 1s, 2s, 4s
+        if (error?.response?.status === 429) {
+          return Math.min(1000 * Math.pow(2, attemptIndex), 10000);
+        }
+        // For other errors, use shorter delay: 500ms, 1s
+        return Math.min(500 * Math.pow(2, attemptIndex), 2000);
+      },
+      staleTime: 30000, // Consider data stale after 30 seconds
+      refetchOnWindowFocus: false, // Don't refetch on window focus to reduce API calls
+    },
+  },
+});
 
 // Component to clean up URLs and prevent index.html in paths
 function URLCleanup() {
