@@ -31,11 +31,14 @@ export default function Marketplace() {
     crossChain: false,
     verified: false,
   });
+  const [sortBy, setSortBy] = useState<string>('newest');
 
   const { data: marketplace, isLoading } = useQuery({
-    queryKey: ['marketplace', filters],
+    queryKey: ['marketplace', filters, sortBy],
     queryFn: async () => {
-      const response = await axios.get(`${API_BASE}/tokens/marketplace`);
+      const response = await axios.get(`${API_BASE}/tokens/marketplace`, {
+        params: { sortBy }
+      });
       return response.data;
     },
   });
@@ -160,13 +163,25 @@ export default function Marketplace() {
                 className="w-full pl-12 pr-4 py-3 bg-gray-800/80 backdrop-blur-sm border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />
             </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-6 py-3 bg-gray-800/80 hover:bg-gray-700/80 backdrop-blur-sm border border-gray-700 rounded-xl text-white transition flex items-center gap-2"
-            >
-              <Filter className="w-5 h-5" />
-              Filters
-            </button>
+            <div className="flex gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-3 bg-gray-800/80 backdrop-blur-sm border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="newest">Newest First</option>
+                <option value="latest_deployed">Latest Deployed</option>
+                <option value="oldest">Oldest First</option>
+                <option value="name">Name (A-Z)</option>
+              </select>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="px-6 py-3 bg-gray-800/80 hover:bg-gray-700/80 backdrop-blur-sm border border-gray-700 rounded-xl text-white transition flex items-center gap-2"
+              >
+                <Filter className="w-5 h-5" />
+                Filters
+              </button>
+            </div>
           </div>
 
           {/* Advanced Filters */}
