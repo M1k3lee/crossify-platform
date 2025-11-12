@@ -761,9 +761,10 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         GROUP_CONCAT(td.curve_address ORDER BY td.chain) as curve_addresses,
         GROUP_CONCAT(td.status ORDER BY td.chain) as deployment_statuses,
         GROUP_CONCAT(td.is_graduated ORDER BY td.chain) as graduation_statuses,
-        GROUP_CONCAT(td.market_cap ORDER BY td.chain) as market_caps
+        GROUP_CONCAT(td.market_cap ORDER BY td.chain) as market_caps,
+        MAX(td.created_at) as latest_deployment_date
       FROM tokens t
-      LEFT JOIN token_deployments td ON t.id = td.token_id
+      LEFT JOIN token_deployments td ON t.id = td.token_id AND td.status = 'deployed'
       WHERE (t.deleted IS NULL OR t.deleted = 0)
         AND (t.visible_in_marketplace IS NULL OR t.visible_in_marketplace = 1)
     `;
@@ -819,6 +820,11 @@ router.get('/marketplace', async (req: Request, res: Response) => {
         break;
       case 'name':
         query += ` ORDER BY t.name ASC`;
+        break;
+      case 'latest_deployed':
+        // Sort by latest deployment date, tokens with deployments first, then by token creation date
+        // Use COALESCE to handle NULL values (tokens without deployments)
+        query += ` ORDER BY latest_deployment_date DESC NULLS LAST, t.created_at DESC`;
         break;
       default:
         query += ` ORDER BY t.created_at DESC`;
