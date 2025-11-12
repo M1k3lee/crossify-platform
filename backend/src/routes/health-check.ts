@@ -82,3 +82,88 @@ router.get('/health/tokens', async (_req: Request, res: Response) => {
   }
 });
 
+// Comprehensive database diagnostic endpoint
+router.get('/health/database-diagnostic', async (_req: Request, res: Response) => {
+  try {
+    const { isUsingPostgreSQL } = await import('../db/adapter');
+    const usingPostgreSQL = isUsingPostgreSQL();
+    
+    const diagnostic: any = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: {
+        DATABASE_URL_set: !!process.env.DATABASE_URL,
+        DATABASE_URL_starts_with_postgres: process.env.DATABASE_URL?.startsWith('postgres') || false,
+        DATABASE_URL_length: process.env.DATABASE_URL?.length || 0,
+        NODE_ENV: process.env.NODE_ENV || 'not set',
+      },
+      database: {
+        type: usingPostgreSQL ? 'PostgreSQL' : 'SQLite',
+        configured: usingPostgreSQL,
+      },
+    };
+    
+    // If DATABASE_URL is set, show connection info (without password)
+    if (process.env.DATABASE_URL) {
+      try {
+        const url = new URL(process.env.DATABASE_URL);
+        diagnostic.environment.connection_info = {
+          protocol: url.protocol,
+          hostname: url.hostname,
+          port: url.port,
+          pathname: url.pathname,
+          username: url.username,
+          has_password: !!url.password,
+        };
+      } catch (e) {
+        diagnostic.environment.connection_info = 'Invalid DATABASE_URL format';
+      }
+    }
+    
+    // Try to query the database
+    try {
+      const { dbGet, dbAll } = await import('../db/adapter');
+      
+      // Test basic query
+      const testQuery = await dbGet('SELECT NOW() as current_time');
+      diagnostic.database.connected = true;
+      diagnostic.database.test_query_success = true;
+      
+      // Get counts
+      const tokenCount = await dbGet('SELECT COUNT(*) as count FROM tokens') as any;
+      const deploymentCount = await dbGet('SELECT COUNT(*) as count FROM token_deployments') as any;
+      const visibleTokenCount = await dbGet('SELECT COUNT(*) as count FROM tokens WHERE (deleted IS NULL OR deleted = 0) AND (visible_in_marketplace IS NULL OR visible_in_marketplace = 1)') as any;
+      
+      diagnostic.database.counts = {
+        tokens: tokenCount?.count || 0,
+        deployments: deploymentCount?.count || 0,
+        visible_tokens: visibleTokenCount?.count || 0,
+      };
+      
+      // Get sample tokens
+      const sampleTokens = await dbAll('SELECT id, name, symbol, deleted, visible_in_marketplace, created_at FROM tokens ORDER BY created_at DESC LIMIT 5') as any[];
+      diagnostic.database.sample_tokens = sampleTokens.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        symbol: t.symbol,
+        deleted: t.deleted,
+        visible: t.visible_in_marketplace,
+        created_at: t.created_at,
+      }));
+      
+    } catch (dbError: any) {
+      diagnostic.database.connected = false;
+      diagnostic.database.error = dbError.message;
+      diagnostic.database.error_stack = dbError.stack;
+    }
+    
+    res.json(diagnostic);
+  } catch (error: any) {
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      stack: error.stack,
+    });
+  }
+});
+
