@@ -27,6 +27,12 @@ const createTransporter = () => {
 // POST /contact
 router.post('/', async (req: Request, res: Response) => {
   try {
+    console.log('📧 Contact form received:', {
+      body: req.body,
+      headers: req.headers['content-type'],
+      method: req.method,
+    });
+    
     const data = contactSchema.parse(req.body);
 
     // Create transporter
@@ -112,9 +118,11 @@ The Crossify.io Team
     console.error('Contact form error:', error);
     
     if (error instanceof z.ZodError) {
+      // Get the first error message for simplicity
+      const firstError = error.errors[0];
+      const errorMessage = firstError ? `${firstError.path.join('.')}: ${firstError.message}` : 'Please check all fields and try again';
       return res.status(400).json({
-        error: 'Validation error',
-        details: error.errors,
+        error: errorMessage,
       });
     }
 
