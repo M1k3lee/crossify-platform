@@ -188,6 +188,11 @@ async function start() {
     startLiquidityMonitoringService();
     console.log('✅ Liquidity monitoring service started');
 
+    // Start graduation monitoring service
+    const { startGraduationMonitoringService } = await import('./services/graduationMonitor');
+    startGraduationMonitoringService();
+    console.log('✅ Graduation monitoring service started');
+
     // Start server
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

@@ -8,7 +8,7 @@ import {
   Github, BookOpen, MessageSquare, Youtube, Linkedin, Loader2,
   Share2, Users, Activity, Clock, Edit2, X, Save, Upload, Image as ImageIcon
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import AddLiquidityModal from '../components/AddLiquidityModal';
@@ -16,6 +16,8 @@ import BuyWidget from '../components/BuyWidget';
 import WalletHoldings from '../components/WalletHoldings';
 import TokenChart from '../components/TokenChart';
 import MarketDepthChart from '../components/MarketDepthChart';
+import GraduationProgress from '../components/GraduationProgress';
+import GraduationCelebration from '../components/GraduationCelebration';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import SEO from '../components/SEO';
@@ -58,6 +60,8 @@ export default function TokenDetail() {
   const [deploying, setDeploying] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const previousGraduationStatus = useRef<boolean>(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -1275,10 +1279,89 @@ export default function TokenDetail() {
           </div>
         )}
 
+        {/* Graduation Progress Bar */}
+        {selectedDeployment && 
+         !selectedDeployment.isGraduated && 
+         token?.graduationThreshold && 
+         token.graduationThreshold > 0 && (
+          <div className="mb-6">
+            <GraduationProgress
+              tokenId={id || ''}
+              chain={selectedChain}
+              graduationThreshold={token.graduationThreshold}
+              currentMarketCap={selectedDeployment.marketCap}
+              isGraduated={selectedDeployment.isGraduated}
+            />
+          </div>
+        )}
+
+        {/* DEX Pool Info (if graduated) */}
+        {selectedDeployment?.isGraduated && selectedDeployment.dexPoolAddress && (
+          <div className="mb-6">
+            <div className="bg-gradient-to-r from-green-900/50 to-emerald-900/50 rounded-xl p-6 border border-green-500/30 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-green-500/20 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-white">🎉 Token Graduated to DEX!</h3>
+                  <p className="text-sm text-gray-400">
+                    This token has successfully migrated to {selectedDeployment.dexName || 'DEX'}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="bg-white/5 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-400">DEX Pool Address</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedDeployment.dexPoolAddress);
+                        toast.success('Pool address copied!');
+                      }}
+                      className="flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition"
+                    >
+                      <code className="font-mono">
+                        {selectedDeployment.dexPoolAddress.slice(0, 8)}...{selectedDeployment.dexPoolAddress.slice(-6)}
+                      </code>
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {selectedDeployment.dexName && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">DEX</span>
+                      <span className="text-sm font-semibold text-white capitalize">{selectedDeployment.dexName}</span>
+                    </div>
+                  )}
+                  {selectedDeployment.graduatedAt && (
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm text-gray-400">Graduated</span>
+                      <span className="text-sm text-gray-300">
+                        {new Date(selectedDeployment.graduatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {selectedDeployment.dexName?.toLowerCase().includes('raydium') && (
+                  <a
+                    href={`https://raydium.io/liquidity/?ammId=${selectedDeployment.dexPoolAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold py-3 px-6 rounded-lg transition text-center flex items-center justify-center gap-2"
+                  >
+                    <span>Trade on Raydium</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Trading Section - Buy Widget + Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Buy Widget - Prominent */}
-          {selectedDeployment && selectedDeployment.curveAddress && selectedDeployment.tokenAddress && !allGraduated ? (
+          {selectedDeployment && selectedDeployment.curveAddress && selectedDeployment.tokenAddress && !selectedDeployment.isGraduated && !allGraduated ? (
             <div data-buy-widget>
               <BuyWidget
                 tokenId={id || ''}
@@ -1297,7 +1380,7 @@ export default function TokenDetail() {
                 }}
               />
             </div>
-          ) : deployments && deployments.length > 0 && !allGraduated ? (
+          ) : deployments && deployments.length > 0 && !allGraduated && !selectedDeployment?.isGraduated ? (
             <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
               <p className="text-yellow-400 text-sm mb-2">
                 ⚠️ Cannot buy on selected chain
@@ -2054,7 +2137,18 @@ export default function TokenDetail() {
             }, 3000);
           }}
         />
-      )}
+        )}
+
+      {/* Graduation Celebration Modal */}
+      <GraduationCelebration
+        isVisible={showCelebration}
+        tokenName={tokenName}
+        tokenSymbol={tokenSymbol}
+        chain={selectedChain}
+        dexPoolAddress={selectedDeployment?.dexPoolAddress}
+        dexName={selectedDeployment?.dexName || 'DEX'}
+        onClose={() => setShowCelebration(false)}
+      />
     </>
   );
 }

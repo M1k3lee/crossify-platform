@@ -1033,6 +1033,46 @@ router.get('/marketplace', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/:id/graduation-status - Get graduation status and progress
+router.get('/:id/graduation-status', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { chain } = req.query;
+
+    const { checkGraduationStatus } = await import('../services/graduationMonitor');
+    
+    if (chain) {
+      // Single chain status
+      const status = await checkGraduationStatus(id, chain as string);
+      if (!status) {
+        return res.status(404).json({ error: 'Token deployment not found' });
+      }
+      return res.json(status);
+    } else {
+      // All chains status
+      const deployments = await dbAll(
+        'SELECT chain FROM token_deployments WHERE token_id = ? AND status = ?',
+        [id, 'deployed']
+      ) as any[];
+
+      const statuses = await Promise.all(
+        deployments.map(async (dep) => {
+          const status = await checkGraduationStatus(id, dep.chain);
+          return status ? { chain: dep.chain, ...status } : null;
+        })
+      );
+
+      return res.json({
+        tokenId: id,
+        chains: statuses.filter(s => s !== null),
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching graduation status:', error);
+    res.status(500).json({ error: 'Failed to fetch graduation status' });
+  }
+});
+
 // GET /tokens/:id/status - Must be before /:id route
 router.get('/:id/status', async (req: Request, res: Response) => {
   try {
@@ -1151,6 +1191,10 @@ router.get('/:id/status', async (req: Request, res: Response) => {
         bridgeAddress: d.bridge_address || null,
         status: d.status || 'pending',
         isGraduated: isGraduated(d.is_graduated),
+        dexPoolAddress: d.dex_pool_address || null,
+        dexName: d.dex_name || null,
+        graduatedAt: d.graduated_at || null,
+        graduationTxHash: d.graduation_tx_hash || null,
         currentSupply: d.current_supply || '0',
         reserveBalance: d.reserve_balance || '0',
         marketCap: parseFloat(d.market_cap || '0') || 0,

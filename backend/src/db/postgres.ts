@@ -230,6 +230,10 @@ export async function initializePostgreSQLSchema(): Promise<void> {
         bridge_address TEXT,
         status TEXT NOT NULL DEFAULT 'pending',
         is_graduated BOOLEAN NOT NULL DEFAULT false,
+        dex_pool_address TEXT,
+        dex_name TEXT,
+        graduated_at TIMESTAMP,
+        graduation_tx_hash TEXT,
         current_supply TEXT NOT NULL DEFAULT '0',
         reserve_balance TEXT NOT NULL DEFAULT '0',
         market_cap DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -240,6 +244,23 @@ export async function initializePostgreSQLSchema(): Promise<void> {
         FOREIGN KEY (token_id) REFERENCES tokens(id) ON DELETE CASCADE,
         UNIQUE(token_id, chain)
       );
+      
+      -- Add new columns if they don't exist (for existing databases)
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'token_deployments' AND column_name = 'dex_pool_address') THEN
+          ALTER TABLE token_deployments ADD COLUMN dex_pool_address TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'token_deployments' AND column_name = 'dex_name') THEN
+          ALTER TABLE token_deployments ADD COLUMN dex_name TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'token_deployments' AND column_name = 'graduated_at') THEN
+          ALTER TABLE token_deployments ADD COLUMN graduated_at TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'token_deployments' AND column_name = 'graduation_tx_hash') THEN
+          ALTER TABLE token_deployments ADD COLUMN graduation_tx_hash TEXT;
+        END IF;
+      END $$;
 
       CREATE TABLE IF NOT EXISTS transactions (
         id SERIAL PRIMARY KEY,
