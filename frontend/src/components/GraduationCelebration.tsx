@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, ExternalLink, X, Sparkles } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 interface GraduationCelebrationProps {
   isVisible: boolean;
@@ -23,44 +24,74 @@ export default function GraduationCelebration({
 }: GraduationCelebrationProps) {
   useEffect(() => {
     if (isVisible) {
-      // Trigger confetti animation using canvas-confetti if available
-      // Otherwise, we'll use CSS animations
-      try {
-        // Try to use canvas-confetti if available
-        const confetti = (window as any).confetti;
-        if (confetti) {
-          const duration = 3000;
-          const animationEnd = Date.now() + duration;
-          const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+      // Epic confetti celebration!
+      const duration = 5000; // 5 seconds of confetti
+      const animationEnd = Date.now() + duration;
+      const defaults = { 
+        startVelocity: 30, 
+        spread: 360, 
+        ticks: 60, 
+        zIndex: 9999,
+        colors: ['#FFD700', '#FF6B6B', '#4ECDC7', '#45E7FF', '#FFA07A', '#98D8C8']
+      };
 
-          function randomInRange(min: number, max: number) {
-            return Math.random() * (max - min) + min;
-          }
-
-          const interval: any = setInterval(function() {
-            const timeLeft = animationEnd - Date.now();
-
-            if (timeLeft <= 0) {
-              return clearInterval(interval);
-            }
-
-            const particleCount = 50 * (timeLeft / duration);
-            confetti({
-              ...defaults,
-              particleCount,
-              origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
-            });
-            confetti({
-              ...defaults,
-              particleCount,
-              origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
-            });
-          }, 250);
-        }
-      } catch (error) {
-        // Confetti not available, that's okay
-        console.log('Confetti animation not available');
+      function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min;
       }
+
+      // Initial burst from center
+      confetti({
+        ...defaults,
+        particleCount: 100,
+        origin: { x: 0.5, y: 0.5 },
+        angle: randomInRange(55, 125),
+      });
+
+      // Burst from left
+      confetti({
+        ...defaults,
+        particleCount: 50,
+        origin: { x: 0.1, y: 0.3 },
+        angle: randomInRange(45, 135),
+      });
+
+      // Burst from right
+      confetti({
+        ...defaults,
+        particleCount: 50,
+        origin: { x: 0.9, y: 0.3 },
+        angle: randomInRange(45, 135),
+      });
+
+      // Continuous confetti shower
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now();
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval);
+        }
+
+        const particleCount = 50 * (timeLeft / duration);
+        
+        // Left side
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        });
+        
+        // Right side
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        });
+      }, 250);
+
+      // Cleanup
+      return () => {
+        clearInterval(interval);
+      };
     }
   }, [isVisible]);
 
