@@ -295,10 +295,14 @@ contract BondingCurve is Ownable, ReentrancyGuard {
     
     /**
      * @dev Get price for amount using LOCAL supply only (for transaction calculations)
+     * This is the EXACT price calculation used in buy() and sell() transactions
+     * Use this for accurate price estimates that match what the transaction will charge
+     * 
+     * CRITICAL: This uses LOCAL supply only, not global supply
      * This ensures failed transactions don't affect local price
      * Global supply is used for display/consistency, but transactions use local supply
      */
-    function _getPriceForAmountLocal(uint256 tokenAmount) internal view returns (uint256) {
+    function getPriceForAmountLocal(uint256 tokenAmount) public view returns (uint256) {
         require(tokenAmount > 0, "Amount must be greater than 0");
         
         // Use LOCAL supply only for transaction calculations
@@ -354,6 +358,16 @@ contract BondingCurve is Ownable, ReentrancyGuard {
         }
         
         return totalPrice;
+    }
+    
+    /**
+     * @dev Get price for amount using LOCAL supply only (for transaction calculations)
+     * This ensures failed transactions don't affect local price
+     * Global supply is used for display/consistency, but transactions use local supply
+     * @dev INTERNAL version - calls public function to avoid code duplication
+     */
+    function _getPriceForAmountLocal(uint256 tokenAmount) internal view returns (uint256) {
+        return getPriceForAmountLocal(tokenAmount);
     }
     
     /**
