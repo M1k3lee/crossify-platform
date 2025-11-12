@@ -219,9 +219,14 @@ export default function BuyWidget({
         const rpcUrl = getRpcUrlForChain(chain);
         const ethersProvider = new ethers.JsonRpcProvider(rpcUrl);
         
+        // Try to use getPriceForAmountLocal() first (new contracts)
+        // Fallback to getPriceForAmount() for older contracts
         const bondingCurveABI = [
+          'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
           'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
           'function getCurrentPrice() external view returns (uint256)',
+          'function buyFeePercent() external view returns (uint256)',
+          'function sellFeePercent() external view returns (uint256)',
         ];
 
         const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, ethersProvider);
@@ -250,8 +255,23 @@ export default function BuyWidget({
 
         if (tab === 'buy') {
           // Calculate ETH/BNB needed for token amount
+          // CRITICAL: Use getPriceForAmountLocal() which matches EXACTLY what buy() uses
+          // This ensures the estimate matches the transaction price perfectly
+          // Fallback to getPriceForAmount() for older contracts
+          let priceFromContract: bigint;
           try {
-            const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            priceFromContract = await curveContract.getPriceForAmountLocal(tokenAmount);
+          } catch (err: any) {
+            // Fallback for older contracts that don't have getPriceForAmountLocal()
+            if (err.message?.includes('getPriceForAmountLocal')) {
+              console.warn('⚠️ Contract does not have getPriceForAmountLocal(), using getPriceForAmount() (may be less accurate)');
+              priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            } else {
+              throw err;
+            }
+          }
+          
+          try {
             
             // CRITICAL: Check BigInt value BEFORE conversion (catches old contract bugs)
             if (priceFromContract > maxReasonableWei) {
@@ -273,32 +293,46 @@ export default function BuyWidget({
               return;
             }
             
-            // Additional validation: compare against expected price
-            if (expectedPriceEth > 0 && priceEth > expectedPriceEth * 10) {
-              console.warn(`⚠️ Contract price much higher than expected (${priceEth} vs ${expectedPriceEth} ${chainSymbol}), using safe fallback`);
-              const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
-              // Only reject if truly astronomical (>100 ETH/BNB)
-              if (safeEstimate > 100) {
-                console.warn(`⚠️ Fallback estimate too high: ${safeEstimate} ${chainSymbol}`);
-                setPriceEstimate(null);
-                setTokensEstimate(null);
-                return;
-              }
-              setPriceEstimate(safeEstimate);
-              setTokensEstimate(parseFloat(amount));
-            } else {
-              const priceWithFee = (priceFromContract * BigInt(110)) / BigInt(100); // 10% buffer
-              const priceWithFeeEth = Number(ethers.formatEther(priceWithFee));
-              // Only reject if truly astronomical (>100 ETH/BNB)
-              if (priceWithFeeEth > 100) {
-                console.warn(`⚠️ Price with fee too high: ${priceWithFeeEth} ${chainSymbol}`);
-                setPriceEstimate(null);
-                setTokensEstimate(null);
-                return;
-              }
-              setPriceEstimate(priceWithFeeEth);
-              setTokensEstimate(parseFloat(amount));
+            // CRITICAL FIX: Use EXACT transaction calculation
+            // getPriceForAmountLocal() matches what buy() uses, so price is accurate
+            // Now calculate fee and total cost exactly as the transaction does
+            let buyFeePercent: bigint = BigInt(0);
+            try {
+              buyFeePercent = await curveContract.buyFeePercent();
+            } catch (feeErr) {
+              console.warn('⚠️ Could not fetch buy fee percent, assuming 0%');
+              buyFeePercent = BigInt(0);
             }
+            
+            // Calculate fee and total cost EXACTLY as buy() does:
+            // fee = (price * buyFeePercent) / 10000
+            // totalCost = price + fee
+            const feeWei = (priceFromContract * buyFeePercent) / BigInt(10000);
+            let totalCostWei = priceFromContract + feeWei;
+            
+            // Add 2% buffer (matching handleBuy logic) to account for rounding/price changes
+            const bufferPercent = BigInt(102);
+            totalCostWei = (totalCostWei * bufferPercent) / BigInt(100);
+            
+            const totalCostEth = Number(ethers.formatEther(totalCostWei));
+            
+            // Only reject if truly astronomical (>100 ETH/BNB)
+            if (totalCostEth > 100) {
+              console.warn(`⚠️ Total cost too high: ${totalCostEth} ${chainSymbol}`);
+              setPriceEstimate(null);
+              setTokensEstimate(null);
+              return;
+            }
+            
+            // Warn if price is much higher than expected (but still show it)
+            if (expectedPriceEth > 0 && priceEth > expectedPriceEth * 2) {
+              console.warn(`⚠️ Contract price higher than expected (${priceEth} vs ${expectedPriceEth} ${chainSymbol})`);
+              console.warn(`   This might indicate high bonding curve parameters or accumulated supply.`);
+            }
+            
+            // Set estimate - this now matches the transaction calculation EXACTLY
+            setPriceEstimate(totalCostEth);
+            setTokensEstimate(parseFloat(amount));
           } catch {
             // Fallback to current price, but validate it's reasonable
             const safeEstimate = expectedPriceEth * 1.1; // Add 10% buffer
@@ -314,9 +348,22 @@ export default function BuyWidget({
           }
         } else {
           // Calculate ETH/BNB received for token amount
+          // Use getPriceForAmountLocal() for consistency (sell also uses local supply)
+          // Fallback to getPriceForAmount() for older contracts
+          let priceFromContract: bigint;
           try {
-            const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
-            
+            priceFromContract = await curveContract.getPriceForAmountLocal(tokenAmount);
+          } catch (err: any) {
+            // Fallback for older contracts that don't have getPriceForAmountLocal()
+            if (err.message?.includes('getPriceForAmountLocal')) {
+              console.warn('⚠️ Contract does not have getPriceForAmountLocal(), using getPriceForAmount() (may be less accurate)');
+              priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            } else {
+              throw err;
+            }
+          }
+          
+          try {
             // CRITICAL: Check BigInt value BEFORE conversion
             if (priceFromContract > maxReasonableWei) {
               console.warn(`⚠️ Contract price too high, using fallback`);
@@ -327,6 +374,23 @@ export default function BuyWidget({
             
             const priceEth = parseFloat(ethers.formatEther(priceFromContract));
             
+            // For sell, we need to subtract the sell fee
+            // Get sell fee percent and calculate amount received
+            let sellFeePercent: bigint = BigInt(0);
+            try {
+              sellFeePercent = await curveContract.sellFeePercent();
+            } catch (feeErr) {
+              console.warn('⚠️ Could not fetch sell fee percent, assuming 0%');
+              sellFeePercent = BigInt(0);
+            }
+            
+            // Calculate amount received EXACTLY as sell() does:
+            // fee = (price * sellFeePercent) / 10000
+            // amountReceived = price - fee
+            const feeWei = (priceFromContract * sellFeePercent) / BigInt(10000);
+            const amountReceivedWei = priceFromContract - feeWei;
+            const amountReceivedEth = Number(ethers.formatEther(amountReceivedWei));
+            
             // Only use fallback if price is truly astronomical (>100 ETH/BNB) or way off
             // Allow prices up to contract limit (100 ETH/BNB)
             if (priceEth > 100 || (expectedPriceEth > 0.0001 && priceEth > expectedPriceEth * 1000)) {
@@ -334,7 +398,8 @@ export default function BuyWidget({
               setPriceEstimate(expectedPriceEth);
               setTokensEstimate(parseFloat(amount));
             } else {
-              setPriceEstimate(priceEth);
+              // Set estimate to amount received (after fee)
+              setPriceEstimate(amountReceivedEth);
               setTokensEstimate(parseFloat(amount));
             }
           } catch {
@@ -479,7 +544,7 @@ export default function BuyWidget({
       
       const bondingCurveABI = [
         'function buy(uint256 tokenAmount) external payable',
-        'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
+        'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
         'function getCurrentPrice() external view returns (uint256)',
         'function isGraduated() external view returns (bool)',
         'function buyFeePercent() external view returns (uint256)',
@@ -555,8 +620,23 @@ export default function BuyWidget({
         }
 
         // Try to get price for amount
+        // CRITICAL: Use getPriceForAmountLocal() which matches EXACTLY what buy() uses
+        // This ensures our calculation matches the transaction price perfectly
+        // Fallback to getPriceForAmount() for older contracts
+        let priceFromContract: bigint;
         try {
-          const priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+          priceFromContract = await curveContract.getPriceForAmountLocal(tokenAmount);
+        } catch (err: any) {
+          // Fallback for older contracts that don't have getPriceForAmountLocal()
+          if (err.message?.includes('getPriceForAmountLocal')) {
+            console.warn('⚠️ Contract does not have getPriceForAmountLocal(), using getPriceForAmount() (may be less accurate)');
+            priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+          } else {
+            throw err;
+          }
+        }
+        
+        try {
           
           // First check: Validate the raw BigInt value before converting to ETH/BNB
           // Maximum reasonable price: 100 ETH/BNB = 100 * 10^18 wei
