@@ -18,6 +18,7 @@ import TokenChart from '../components/TokenChart';
 import MarketDepthChart from '../components/MarketDepthChart';
 import GraduationProgress from '../components/GraduationProgress';
 import GraduationCelebration from '../components/GraduationCelebration';
+import GraduationConfetti from '../components/GraduationConfetti';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import SEO from '../components/SEO';
@@ -296,6 +297,8 @@ export default function TokenDetail() {
   }, [deployments]);
 
   // Detect graduation status change and show celebration
+  const [showConfetti, setShowConfetti] = useState(false);
+  
   useEffect(() => {
     const currentIsGraduated = someGraduated || (selectedDeployment?.isGraduated === true);
     
@@ -303,6 +306,12 @@ export default function TokenDetail() {
     if (currentIsGraduated && !previousGraduationStatus.current) {
       console.log('🎉 Token has graduated! Showing celebration...');
       setShowCelebration(true);
+      setShowConfetti(true);
+      
+      // Hide confetti after animation completes
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 3000);
     }
     
     // Update previous status
