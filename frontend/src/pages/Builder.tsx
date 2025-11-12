@@ -1019,8 +1019,8 @@ export default function Builder() {
                   <div className="flex-1">
                     <h3 className="text-sm font-semibold text-blue-300 mb-2">Understanding Tokenomics</h3>
                     <div className="text-xs text-blue-200/80 space-y-2">
-                      <p><strong>Base Price:</strong> The starting price per token when your token launches. Lower prices (e.g., 0.0001) make tokens more accessible, while higher prices (e.g., 0.01) target premium buyers.</p>
-                      <p><strong>Slope:</strong> Controls how fast the price increases as more tokens are bought. Lower slopes (e.g., 0.00001) = slower price growth, higher slopes (e.g., 0.0001) = faster price growth.</p>
+                      <p><strong>Base Price (USD):</strong> The starting price per token in USD when your token launches. Lower prices (e.g., $0.0001) make tokens more accessible, while higher prices (e.g., $0.01) target premium buyers. Values are automatically converted to ETH/BNB based on current prices.</p>
+                      <p><strong>Slope (USD per token):</strong> Controls how much the price increases (in USD) as more tokens are bought. Lower slopes (e.g., $0.00001) = slower price growth, higher slopes (e.g., $0.0001) = faster price growth. Values are automatically converted to native token units.</p>
                     </div>
                   </div>
                 </div>
@@ -1029,11 +1029,11 @@ export default function Builder() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <label className="block text-sm font-medium text-gray-300">Starting Price</label>
+                    <label className="block text-sm font-medium text-gray-300">Starting Price (USD)</label>
                     <div className="group relative">
                       <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
                       <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 border border-gray-600 rounded-lg text-xs text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                        The initial price per token. Example: 0.0001 means 1 token costs 0.0001 ETH/BNB/SOL at launch.
+                        The initial price per token in USD. Example: 0.0001 means 1 token costs $0.0001 at launch. This will be automatically converted to ETH/BNB based on current prices (ETH ~$3000, BNB ~$600).
                       </div>
                     </div>
                   </div>
@@ -1044,8 +1044,13 @@ export default function Builder() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                     placeholder="0.0001"
                   />
+                  {formData.basePrice && !isNaN(parseFloat(formData.basePrice)) && parseFloat(formData.basePrice) > 0 && (
+                    <p className="text-xs text-blue-400 mt-1">
+                      ≈ {(parseFloat(formData.basePrice) / 3000).toFixed(8)} ETH or {(parseFloat(formData.basePrice) / 600).toFixed(8)} BNB
+                    </p>
+                  )}
                   <p className="text-xs text-gray-400 mt-2">
-                    💡 Tip: Start low (0.0001-0.001) for memecoins, higher (0.01+) for utility tokens
+                    💡 Tip: Start low ($0.0001-$0.001) for memecoins, higher ($0.01+) for utility tokens
                   </p>
                   {formData.basePrice && (isNaN(parseFloat(formData.basePrice)) || parseFloat(formData.basePrice) <= 0) && (
                     <p className="text-xs text-red-400 mt-1">Must be a positive number</p>
@@ -1053,11 +1058,11 @@ export default function Builder() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <label className="block text-sm font-medium text-gray-300">Price Growth Rate</label>
+                    <label className="block text-sm font-medium text-gray-300">Price Growth Rate (USD per token)</label>
                     <div className="group relative">
                       <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
                       <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 border border-gray-600 rounded-lg text-xs text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                        How quickly the price increases with each purchase. Lower = gradual growth, Higher = rapid price appreciation.
+                        How much the price increases (in USD) with each token purchased. Lower = gradual growth, Higher = rapid price appreciation. This will be automatically converted to native token units.
                       </div>
                     </div>
                   </div>
@@ -1068,8 +1073,13 @@ export default function Builder() {
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                     placeholder="0.00001"
                   />
+                  {formData.slope && !isNaN(parseFloat(formData.slope)) && parseFloat(formData.slope) >= 0 && (
+                    <p className="text-xs text-blue-400 mt-1">
+                      ≈ {(parseFloat(formData.slope) / 3000).toFixed(8)} ETH or {(parseFloat(formData.slope) / 600).toFixed(8)} BNB per token
+                    </p>
+                  )}
                   <p className="text-xs text-gray-400 mt-2">
-                    💡 Tip: 0.00001 = steady growth, 0.0001 = faster growth, 0.001 = very aggressive
+                    💡 Tip: $0.00001 = steady growth, $0.0001 = faster growth, $0.001 = very aggressive
                   </p>
                   {formData.slope && (isNaN(parseFloat(formData.slope)) || parseFloat(formData.slope) < 0) && (
                     <p className="text-xs text-red-400 mt-1">Must be a non-negative number</p>

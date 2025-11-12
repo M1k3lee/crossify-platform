@@ -243,8 +243,34 @@ export async function deployTokenOnEVM(
   // Contract expects initialSupply in base units (it multiplies by 10^18 internally)
   // So if user enters 1000000000, we pass 1000000000 and contract makes it 1000000000 * 10^18
   const initialSupply = BigInt(config.tokenData.initialSupply);
-  const basePrice = ethers.parseEther(config.curveData.basePrice); // Convert ETH to wei
-  const slope = ethers.parseEther(config.curveData.slope); // Convert ETH to wei
+  
+  // CRITICAL: basePrice and slope are entered in USD, but contract stores them in native token (ETH/BNB)
+  // We need to convert USD to native token based on current prices
+  // Approximate prices: ETH ~$3000, BNB ~$600, Base uses ETH pricing
+  const getNativeTokenPrice = (chain: string): number => {
+    const chainLower = chain.toLowerCase();
+    if (chainLower.includes('bsc') || chainLower.includes('binance')) {
+      return 600; // BNB price ~$600
+    }
+    // Ethereum, Base, and others use ETH pricing
+    return 3000; // ETH price ~$3000
+  };
+  
+  const nativeTokenPriceUSD = getNativeTokenPrice(chain);
+  const basePriceUSD = parseFloat(config.curveData.basePrice);
+  const slopeUSD = parseFloat(config.curveData.slope);
+  
+  // Convert USD to native token: nativeTokenAmount = usdAmount / nativeTokenPrice
+  const basePriceInNativeToken = (basePriceUSD / nativeTokenPriceUSD).toFixed(18);
+  const slopeInNativeToken = (slopeUSD / nativeTokenPriceUSD).toFixed(18);
+  
+  console.log(`💰 Price conversion for ${chain}:`);
+  console.log(`   Native token price: $${nativeTokenPriceUSD}`);
+  console.log(`   Base Price: $${basePriceUSD} → ${basePriceInNativeToken} ${chain.includes('bsc') ? 'BNB' : 'ETH'}`);
+  console.log(`   Slope: $${slopeUSD} per token → ${slopeInNativeToken} ${chain.includes('bsc') ? 'BNB' : 'ETH'} per token`);
+  
+  const basePrice = ethers.parseEther(basePriceInNativeToken); // Convert native token to wei
+  const slope = ethers.parseEther(slopeInNativeToken); // Convert native token to wei
   // graduationThreshold is in USD, scale by 1e18 (not parseEther which treats it as ETH)
   const graduationThreshold = ethers.parseUnits(config.curveData.graduationThreshold, 18);
   
