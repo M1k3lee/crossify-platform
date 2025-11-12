@@ -76,7 +76,7 @@ If PostgreSQL is connected but marketplace is empty:
 
 1. Check if tokens exist in database:
    ```bash
-   curl https://your-railway-url.up.railway.app/api/health/tokens
+   curl https://crossify-platform-production.up.railway.app/api/health/tokens
    ```
 
 2. If token count is 0, the database is empty. This could mean:
@@ -118,7 +118,7 @@ https://your-frontend-url/tokens?creator=YOUR_WALLET_ADDRESS
 **Fix:**
 1. Check token visibility:
    ```bash
-   curl https://your-railway-url.up.railway.app/api/health/tokens
+   curl https://crossify-platform-production.up.railway.app/api/health/tokens
    ```
 2. If `visibleTokens` is 0, check if tokens are hidden:
    - Look at `hiddenTokens` count
