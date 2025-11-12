@@ -29,7 +29,7 @@ export default function Contact() {
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/contact`, {
+      await axios.post(`${API_BASE}/contact`, {
         name: formData.name.trim(),
         email: formData.email.trim(),
         subject: formData.subject.trim(),
