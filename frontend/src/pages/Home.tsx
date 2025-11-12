@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Rocket, Zap, Globe, TrendingUp, Sparkles, ArrowRight, Network, Layers, Shield, CheckCircle } from 'lucide-react';
+import { Rocket, Zap, Globe, TrendingUp, Sparkles, ArrowRight, Network, Layers, Shield, CheckCircle, Trophy, BarChart3, Target, PartyPopper, Gauge } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import SEO, { generateOrganizationSchema, generateWebSiteSchema, generateSoftwareApplicationSchema, generateHowToSchema, generateFAQSchema } from '../components/SEO';
@@ -121,10 +121,29 @@ export default function Home() {
             <span className="text-purple-400 font-semibold">Solana</span>
           </p>
           
-          <p className="text-lg text-gray-400 mb-12 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
             Automatic price synchronization across all chains keeps your token's value consistent, 
             eliminating arbitrage and creating a seamless cross-chain experience powered by <span className="text-primary-400 font-semibold">LayerZero</span>.
           </p>
+          
+          <div className="flex flex-wrap justify-center gap-3 mb-12 max-w-3xl mx-auto">
+            {[
+              { text: 'DEX Auto-Graduation', className: 'bg-purple-500/20 border-purple-500/50 text-purple-300' },
+              { text: 'Pump.fun-Level Pricing', className: 'bg-blue-500/20 border-blue-500/50 text-blue-300' },
+              { text: 'Real-Time Analytics', className: 'bg-green-500/20 border-green-500/50 text-green-300' },
+              { text: '4+ DEX Support', className: 'bg-pink-500/20 border-pink-500/50 text-pink-300' },
+            ].map((badge, idx) => (
+              <motion.div
+                key={badge.text}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5 + idx * 0.1 }}
+                className={`px-4 py-2 ${badge.className} rounded-full text-sm font-medium backdrop-blur-sm border`}
+              >
+                {badge.text}
+              </motion.div>
+            ))}
+          </div>
 
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link
@@ -302,11 +321,102 @@ export default function Home() {
           </div>
         </motion.div>
 
+        {/* Premium Features Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.0 }}
+          className="mb-20"
+        >
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/50 rounded-full mb-4">
+              <Trophy className="w-5 h-5 text-yellow-400" />
+              <span className="text-yellow-300 font-semibold">Premium Features</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-400 bg-clip-text text-transparent">
+              Beyond Basic Token Launch
+            </h2>
+            <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+              Advanced features that set Crossify apart from other token launch platforms
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Target,
+                title: 'DEX Auto-Graduation',
+                description: 'Tokens automatically migrate to DEX (Raydium, Uniswap, PancakeSwap) when market cap threshold is reached. No manual intervention needed.',
+                gradient: 'from-purple-500 to-pink-600',
+                badge: 'Auto-Migration',
+              },
+              {
+                icon: Gauge,
+                title: 'Accurate Price Estimates',
+                description: 'Real-time price calculations that match transaction costs exactly. No surprises - what you see is what you pay, powered by pump.fun-style precision.',
+                gradient: 'from-blue-500 to-cyan-600',
+                badge: 'Pump.fun-Level',
+              },
+              {
+                icon: BarChart3,
+                title: 'Graduation Analytics',
+                description: 'Track success rates, time-to-graduation, and post-graduation performance. Data-driven insights for token creators and investors.',
+                gradient: 'from-green-500 to-emerald-600',
+                badge: 'Analytics',
+              },
+              {
+                icon: PartyPopper,
+                title: 'Celebration Animations',
+                description: 'Epic confetti celebrations when tokens graduate to DEX. Make milestone moments memorable with beautiful animations.',
+                gradient: 'from-yellow-500 to-orange-600',
+                badge: 'UX Delight',
+              },
+              {
+                icon: TrendingUp,
+                title: 'Real-Time Price Charts',
+                description: 'Live price tracking with beautiful charts. Monitor your token\'s performance across all chains in real-time.',
+                gradient: 'from-indigo-500 to-purple-600',
+                badge: 'Live Data',
+              },
+              {
+                icon: Network,
+                title: 'Multi-DEX Support',
+                description: 'Automatic deployment to Raydium (Solana), Uniswap V3 (Ethereum), PancakeSwap (BSC), and BaseSwap (Base) upon graduation.',
+                gradient: 'from-red-500 to-pink-600',
+                badge: '4+ DEXes',
+              },
+            ].map((feature, idx) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.1 + idx * 0.1 }}
+                className="group relative bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm p-6 rounded-2xl border border-gray-700 hover:border-primary-500/50 transition-all hover:shadow-xl hover:shadow-primary-500/20"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 rounded-2xl transition-opacity`} />
+                
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`inline-flex p-3 bg-gradient-to-br ${feature.gradient} rounded-xl shadow-lg`}>
+                      <feature.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full bg-gradient-to-r ${feature.gradient} text-white`}>
+                      {feature.badge}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2 text-white">{feature.title}</h3>
+                  <p className="text-gray-400 leading-relaxed text-sm">{feature.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* Technology Partners */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1 }}
+          transition={{ delay: 1.4 }}
           className="mb-20"
         >
           <div className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-700/50">
