@@ -322,7 +322,9 @@ function isRetryableError(error: any): boolean {
 
 /**
  * Check and graduate a token on multiple chains in parallel
- * This handles cross-chain tokens efficiently by graduating all eligible chains simultaneously
+ * For cross-chain tokens: Graduates ALL chains simultaneously when ANY chain hits threshold
+ * For single-chain tokens: Graduates only when that chain hits threshold
+ * This maintains price consistency across chains for cross-chain tokens
  */
 export async function checkAndGraduateTokenOnAllChains(tokenId: string): Promise<{
   totalChains: number;
@@ -332,6 +334,14 @@ export async function checkAndGraduateTokenOnAllChains(tokenId: string): Promise
   results: Array<{ chain: string; success: boolean; error?: string }>;
 }> {
   try {
+    // Get token info to check if it's cross-chain enabled
+    const token = await dbGet(
+      'SELECT cross_chain_enabled FROM tokens WHERE id = ?',
+      [tokenId]
+    ) as any;
+
+    const isCrossChain = token?.cross_chain_enabled === 1 || token?.cross_chain_enabled === true;
+
     // Get all deployments for this token
     const deployments = await dbAll(
       `SELECT chain, token_address, reserve_balance, current_supply, is_graduated, curve_address
@@ -353,6 +363,7 @@ export async function checkAndGraduateTokenOnAllChains(tokenId: string): Promise
 
     // Identify chains that need graduation
     const eligibleChains: Array<{ deployment: any; status: GraduationStatus }> = [];
+    let anyChainReady = false;
     
     for (let i = 0; i < deployments.length; i++) {
       const dep = deployments[i];
@@ -363,9 +374,73 @@ export async function checkAndGraduateTokenOnAllChains(tokenId: string): Promise
           deployment: dep,
           status: statusResult.value,
         });
+        anyChainReady = true;
       }
     }
 
+    // For cross-chain tokens: If ANY chain is ready, graduate ALL chains simultaneously
+    // This maintains price consistency across chains
+    if (isCrossChain && anyChainReady && deployments.length > 1) {
+      console.log(
+        `🌐 Cross-chain token ${tokenId}: Chain hit threshold! ` +
+        `Graduating ALL ${deployments.length} chains simultaneously to maintain price consistency`
+      );
+      
+      // Add all chains (even if they haven't hit threshold individually)
+      const allChainsToGraduate: Array<{ deployment: any; status: GraduationStatus | null }> = [];
+      
+      for (let i = 0; i < deployments.length; i++) {
+        const dep = deployments[i];
+        const statusResult = statusChecks[i];
+        const status = statusResult.status === 'fulfilled' ? statusResult.value : null;
+        
+        allChainsToGraduate.push({
+          deployment: dep,
+          status: status,
+        });
+      }
+
+      // Graduate all chains in parallel
+      const graduationResults = await Promise.allSettled(
+        allChainsToGraduate.map(({ deployment }) =>
+          checkAndGraduate(tokenId, deployment.chain)
+        )
+      );
+
+      // Process results
+      const results: Array<{ chain: string; success: boolean; error?: string }> = [];
+      let successful = 0;
+      let failed = 0;
+
+      for (let i = 0; i < allChainsToGraduate.length; i++) {
+        const { deployment, status } = allChainsToGraduate[i];
+        const result = graduationResults[i];
+
+        if (result.status === 'fulfilled' && result.value === true) {
+          successful++;
+          const wasReady = status?.needsGraduation ? ' (ready)' : ' (coordinated)';
+          results.push({ chain: deployment.chain, success: true });
+          console.log(`✅ Token ${tokenId} graduated on ${deployment.chain}${wasReady}`);
+        } else {
+          failed++;
+          const error = result.status === 'rejected' 
+            ? result.reason?.message || 'Unknown error'
+            : 'Graduation failed';
+          results.push({ chain: deployment.chain, success: false, error });
+          console.error(`❌ Token ${tokenId} graduation failed on ${deployment.chain}: ${error}`);
+        }
+      }
+
+      return {
+        totalChains: deployments.length,
+        eligibleChains: deployments.length, // All chains for cross-chain tokens
+        successful,
+        failed,
+        results,
+      };
+    }
+
+    // For single-chain tokens OR if no chain is ready: Only graduate eligible chains
     if (eligibleChains.length === 0) {
       return {
         totalChains: deployments.length,
@@ -385,7 +460,7 @@ export async function checkAndGraduateTokenOnAllChains(tokenId: string): Promise
       )
     );
 
-    // Process results
+    // Process results (for single-chain tokens or when not all chains graduate)
     const results: Array<{ chain: string; success: boolean; error?: string }> = [];
     let successful = 0;
     let failed = 0;
