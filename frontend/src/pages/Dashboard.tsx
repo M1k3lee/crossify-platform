@@ -303,7 +303,24 @@ function TokenCard({ token, address, onUpdate, index }: { token: any; address: s
                 <span className="text-xs px-2 py-0.5 bg-gray-600 text-gray-300 rounded">Archived</span>
               )}
               {!token.visibleInMarketplace && (
-                <span className="text-xs px-2 py-0.5 bg-orange-600 text-orange-100 rounded">Hidden</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-0.5 bg-orange-600 text-orange-100 rounded">Hidden</span>
+                  {isOwner && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleStatusUpdate('visibleInMarketplace', true);
+                      }}
+                      disabled={isUpdating}
+                      className="text-xs px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                      title="Make visible in marketplace"
+                    >
+                      <Globe className="w-3 h-3" />
+                      Unhide
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             <p className="text-sm text-gray-400">{token.symbol}</p>
