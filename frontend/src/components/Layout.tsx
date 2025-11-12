@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Home, Coins, Rocket, LayoutDashboard, LogIn, Menu, X } from 'lucide-react';
+import { Home, Coins, Rocket, LayoutDashboard, LogIn, Menu, X, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Logo from './Logo';
@@ -26,6 +26,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/', label: 'Home', icon: Home },
     { path: '/marketplace', label: 'Marketplace', icon: Coins },
     { path: '/builder', label: 'Launch Token', icon: Rocket },
+    { path: '/presale', label: 'Presale', icon: Zap, highlight: true },
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   ];
 
@@ -95,20 +96,50 @@ export default function Layout({ children }: LayoutProps) {
                             to={item.path}
                             className={`relative inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all flex-shrink-0 ${
                               isActive
-                                ? 'text-white'
-                                : 'text-gray-400 hover:text-gray-300'
+                                ? item.highlight 
+                                  ? 'text-white'
+                                  : 'text-white'
+                                : item.highlight
+                                  ? 'text-yellow-400 hover:text-yellow-300'
+                                  : 'text-gray-400 hover:text-gray-300'
                             }`}
                           >
                             {isActive && (
                               <motion.div
                                 layoutId="activeTab"
-                                className="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-blue-600/20 rounded-lg border border-primary-500/30"
+                                className={`absolute inset-0 rounded-lg border ${
+                                  item.highlight
+                                    ? 'bg-gradient-to-r from-yellow-500/20 to-orange-600/20 border-yellow-500/30'
+                                    : 'bg-gradient-to-r from-primary-500/20 to-blue-600/20 border-primary-500/30'
+                                }`}
                                 initial={false}
                                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                               />
                             )}
-                            <Icon className={`w-4 h-4 relative z-10 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
+                            {item.highlight && !isActive && (
+                              <motion.div
+                                className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-orange-600/10 rounded-lg border border-yellow-500/20"
+                                animate={{ opacity: [0.5, 1, 0.5] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                              />
+                            )}
+                            <Icon className={`w-4 h-4 relative z-10 flex-shrink-0 ${
+                              isActive 
+                                ? item.highlight 
+                                  ? 'text-yellow-400' 
+                                  : 'text-primary-400'
+                                : item.highlight
+                                  ? 'text-yellow-400'
+                                  : 'text-current'
+                            }`} />
                             <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                            {item.highlight && (
+                              <motion.span
+                                className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full"
+                                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                              />
+                            )}
                           </Link>
                         );
                       })}
@@ -205,12 +236,31 @@ export default function Layout({ children }: LayoutProps) {
                             onClick={() => setMobileMenuOpen(false)}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                               isActive
-                                ? 'text-white bg-primary-500/20'
-                                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/50'
+                                ? item.highlight
+                                  ? 'text-white bg-gradient-to-r from-yellow-500/20 to-orange-600/20'
+                                  : 'text-white bg-primary-500/20'
+                                : item.highlight
+                                  ? 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10'
+                                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/50'
                             }`}
                           >
-                            <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-400' : 'text-current'}`} />
+                            <Icon className={`w-5 h-5 flex-shrink-0 ${
+                              isActive 
+                                ? item.highlight 
+                                  ? 'text-yellow-400' 
+                                  : 'text-primary-400'
+                                : item.highlight
+                                  ? 'text-yellow-400'
+                                  : 'text-current'
+                            }`} />
                             <span>{item.label}</span>
+                            {item.highlight && (
+                              <motion.span
+                                className="ml-auto w-2 h-2 bg-yellow-400 rounded-full"
+                                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                                transition={{ duration: 1.5, repeat: Infinity }}
+                              />
+                            )}
                           </Link>
                         );
                       })}
