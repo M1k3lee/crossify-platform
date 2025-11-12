@@ -1058,7 +1058,9 @@ router.get('/:id/graduation-status', async (req: Request, res: Response) => {
       const statuses = await Promise.all(
         deployments.map(async (dep) => {
           const status = await checkGraduationStatus(id, dep.chain);
-          return status ? { chain: dep.chain, ...status } : null;
+          if (!status) return null;
+          // Status already includes chain from checkGraduationStatus, just return it
+          return status;
         })
       );
 
