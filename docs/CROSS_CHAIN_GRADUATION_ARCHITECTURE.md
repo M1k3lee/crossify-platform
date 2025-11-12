@@ -10,10 +10,16 @@ This document outlines the architecture for handling DEX graduation for cross-ch
 
 ## Design Principles
 
-### 1. **Independent Per-Chain Graduation**
-Each chain graduates **independently** when its own market cap reaches the threshold. This ensures:
+### 1. **Cross-Chain Coordination (Price Consistency)**
+For **cross-chain tokens** (cross_chain_enabled = true), ALL chains graduate **simultaneously** when ANY chain hits the threshold. This ensures:
+- **Price consistency**: All chains move from bonding curve to DEX at the same time
+- **No price divergence**: Prevents one chain being on DEX while others are on bonding curve
+- **Maintains selling point**: "Same price across all chains" remains true after graduation
+
+### 2. **Independent Per-Chain Graduation (Single-Chain Tokens)**
+For **single-chain tokens**, each chain graduates **independently** when its own market cap reaches the threshold. This ensures:
 - Natural progression per chain
-- No artificial delays waiting for other chains
+- No artificial delays
 - Better user experience (tokens graduate as they grow)
 
 ### 2. **Parallel Execution**
@@ -58,23 +64,34 @@ Create Raydium Pool
 Update Database (is_graduated = true, dex_pool_address, etc.)
 ```
 
-### Cross-Chain Token Graduation
+### Cross-Chain Token Graduation (Coordinated)
 
 ```
-Token (Solana + Ethereum + BSC + Base)
+Token (Solana + Ethereum + BSC + Base) [cross_chain_enabled = true]
   ↓
 Monitor All Chains in Parallel
   ↓
 ┌─────────────┬─────────────┬─────────────┬─────────────┐
 │   Solana    │  Ethereum   │     BSC     │    Base     │
 │ Market Cap  │ Market Cap  │ Market Cap  │ Market Cap  │
+│   $60,000   │   $45,000   │   $55,000   │   $30,000   │
 └─────────────┴─────────────┴─────────────┴─────────────┘
   ↓              ↓              ↓              ↓
 Threshold?    Threshold?    Threshold?    Threshold?
-  ↓              ↓              ↓              ↓
-Yes → Raydium  Yes → Uniswap  Yes → Pancake  Yes → BaseSwap
+  ✅ YES        ❌ NO          ✅ YES        ❌ NO
+  ↓
+ANY CHAIN READY? → YES (Solana hit threshold)
+  ↓
+🌐 COORDINATED GRADUATION: Graduate ALL chains simultaneously
+  ↓
+┌─────────────┬─────────────┬─────────────┬─────────────┐
+│   Solana    │  Ethereum   │     BSC     │    Base     │
+│  → Raydium  │ → Uniswap   │ → Pancake   │ → BaseSwap  │
+│  (ready)    │ (coordinated)│ (ready)     │ (coordinated)│
+└─────────────┴─────────────┴─────────────┴─────────────┘
   ↓              ↓              ↓              ↓
 Update DB     Update DB     Update DB     Update DB
+✅ All chains graduate together → Price consistency maintained!
 ```
 
 ## Implementation Strategy
@@ -82,11 +99,13 @@ Update DB     Update DB     Update DB     Update DB
 ### Phase 1: Enhanced Monitoring
 - Check all chains for a token simultaneously
 - Identify which chains are ready for graduation
-- Group eligible chains for parallel execution
+- **For cross-chain tokens**: If ANY chain is ready, mark ALL chains for graduation
+- **For single-chain tokens**: Only graduate chains that hit threshold
 
-### Phase 2: Parallel Graduation
-- Execute DEX pool creation for all eligible chains in parallel
-- Use Promise.all() or Promise.allSettled() for concurrent execution
+### Phase 2: Coordinated Parallel Graduation
+- **Cross-chain tokens**: Execute DEX pool creation for ALL chains in parallel (coordinated)
+- **Single-chain tokens**: Execute DEX pool creation for eligible chains only
+- Use Promise.allSettled() for concurrent execution
 - Track results per chain
 
 ### Phase 3: Error Handling
@@ -213,10 +232,30 @@ token_deployments (
 - Retry count per chain
 - Partial graduation rate (cross-chain tokens)
 
+## Why Coordinated Graduation for Cross-Chain Tokens?
+
+### The Problem
+If cross-chain tokens graduate independently:
+- **Chain A** graduates → Price now from DEX pool (e.g., $0.50)
+- **Chain B** still on bonding curve → Price from curve (e.g., $0.45)
+- **Result**: Price divergence! The "same price across chains" selling point is broken
+
+### The Solution
+Graduate ALL chains simultaneously:
+- **All chains** move from bonding curve to DEX at the same time
+- **Price consistency** maintained throughout graduation
+- **Selling point preserved**: "Same price across all chains" remains true
+
+### Trade-offs
+- **Pro**: Maintains price consistency (critical for cross-chain value prop)
+- **Pro**: Better user experience (all chains graduate together)
+- **Con**: Some chains may graduate before hitting individual threshold
+- **Mitigation**: Only applies to cross-chain tokens; single-chain tokens still graduate independently
+
 ## Future Enhancements
 
-1. **Graduation Coordination Mode**: Option to graduate all chains simultaneously when first chain hits threshold
-2. **Liquidity Rebalancing**: Before graduation, rebalance liquidity across chains if needed
-3. **Graduation Notifications**: Alert users when their tokens graduate
-4. **Graduation Analytics**: Track graduation patterns and optimize thresholds
+1. **Liquidity Rebalancing**: Before coordinated graduation, rebalance liquidity across chains if needed
+2. **Graduation Notifications**: Alert users when their tokens graduate
+3. **Graduation Analytics**: Track graduation patterns and optimize thresholds
+4. **Graduation Preview**: Show users which chains will graduate before execution
 
