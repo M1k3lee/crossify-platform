@@ -142,6 +142,34 @@ function convertToPostgreSQL(sql: string): string {
     return converted;
   });
 
+  // Handle SQLite DATE() function -> PostgreSQL DATE_TRUNC('day', ...) or ::date
+  // DATE(column) -> column::date
+  pgSQL = pgSQL.replace(/DATE\s*\(\s*([^)]+)\s*\)/gi, (match, column) => {
+    const col = column.trim();
+    const converted = `${col}::date`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 Converted: ${match} → ${converted}`);
+    }
+    return converted;
+  });
+
+  // Handle SQLite datetime() function -> PostgreSQL CURRENT_TIMESTAMP - INTERVAL
+  // datetime('now', '-7 days') -> CURRENT_TIMESTAMP - INTERVAL '7 days'
+  // datetime('now', '-1 day') -> CURRENT_TIMESTAMP - INTERVAL '1 day'
+  // datetime('now', '-30 days') -> CURRENT_TIMESTAMP - INTERVAL '30 days'
+  pgSQL = pgSQL.replace(/datetime\s*\(\s*'now'\s*,\s*'([^']+)'\s*\)/gi, (match, interval) => {
+    // Convert SQLite interval format to PostgreSQL INTERVAL format
+    // '-7 days' -> '7 days'
+    // '-1 day' -> '1 day'
+    // '-30 days' -> '30 days'
+    const intervalStr = interval.replace(/^-/, ''); // Remove leading minus
+    const converted = `CURRENT_TIMESTAMP - INTERVAL '${intervalStr}'`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 Converted: ${match} → ${converted}`);
+    }
+    return converted;
+  });
+
   // Replace ? placeholders with $1, $2, etc.
   let paramIndex = 1;
   pgSQL = pgSQL.replace(/\?/g, () => {
