@@ -625,9 +625,8 @@ export default function TokenDetail() {
   const tokenLogoIpfs = token?.logoIpfs || status?.token?.logoIpfs || null;
   
   // Get token image URL for sharing - prefer banner, then logo, then default
-  // This is used in SEO, schema, and TokenShareButton components
-  // @ts-ignore - tokenImage is used but TypeScript control flow analysis doesn't detect it due to conditional returns
-  const tokenImage: string = useMemo(() => {
+  // Calculate inline to avoid TypeScript unused variable issues
+  const getTokenImage = () => {
     if (bannerUrl) return bannerUrl;
     if (logoUrl) return logoUrl;
     if (tokenLogoIpfs) {
@@ -636,7 +635,7 @@ export default function TokenDetail() {
       if (url) return url;
     }
     return 'https://crossify.io/og-image.png';
-  }, [bannerUrl, logoUrl, tokenLogoIpfs, getImageUrl]);
+  };
   
   // Get chains for sharing
   const tokenChains = useMemo(() => {
@@ -674,7 +673,7 @@ export default function TokenDetail() {
           title="Token Not Found - Crossify.io"
           description="The token you're looking for doesn't exist."
           url={`https://crossify.io/token/${id}`}
-          image={tokenImage}
+          image={getTokenImage()}
         />
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-transparent">
           <div className="text-center max-w-2xl mx-auto px-4">
@@ -707,7 +706,7 @@ export default function TokenDetail() {
     );
   }
 
-  // Debug logging - include tokenImage to ensure it's tracked as used
+  // Debug logging
   console.log('TokenDetail render:', { 
     id, 
     hasToken: !!token, 
@@ -717,8 +716,7 @@ export default function TokenDetail() {
     statusError: statusError ? 'Error: ' + (statusError as any)?.message : null,
     selectedDeployment: selectedDeployment?.chain,
     tokenName,
-    tokenSymbol,
-    tokenImage
+    tokenSymbol
   });
 
   // Ensure we have a valid deployment before rendering trading components
@@ -734,12 +732,12 @@ export default function TokenDetail() {
         description={tokenDescription}
         keywords={`${tokenName}, ${tokenSymbol}, token price, token chart, token trading, ${tokenSymbol} price, buy ${tokenSymbol}, trade ${tokenSymbol}, memecoin, defi token`}
         url={`https://crossify.io/token/${id}`}
-        image={tokenImage}
+        image={getTokenImage()}
         schema={generateTokenSchema({
           name: tokenName,
           symbol: tokenSymbol,
           description: tokenDescription,
-          image: tokenImage,
+          image: getTokenImage(),
           url: `https://crossify.io/token/${id}`,
           chains: tokenChains,
           price: currentPrice,
@@ -812,7 +810,7 @@ export default function TokenDetail() {
                 tokenName={tokenName}
                 tokenSymbol={tokenSymbol}
                 tokenUrl={`https://crossify.io/token/${id}`}
-                tokenImage={tokenImage}
+                tokenImage={getTokenImage()}
                 price={currentPrice}
                 chains={tokenChains}
               />
