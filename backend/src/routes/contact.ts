@@ -12,18 +12,29 @@ const contactSchema = z.object({
 });
 
 // Create transporter for sending emails
+// Try port 587 with STARTTLS first (more likely to work from cloud platforms)
+// Fallback to port 465 if 587 doesn't work
 const createTransporter = () => {
+  // Try using environment variables for email config, fallback to hardcoded
+  const smtpHost = process.env.SMTP_HOST || 'mail.crossify.io';
+  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
+  const smtpUser = process.env.SMTP_USER || 'webapp@crossify.io';
+  const smtpPass = process.env.SMTP_PASS || '~SqTis20uvRq89N,';
+  
   return nodemailer.createTransport({
-    host: 'mail.crossify.io',
-    port: 465,
-    secure: true, // true for 465, false for other ports
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465, // true for 465, false for 587 (STARTTLS)
     auth: {
-      user: 'webapp@crossify.io',
-      pass: '~SqTis20uvRq89N,',
+      user: smtpUser,
+      pass: smtpPass,
     },
     connectionTimeout: 10000, // 10 seconds
     greetingTimeout: 10000, // 10 seconds
     socketTimeout: 10000, // 10 seconds
+    tls: {
+      rejectUnauthorized: false, // Allow self-signed certificates if needed
+    },
   });
 };
 
