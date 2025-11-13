@@ -591,7 +591,7 @@ export default function Whitepaper() {
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-3 h-3 bg-green-500 rounded-full" />
-                  <h3 className="text-xl font-semibold text-white">Q4 2024 - Testnet Launch ✅</h3>
+                  <h3 className="text-xl font-semibold text-white">Q4 2025 - Testnet Launch ✅</h3>
                 </div>
                 <ul className="space-y-2 text-gray-300 ml-6">
                   <li>• Deployed contracts to testnets (Sepolia, BSC Testnet, Base Sepolia)</li>
@@ -603,7 +603,7 @@ export default function Whitepaper() {
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
-                  <h3 className="text-xl font-semibold text-white">Q1 2025 - Mainnet Launch 🚀</h3>
+                  <h3 className="text-xl font-semibold text-white">Q1 2026 - Mainnet Launch 🚀</h3>
                 </div>
                 <ul className="space-y-2 text-gray-300 ml-6">
                   <li>• Complete security audits</li>
@@ -616,7 +616,7 @@ export default function Whitepaper() {
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                  <h3 className="text-xl font-semibold text-white">Q2 2025 - Expansion</h3>
+                  <h3 className="text-xl font-semibold text-white">Q2 2026 - Expansion</h3>
                 </div>
                 <ul className="space-y-2 text-gray-300 ml-6">
                   <li>• Additional chain support (Polygon, Avalanche, Arbitrum)</li>
@@ -629,7 +629,7 @@ export default function Whitepaper() {
               <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-3 h-3 bg-gray-500 rounded-full" />
-                  <h3 className="text-xl font-semibold text-white">Q3-Q4 2025 - Growth & Innovation</h3>
+                  <h3 className="text-xl font-semibold text-white">Q3-Q4 2026 - Growth & Innovation</h3>
                 </div>
                 <ul className="space-y-2 text-gray-300 ml-6">
                   <li>• Mobile app launch (iOS & Android)</li>
