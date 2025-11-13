@@ -21,7 +21,8 @@ import GraduationCelebration from '../components/GraduationCelebration';
 import GraduationConfetti from '../components/GraduationConfetti';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import SEO from '../components/SEO';
+import SEO, { generateTokenSchema } from '../components/SEO';
+import TokenShareButton from '../components/TokenShareButton';
 import { API_BASE } from '../config/api';
 import { deployTokenOnEVM, getTestnetInfo } from '../services/blockchain';
 import BannerUpload from '../components/BannerUpload';
@@ -622,7 +623,30 @@ export default function TokenDetail() {
   const tokenSymbol = token?.symbol || status?.token?.symbol || 'UNKNOWN';
   const tokenDescription = token?.description || status?.token?.description || `View ${tokenName} (${tokenSymbol}) token details, price charts, market depth, and trading information. Trade ${tokenSymbol} on Ethereum, BSC, Base, and Solana.`;
   const tokenLogoIpfs = token?.logoIpfs || status?.token?.logoIpfs || null;
-  const tokenImage = tokenLogoIpfs ? `https://ipfs.io/ipfs/${tokenLogoIpfs}` : 'https://crossify.io/og-image.png';
+  const tokenImage = tokenLogoIpfs ? (tokenLogoIpfs.startsWith('http') ? tokenLogoIpfs : `https://ipfs.io/ipfs/${tokenLogoIpfs}`) : 'https://crossify.io/og-image.png';
+  
+  // Get chains for sharing
+  const tokenChains = useMemo(() => {
+    if (!deployments || deployments.length === 0) return [];
+    return deployments
+      .map((dep: any) => {
+        const chain = dep?.chain?.toLowerCase() || '';
+        if (chain.includes('ethereum') || chain === 'sepolia') return 'Ethereum';
+        if (chain.includes('bsc') || chain.includes('binance')) return 'BSC';
+        if (chain.includes('base')) return 'Base';
+        if (chain.includes('solana')) return 'Solana';
+        return chain.charAt(0).toUpperCase() + chain.slice(1);
+      })
+      .filter((chain: string, index: number, arr: string[]) => arr.indexOf(chain) === index); // Remove duplicates
+  }, [deployments]);
+  
+  // Get current price for sharing
+  const currentPrice = useMemo(() => {
+    if (!selectedDeployment?.currentPrice) return undefined;
+    const price = parseFloat(selectedDeployment.currentPrice);
+    if (isNaN(price)) return undefined;
+    return `$${price.toFixed(6)}`;
+  }, [selectedDeployment?.currentPrice]);
 
   // Handle error states
   if (statusError || !status || !token) {
@@ -695,6 +719,16 @@ export default function TokenDetail() {
         keywords={`${tokenName}, ${tokenSymbol}, token price, token chart, token trading, ${tokenSymbol} price, buy ${tokenSymbol}, trade ${tokenSymbol}, memecoin, defi token`}
         url={`https://crossify.io/token/${id}`}
         image={tokenImage}
+        schema={generateTokenSchema({
+          name: tokenName,
+          symbol: tokenSymbol,
+          description: tokenDescription,
+          image: tokenImage,
+          url: `https://crossify.io/token/${id}`,
+          chains: tokenChains,
+          price: currentPrice,
+          creator: token?.creatorAddress || undefined,
+        })}
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-transparent">
         {/* Banner */}
@@ -758,33 +792,14 @@ export default function TokenDetail() {
                 </button>
               )}
               {/* Share Button */}
-              <button
-                onClick={async () => {
-                  const url = window.location.href;
-                  try {
-                    if (navigator.share) {
-                      await navigator.share({
-                        title: `${tokenName} (${tokenSymbol})`,
-                        text: `Check out ${tokenName} on Crossify!`,
-                        url: url,
-                      });
-                    } else {
-                      await navigator.clipboard.writeText(url);
-                      toast.success('Link copied to clipboard!');
-                    }
-                  } catch (error) {
-                    // User cancelled or error occurred
-                    if ((error as Error).name !== 'AbortError') {
-                      await navigator.clipboard.writeText(url);
-                      toast.success('Link copied to clipboard!');
-                    }
-                  }
-                }}
-                className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-colors"
-                title="Share token"
-              >
-                <Share2 className="w-5 h-5 text-white" />
-              </button>
+              <TokenShareButton
+                tokenName={tokenName}
+                tokenSymbol={tokenSymbol}
+                tokenUrl={`https://crossify.io/token/${id}`}
+                tokenImage={tokenImage}
+                price={currentPrice}
+                chains={tokenChains}
+              />
             </div>
           </div>
         </div>
