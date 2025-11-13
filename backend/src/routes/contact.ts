@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 export const router = Router();
 
@@ -11,32 +11,10 @@ const contactSchema = z.object({
   message: z.string().min(10, 'Message must be at least 10 characters').max(5000, 'Message is too long'),
 });
 
-// Create transporter for sending emails
-// Try port 587 with STARTTLS first (more likely to work from cloud platforms)
-// Fallback to port 465 if 587 doesn't work
-const createTransporter = () => {
-  // Try using environment variables for email config, fallback to hardcoded
-  const smtpHost = process.env.SMTP_HOST || 'mail.crossify.io';
-  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587;
-  const smtpUser = process.env.SMTP_USER || 'webapp@crossify.io';
-  const smtpPass = process.env.SMTP_PASS || '~SqTis20uvRq89N,';
-  
-  return nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465, // true for 465, false for 587 (STARTTLS)
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000, // 10 seconds
-    socketTimeout: 10000, // 10 seconds
-    tls: {
-      rejectUnauthorized: false, // Allow self-signed certificates if needed
-    },
-  });
-};
+// Initialize Resend (cloud email service that works from Railway)
+// Get API key from: https://resend.com/api-keys
+// Set RESEND_API_KEY environment variable in Railway
+const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder_key');
 
 // POST /contact
 router.post('/', async (req: Request, res: Response) => {
@@ -59,33 +37,11 @@ router.post('/', async (req: Request, res: Response) => {
 
     console.log('✅ Response sent, starting email sending process...');
 
-    // Send emails in background (non-blocking)
-    const transporter = createTransporter();
-    console.log('📧 Transporter created, verifying SMTP connection...');
+    // Send contact email to webapp@crossify.io (non-blocking)
+    console.log('📧 Attempting to send contact email to: webapp@crossify.io');
     
-    // Verify SMTP connection (non-blocking check with timeout)
-    const verifyTimeout = setTimeout(() => {
-      console.error('❌ SMTP verification timed out after 10 seconds');
-    }, 10000);
-    
-    transporter.verify((error, success) => {
-      clearTimeout(verifyTimeout);
-      if (error) {
-        console.error('❌ SMTP connection verification failed:', error);
-        console.error('📧 SMTP error details:', {
-          code: (error as any).code,
-          command: (error as any).command,
-          response: (error as any).response,
-          message: error.message,
-        });
-      } else {
-        console.log('✅ SMTP connection verified successfully');
-      }
-    });
-
-    // Email content
-    const mailOptions = {
-      from: 'webapp@crossify.io',
+    resend.emails.send({
+      from: 'Crossify <onboarding@resend.dev>', // Will need to verify domain or use Resend's domain
       to: 'webapp@crossify.io',
       replyTo: data.email,
       subject: `[Crossify Contact] ${data.subject}`,
@@ -106,52 +62,21 @@ router.post('/', async (req: Request, res: Response) => {
           </p>
         </div>
       `,
-      text: `
-New Contact Form Submission
-
-Name: ${data.name}
-Email: ${data.email}
-Subject: ${data.subject}
-
-Message:
-${data.message}
-      `,
-    };
-
-    // Send contact email (non-blocking with timeout)
-    console.log('📧 Attempting to send contact email to:', mailOptions.to);
-    
-    const sendTimeout = setTimeout(() => {
-      console.error('❌ Email send timed out after 15 seconds');
-    }, 15000);
-    
-    transporter.sendMail(mailOptions)
-      .then((info) => {
-        clearTimeout(sendTimeout);
+    })
+      .then((response) => {
         console.log('✅ Contact email sent successfully');
-        console.log('📧 Email info:', {
-          messageId: info.messageId,
-          response: info.response,
-          accepted: info.accepted,
-          rejected: info.rejected,
-        });
+        console.log('📧 Email response:', response);
       })
       .catch((err: any) => {
-        clearTimeout(sendTimeout);
         console.error('❌ Failed to send contact email:', err);
-        console.error('📧 Error details:', {
-          code: err.code,
-          command: err.command,
-          response: err.response,
-          responseCode: err.responseCode,
-          message: err.message,
-          stack: err.stack,
-        });
+        console.error('📧 Error details:', err);
       });
 
     // Send confirmation email to user (non-blocking)
-    const confirmationMailOptions = {
-      from: 'webapp@crossify.io',
+    console.log('📧 Attempting to send confirmation email to:', data.email);
+    
+    resend.emails.send({
+      from: 'Crossify <onboarding@resend.dev>',
       to: data.email,
       subject: 'Thank you for contacting Crossify.io',
       html: `
@@ -166,37 +91,14 @@ ${data.message}
           <p>Best regards,<br>The Crossify.io Team</p>
         </div>
       `,
-      text: `
-Thank you for contacting us!
-
-Hi ${data.name},
-
-We've received your message and will get back to you as soon as possible.
-
-Your message:
-${data.message}
-
-Best regards,
-The Crossify.io Team
-      `,
-    };
-
-    transporter.sendMail(confirmationMailOptions)
-      .then((info) => {
+    })
+      .then((response) => {
         console.log('✅ Confirmation email sent successfully');
-        console.log('📧 Confirmation email info:', {
-          messageId: info.messageId,
-          accepted: info.accepted,
-        });
+        console.log('📧 Confirmation response:', response);
       })
       .catch((err: any) => {
         console.error('❌ Failed to send confirmation email:', err);
-        console.error('📧 Confirmation error details:', {
-          code: err.code,
-          command: err.command,
-          response: err.response,
-          message: err.message,
-        });
+        console.error('📧 Confirmation error details:', err);
       });
   } catch (error: any) {
     console.error('Contact form error:', error);
