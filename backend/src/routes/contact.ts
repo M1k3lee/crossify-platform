@@ -21,6 +21,9 @@ const createTransporter = () => {
       user: 'webapp@crossify.io',
       pass: '~SqTis20uvRq89N,',
     },
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000, // 10 seconds
+    socketTimeout: 10000, // 10 seconds
   });
 };
 
@@ -49,8 +52,13 @@ router.post('/', async (req: Request, res: Response) => {
     const transporter = createTransporter();
     console.log('📧 Transporter created, verifying SMTP connection...');
     
-    // Verify SMTP connection (non-blocking check)
+    // Verify SMTP connection (non-blocking check with timeout)
+    const verifyTimeout = setTimeout(() => {
+      console.error('❌ SMTP verification timed out after 10 seconds');
+    }, 10000);
+    
     transporter.verify((error, success) => {
+      clearTimeout(verifyTimeout);
       if (error) {
         console.error('❌ SMTP connection verification failed:', error);
         console.error('📧 SMTP error details:', {
@@ -99,10 +107,16 @@ ${data.message}
       `,
     };
 
-    // Send contact email (non-blocking)
+    // Send contact email (non-blocking with timeout)
     console.log('📧 Attempting to send contact email to:', mailOptions.to);
+    
+    const sendTimeout = setTimeout(() => {
+      console.error('❌ Email send timed out after 15 seconds');
+    }, 15000);
+    
     transporter.sendMail(mailOptions)
       .then((info) => {
+        clearTimeout(sendTimeout);
         console.log('✅ Contact email sent successfully');
         console.log('📧 Email info:', {
           messageId: info.messageId,
@@ -112,6 +126,7 @@ ${data.message}
         });
       })
       .catch((err: any) => {
+        clearTimeout(sendTimeout);
         console.error('❌ Failed to send contact email:', err);
         console.error('📧 Error details:', {
           code: err.code,
