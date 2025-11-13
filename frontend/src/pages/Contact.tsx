@@ -29,11 +29,15 @@ export default function Contact() {
     setIsSubmitting(true);
 
     try {
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      console.log('📧 Submitting contact form to:', `${API_BASE}/contact`);
+      console.log('📧 Form data:', {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        subject: formData.subject.trim(),
+        messageLength: formData.message.trim().length,
+      });
 
-      await axios.post(
+      const response = await axios.post(
         `${API_BASE}/contact`,
         {
           name: formData.name.trim(),
@@ -42,28 +46,35 @@ export default function Contact() {
           message: formData.message.trim(),
         },
         {
-          signal: controller.signal,
           timeout: 30000, // 30 second timeout
+          headers: {
+            'Content-Type': 'application/json',
+          },
         }
       );
 
-      clearTimeout(timeoutId);
+      console.log('✅ Contact form response:', response.data);
       toast.success('Message sent successfully! We\'ll get back to you soon.');
       setIsSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error: any) {
-      if (error.name === 'AbortError' || error.code === 'ECONNABORTED') {
+      console.error('❌ Contact form error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         toast.error('Request timed out. Please check your connection and try again.');
       } else if (error.response) {
         const errorMessage = error.response?.data?.error || 'Failed to send message. Please try again.';
         toast.error(errorMessage);
-        console.error('Contact form error:', error.response.data);
       } else if (error.request) {
         toast.error('Unable to reach server. Please check your connection and try again.');
-        console.error('Contact form network error:', error.message);
       } else {
         toast.error('An unexpected error occurred. Please try again.');
-        console.error('Contact form error:', error.message);
       }
     } finally {
       setIsSubmitting(false);
