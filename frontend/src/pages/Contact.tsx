@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Send, MessageSquare, User, CheckCircle } from 'lucide-react';
+import { Mail, Send, MessageSquare, User, CheckCircle, Twitter, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -29,19 +29,42 @@ export default function Contact() {
     setIsSubmitting(true);
 
     try {
-      await axios.post(`${API_BASE}/contact`, {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        subject: formData.subject.trim(),
-        message: formData.message.trim(),
-      });
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
+      await axios.post(
+        `${API_BASE}/contact`,
+        {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          subject: formData.subject.trim(),
+          message: formData.message.trim(),
+        },
+        {
+          signal: controller.signal,
+          timeout: 30000, // 30 second timeout
+        }
+      );
+
+      clearTimeout(timeoutId);
       toast.success('Message sent successfully! We\'ll get back to you soon.');
       setIsSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to send message. Please try again.';
-      toast.error(errorMessage);
+      if (error.name === 'AbortError' || error.code === 'ECONNABORTED') {
+        toast.error('Request timed out. Please check your connection and try again.');
+      } else if (error.response) {
+        const errorMessage = error.response?.data?.error || 'Failed to send message. Please try again.';
+        toast.error(errorMessage);
+        console.error('Contact form error:', error.response.data);
+      } else if (error.request) {
+        toast.error('Unable to reach server. Please check your connection and try again.');
+        console.error('Contact form network error:', error.message);
+      } else {
+        toast.error('An unexpected error occurred. Please try again.');
+        console.error('Contact form error:', error.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -147,6 +170,42 @@ export default function Contact() {
                 >
                   webapp@crossify.io
                 </a>
+              </div>
+
+              <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl w-fit mb-4">
+                  <Twitter className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">X (Twitter)</h3>
+                <a
+                  href="https://x.com/crossify_io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-400 hover:text-primary-300 transition-colors text-sm"
+                >
+                  @crossify_io
+                </a>
+                <p className="text-gray-500 text-xs mt-2">
+                  Follow us for updates
+                </p>
+              </div>
+
+              <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+                <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl w-fit mb-4">
+                  <MessageCircle className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Discord</h3>
+                <a
+                  href="https://discord.gg/WQMevJek"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-400 hover:text-primary-300 transition-colors text-sm"
+                >
+                  Join our Discord
+                </a>
+                <p className="text-gray-500 text-xs mt-2">
+                  Chat with the community
+                </p>
               </div>
             </motion.div>
 

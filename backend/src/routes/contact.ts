@@ -73,10 +73,16 @@ ${data.message}
       `,
     };
 
-    // Send email
-    await transporter.sendMail(mailOptions);
+    // Send emails (don't block response if email fails)
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log('✅ Contact email sent successfully');
+    } catch (emailError: any) {
+      console.error('❌ Failed to send contact email:', emailError);
+      // Continue anyway - don't fail the request
+    }
 
-    // Also send confirmation email to user
+    // Send confirmation email to user (non-blocking)
     const confirmationMailOptions = {
       from: 'webapp@crossify.io',
       to: data.email,
@@ -108,8 +114,12 @@ The Crossify.io Team
       `,
     };
 
-    await transporter.sendMail(confirmationMailOptions);
+    // Send confirmation email (non-blocking - don't wait for it)
+    transporter.sendMail(confirmationMailOptions).catch((err) => {
+      console.error('❌ Failed to send confirmation email:', err);
+    });
 
+    // Return success immediately
     res.json({
       success: true,
       message: 'Message sent successfully',
