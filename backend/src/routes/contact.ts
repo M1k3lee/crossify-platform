@@ -49,9 +49,9 @@ router.post('/', async (req: Request, res: Response) => {
       if (error) {
         console.error('❌ SMTP connection verification failed:', error);
         console.error('📧 SMTP error details:', {
-          code: error.code,
-          command: error.command,
-          response: error.response,
+          code: (error as any).code,
+          command: (error as any).command,
+          response: (error as any).response,
           message: error.message,
         });
       } else {
@@ -105,7 +105,7 @@ ${data.message}
           rejected: info.rejected,
         });
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('❌ Failed to send contact email:', err);
         console.error('📧 Error details:', {
           code: err.code,
@@ -157,7 +157,7 @@ The Crossify.io Team
           accepted: info.accepted,
         });
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('❌ Failed to send confirmation email:', err);
         console.error('📧 Confirmation error details:', {
           code: err.code,
