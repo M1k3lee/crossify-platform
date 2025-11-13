@@ -625,7 +625,9 @@ export default function TokenDetail() {
   const tokenLogoIpfs = token?.logoIpfs || status?.token?.logoIpfs || null;
   
   // Get token image URL for sharing - prefer banner, then logo, then default
-  const tokenImage = useMemo(() => {
+  // This is used in SEO, schema, and TokenShareButton components
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const tokenImage: string = useMemo(() => {
     if (bannerUrl) return bannerUrl;
     if (logoUrl) return logoUrl;
     if (tokenLogoIpfs) {
@@ -724,9 +726,6 @@ export default function TokenDetail() {
     console.warn('⚠️ No valid deployment found, showing token info only');
   }
 
-  // Explicitly reference tokenImage to ensure TypeScript tracks it as used
-  // This variable is used in SEO, schema, and TokenShareButton below
-  void tokenImage;
 
   return (
     <>
