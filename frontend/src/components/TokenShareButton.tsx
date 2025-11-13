@@ -15,7 +15,7 @@ export default function TokenShareButton({
   tokenName,
   tokenSymbol,
   tokenUrl,
-  tokenImage,
+  tokenImage: _tokenImage, // Received but not currently used in share text
   price,
   chains = [],
 }: TokenShareButtonProps) {
