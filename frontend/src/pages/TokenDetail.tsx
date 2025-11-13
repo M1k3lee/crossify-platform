@@ -606,25 +606,6 @@ export default function TokenDetail() {
     setTimeout(() => setCopiedAddress(null), 2000);
   };
 
-  // Now we can do conditional returns AFTER all hooks are called
-  if (isLoading) {
-    return (
-      <>
-        <SEO
-          title="Loading Token - Crossify.io"
-          description="Loading token details..."
-          url={`https://crossify.io/token/${id}`}
-        />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-transparent">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            <p className="mt-4 text-white">Loading token details...</p>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   // Safe token properties with fallbacks - MUST be defined before conditional returns
   // These need to be defined even if token is null to prevent undefined errors
   const tokenName = token?.name || status?.token?.name || 'Unknown Token';
@@ -645,7 +626,7 @@ export default function TokenDetail() {
     return 'https://crossify.io/og-image.png';
   };
   
-  // Get chains for sharing
+  // Get chains for sharing - MUST be called before conditional returns
   const tokenChains = useMemo(() => {
     if (!deployments || deployments.length === 0) return [];
     return deployments
@@ -660,13 +641,32 @@ export default function TokenDetail() {
       .filter((chain: string, index: number, arr: string[]) => arr.indexOf(chain) === index); // Remove duplicates
   }, [deployments]);
   
-  // Get current price for sharing
+  // Get current price for sharing - MUST be called before conditional returns
   const currentPrice = useMemo(() => {
     if (!selectedDeployment?.currentPrice) return undefined;
     const price = parseFloat(selectedDeployment.currentPrice);
     if (isNaN(price)) return undefined;
     return `$${price.toFixed(6)}`;
   }, [selectedDeployment?.currentPrice]);
+
+  // Now we can do conditional returns AFTER all hooks are called
+  if (isLoading) {
+    return (
+      <>
+        <SEO
+          title="Loading Token - Crossify.io"
+          description="Loading token details..."
+          url={`https://crossify.io/token/${id}`}
+        />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-transparent">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <p className="mt-4 text-white">Loading token details...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // Handle error states
   if (statusError || !status || !token) {
