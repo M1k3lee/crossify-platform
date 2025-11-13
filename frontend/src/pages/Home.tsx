@@ -80,9 +80,6 @@ export default function Home() {
       <QuantumBackground />
       
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-20">
-        {/* Presale Banner - Prominent Promotion */}
-        <PresaleBanner />
-
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -160,6 +157,9 @@ export default function Home() {
             </Link>
           </div>
         </motion.div>
+
+        {/* Presale Banner - Below Hero */}
+        <PresaleBanner />
 
         {/* Cross-Chain Highlight Section */}
         <motion.div
