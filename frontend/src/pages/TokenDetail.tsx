@@ -623,7 +623,18 @@ export default function TokenDetail() {
   const tokenSymbol = token?.symbol || status?.token?.symbol || 'UNKNOWN';
   const tokenDescription = token?.description || status?.token?.description || `View ${tokenName} (${tokenSymbol}) token details, price charts, market depth, and trading information. Trade ${tokenSymbol} on Ethereum, BSC, Base, and Solana.`;
   const tokenLogoIpfs = token?.logoIpfs || status?.token?.logoIpfs || null;
-  const tokenImage = tokenLogoIpfs ? (tokenLogoIpfs.startsWith('http') ? tokenLogoIpfs : `https://ipfs.io/ipfs/${tokenLogoIpfs}`) : 'https://crossify.io/og-image.png';
+  
+  // Get token image URL for sharing - prefer banner, then logo, then default
+  const tokenImage = useMemo(() => {
+    if (bannerUrl) return bannerUrl;
+    if (logoUrl) return logoUrl;
+    if (tokenLogoIpfs) {
+      if (tokenLogoIpfs.startsWith('http')) return tokenLogoIpfs;
+      const url = getImageUrl(tokenLogoIpfs);
+      if (url) return url;
+    }
+    return 'https://crossify.io/og-image.png';
+  }, [bannerUrl, logoUrl, tokenLogoIpfs, getImageUrl]);
   
   // Get chains for sharing
   const tokenChains = useMemo(() => {
