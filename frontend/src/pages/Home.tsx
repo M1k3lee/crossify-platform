@@ -357,9 +357,9 @@ export default function Home() {
               {
                 icon: Gauge,
                 title: 'Accurate Price Estimates',
-                description: 'Real-time price calculations that match transaction costs exactly. No surprises - what you see is what you pay, powered by pump.fun-style precision.',
+                description: 'Real-time price calculations that match transaction costs exactly. No surprises - what you see is what you pay, with industry-leading precision.',
                 gradient: 'from-blue-500 to-cyan-600',
-                badge: 'Pump.fun-Level',
+                badge: 'Precise Pricing',
               },
               {
                 icon: BarChart3,
