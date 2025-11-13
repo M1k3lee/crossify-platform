@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, TrendingUp, Users, Clock, ArrowRight, Sparkles } from 'lucide-react';
+import { Zap, TrendingUp, Users, Clock, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../config/api';
 
@@ -52,10 +52,6 @@ export default function PresaleBanner() {
   if (loading || !presale) {
     return null; // Don't show banner if no active presale
   }
-
-  const progress = presale.total_raised_sol > 0 
-    ? Math.min((presale.total_raised_sol / 10000) * 100, 100) // Assuming 10k SOL target for progress
-    : 0;
 
   return (
     <motion.div
