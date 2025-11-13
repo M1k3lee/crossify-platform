@@ -724,6 +724,10 @@ export default function TokenDetail() {
     console.warn('⚠️ No valid deployment found, showing token info only');
   }
 
+  // Explicitly reference tokenImage to ensure TypeScript tracks it as used
+  // This variable is used in SEO, schema, and TokenShareButton below
+  void tokenImage;
+
   return (
     <>
       <SEO
