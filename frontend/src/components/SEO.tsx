@@ -202,3 +202,43 @@ export function generateFAQSchema(faqs: Array<{ question: string; answer: string
   };
 }
 
+export function generateTokenSchema(token: {
+  name: string;
+  symbol: string;
+  description?: string;
+  image?: string;
+  url: string;
+  chains?: string[];
+  price?: string;
+  creator?: string;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FinancialProduct',
+    name: token.name,
+    alternateName: token.symbol,
+    description: token.description || `${token.name} (${token.symbol}) token on Crossify.io`,
+    image: token.image || 'https://crossify.io/og-image.png',
+    url: token.url,
+    provider: {
+      '@type': 'Organization',
+      name: 'Crossify.io',
+      url: 'https://crossify.io',
+    },
+    ...(token.chains && token.chains.length > 0 && {
+      availableChannel: {
+        '@type': 'ServiceChannel',
+        serviceType: 'Cryptocurrency Trading',
+        availableLanguage: token.chains,
+      },
+    }),
+    ...(token.price && {
+      offers: {
+        '@type': 'Offer',
+        price: token.price,
+        priceCurrency: 'USD',
+      },
+    }),
+  };
+}
+
