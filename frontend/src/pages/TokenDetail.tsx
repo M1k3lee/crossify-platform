@@ -705,7 +705,7 @@ export default function TokenDetail() {
     );
   }
 
-  // Debug logging
+  // Debug logging - include tokenImage to ensure it's tracked as used
   console.log('TokenDetail render:', { 
     id, 
     hasToken: !!token, 
@@ -715,7 +715,8 @@ export default function TokenDetail() {
     statusError: statusError ? 'Error: ' + (statusError as any)?.message : null,
     selectedDeployment: selectedDeployment?.chain,
     tokenName,
-    tokenSymbol
+    tokenSymbol,
+    tokenImage
   });
 
   // Ensure we have a valid deployment before rendering trading components
