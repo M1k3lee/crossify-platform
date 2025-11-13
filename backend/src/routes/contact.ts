@@ -35,14 +35,19 @@ router.post('/', async (req: Request, res: Response) => {
     
     const data = contactSchema.parse(req.body);
 
+    console.log('✅ Form validation passed, preparing to send emails...');
+
     // Return success immediately - don't wait for emails
     res.json({
       success: true,
       message: 'Message sent successfully',
     });
 
+    console.log('✅ Response sent, starting email sending process...');
+
     // Send emails in background (non-blocking)
     const transporter = createTransporter();
+    console.log('📧 Transporter created, verifying SMTP connection...');
     
     // Verify SMTP connection (non-blocking check)
     transporter.verify((error, success) => {
@@ -95,6 +100,7 @@ ${data.message}
     };
 
     // Send contact email (non-blocking)
+    console.log('📧 Attempting to send contact email to:', mailOptions.to);
     transporter.sendMail(mailOptions)
       .then((info) => {
         console.log('✅ Contact email sent successfully');
