@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Rocket, Zap, Globe, TrendingUp, Sparkles, ArrowRight, Network, Layers, Shield, CheckCircle, Trophy, BarChart3, Target, PartyPopper, Gauge } from 'lucide-react';
+import { Rocket, Zap, Globe, TrendingUp, Sparkles, ArrowRight, Network, Layers, Shield, CheckCircle, Trophy, BarChart3, Target, Gauge } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import PresaleBanner from '../components/PresaleBanner';
