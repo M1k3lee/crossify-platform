@@ -6,7 +6,7 @@ import {
   Zap, Twitter, MessageCircle,
   TrendingUp, TrendingDown, ExternalLink, Settings,
   Github, BookOpen, MessageSquare, Youtube, Linkedin, Loader2,
-  Share2, Users, Activity, Clock, Edit2, X, Save, Upload, Image as ImageIcon
+  Users, Activity, Clock, Edit2, X, Save, Upload, Image as ImageIcon
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
