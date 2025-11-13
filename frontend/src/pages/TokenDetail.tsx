@@ -250,10 +250,18 @@ export default function TokenDetail() {
         return response.data;
       } catch (error: any) {
         console.error('Error fetching token analytics:', error);
+        console.error('Error details:', {
+          message: error?.message,
+          response: error?.response?.data,
+          status: error?.response?.status,
+          code: error?.code,
+        });
+        // Return null to prevent the query from throwing and breaking the page
         return null;
       }
     },
     enabled: !!id,
+    retry: 1, // Only retry once on failure
   });
 
   // Safely extract data with defaults - MUST be called before any conditional returns

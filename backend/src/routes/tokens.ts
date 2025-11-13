@@ -2131,9 +2131,19 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
         totalVolume: parseFloat(s.total_volume || '0') || 0,
       })),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching token analytics:', error);
-    res.status(500).json({ error: 'Failed to fetch token analytics' });
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+      name: error?.name,
+    });
+    res.status(500).json({ 
+      error: 'Failed to fetch token analytics',
+      message: error?.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    });
   }
 });
 
