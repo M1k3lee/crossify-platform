@@ -660,7 +660,7 @@ export default function TokenDetail() {
     return `$${price.toFixed(6)}`;
   }, [selectedDeployment?.currentPrice]);
 
-  // Handle error states - use tokenImage in error state too to ensure it's tracked
+  // Handle error states
   if (statusError || !status || !token) {
     const is404 = (statusError as any)?.response?.status === 404;
     const errorMessage = is404 
