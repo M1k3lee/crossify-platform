@@ -35,7 +35,13 @@ router.post('/', async (req: Request, res: Response) => {
     
     const data = contactSchema.parse(req.body);
 
-    // Create transporter
+    // Return success immediately - don't wait for emails
+    res.json({
+      success: true,
+      message: 'Message sent successfully',
+    });
+
+    // Send emails in background (non-blocking)
     const transporter = createTransporter();
 
     // Email content
@@ -73,14 +79,10 @@ ${data.message}
       `,
     };
 
-    // Send emails (don't block response if email fails)
-    try {
-      await transporter.sendMail(mailOptions);
-      console.log('✅ Contact email sent successfully');
-    } catch (emailError: any) {
-      console.error('❌ Failed to send contact email:', emailError);
-      // Continue anyway - don't fail the request
-    }
+    // Send contact email (non-blocking)
+    transporter.sendMail(mailOptions)
+      .then(() => console.log('✅ Contact email sent successfully'))
+      .catch((err) => console.error('❌ Failed to send contact email:', err));
 
     // Send confirmation email to user (non-blocking)
     const confirmationMailOptions = {
@@ -114,16 +116,9 @@ The Crossify.io Team
       `,
     };
 
-    // Send confirmation email (non-blocking - don't wait for it)
-    transporter.sendMail(confirmationMailOptions).catch((err) => {
-      console.error('❌ Failed to send confirmation email:', err);
-    });
-
-    // Return success immediately
-    res.json({
-      success: true,
-      message: 'Message sent successfully',
-    });
+    transporter.sendMail(confirmationMailOptions)
+      .then(() => console.log('✅ Confirmation email sent successfully'))
+      .catch((err) => console.error('❌ Failed to send confirmation email:', err));
   } catch (error: any) {
     console.error('Contact form error:', error);
     

@@ -46,7 +46,7 @@ export default function Contact() {
           message: formData.message.trim(),
         },
         {
-          timeout: 30000, // 30 second timeout
+          timeout: 10000, // 10 second timeout (backend responds immediately)
           headers: {
             'Content-Type': 'application/json',
           },
