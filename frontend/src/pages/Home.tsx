@@ -369,11 +369,11 @@ export default function Home() {
                 badge: 'Analytics',
               },
               {
-                icon: PartyPopper,
-                title: 'Celebration Animations',
-                description: 'Epic confetti celebrations when tokens graduate to DEX. Make milestone moments memorable with beautiful animations.',
+                icon: Zap,
+                title: 'Presale System',
+                description: 'Complete presale infrastructure with automatic fund splitting, token distribution, and vesting. Launch your token presale with professional tools and automated workflows.',
                 gradient: 'from-yellow-500 to-orange-600',
-                badge: 'UX Delight',
+                badge: 'Presale Tools',
               },
               {
                 icon: TrendingUp,

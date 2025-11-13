@@ -413,6 +413,82 @@ export default function Whitepaper() {
           </div>
         </motion.section>
 
+        {/* Presale System */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="mb-12"
+        >
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-700/50">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-white">Presale System</h2>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-2xl font-semibold text-white mb-4">Complete Presale Infrastructure</h3>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  Crossify.io includes a comprehensive Solana-based presale system that enables token creators to launch 
+                  professional presales with automated fund management, token distribution, and vesting schedules.
+                </p>
+                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30 mb-4">
+                  <h4 className="text-lg font-semibold text-white mb-3">Core Features</h4>
+                  <ul className="space-y-2 text-gray-300">
+                    <li>• <strong>Real-Time Monitoring:</strong> Automatic SOL transaction detection and tracking</li>
+                    <li>• <strong>Token Allocation:</strong> Automatic calculation and tracking of token allocations based on SOL contributions</li>
+                    <li>• <strong>Configurable Pricing:</strong> Set SOL price per token with min/max purchase limits</li>
+                    <li>• <strong>Referral System:</strong> Built-in affiliate/referral tracking with rewards</li>
+                    <li>• <strong>Live Dashboard:</strong> Beautiful presale page with real-time stats and progress tracking</li>
+                  </ul>
+                </div>
+                <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-xl p-6 border border-green-500/30 mb-4">
+                  <h4 className="text-lg font-semibold text-white mb-3">Automated Fund Splitting</h4>
+                  <p className="text-gray-300 mb-3">
+                    One of the most powerful features is automatic fund splitting. When presale funds are received, the system 
+                    automatically splits them to multiple wallets based on configured percentages:
+                  </p>
+                  <ul className="space-y-2 text-gray-300">
+                    <li>• <strong>Liquidity Wallet:</strong> Funds for initial DEX liquidity provision</li>
+                    <li>• <strong>Development Wallet:</strong> Funds for ongoing development and operations</li>
+                    <li>• <strong>Marketing Wallet:</strong> Funds for marketing and community growth</li>
+                    <li>• <strong>Threshold-Based:</strong> Splits automatically when accumulated funds reach a threshold (e.g., 1 SOL)</li>
+                    <li>• <strong>Full Transparency:</strong> All splits tracked with transaction hashes and timestamps</li>
+                  </ul>
+                </div>
+                <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl p-6 border border-purple-500/30 mb-4">
+                  <h4 className="text-lg font-semibold text-white mb-3">Automated Token Distribution</h4>
+                  <p className="text-gray-300 mb-3">
+                    At token launch, the system automatically distributes tokens to all presale buyers:
+                  </p>
+                  <ul className="space-y-2 text-gray-300">
+                    <li>• <strong>TGE Distribution:</strong> 20% of tokens released immediately at Token Generation Event</li>
+                    <li>• <strong>Batch Processing:</strong> Efficient batch distribution with configurable batch sizes</li>
+                    <li>• <strong>Vesting Setup:</strong> Remaining 80% set up for linear vesting over 18 months</li>
+                    <li>• <strong>Status Tracking:</strong> Real-time tracking of distribution status and unclaimed allocations</li>
+                    <li>• <strong>SPL Token Support:</strong> Native Solana SPL token distribution</li>
+                  </ul>
+                </div>
+                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
+                  <h4 className="text-lg font-semibold text-white mb-3">Vesting Schedule</h4>
+                  <p className="text-gray-300 mb-3">
+                    All presale tokens are subject to a vesting schedule designed to protect long-term value:
+                  </p>
+                  <ul className="space-y-2 text-gray-300">
+                    <li>• <strong>20% at TGE:</strong> Immediate release at token launch</li>
+                    <li>• <strong>80% Linear Vesting:</strong> Released monthly over 18 months</li>
+                    <li>• <strong>Value Protection:</strong> Prevents large dumps that could crash token price</li>
+                    <li>• <strong>Platform Growth:</strong> Gives platform time to generate fees and build value</li>
+                    <li>• <strong>Staking Integration:</strong> Vested tokens can be staked to earn additional rewards</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
         {/* Tokenomics */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
