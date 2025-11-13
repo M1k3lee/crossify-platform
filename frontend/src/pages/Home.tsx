@@ -130,7 +130,7 @@ export default function Home() {
           <div className="flex flex-wrap justify-center gap-3 mb-12 max-w-3xl mx-auto">
             {[
               { text: 'DEX Auto-Graduation', className: 'bg-purple-500/20 border-purple-500/50 text-purple-300' },
-              { text: 'Pump.fun-Level Pricing', className: 'bg-blue-500/20 border-blue-500/50 text-blue-300' },
+              { text: 'Precise Pricing', className: 'bg-blue-500/20 border-blue-500/50 text-blue-300' },
               { text: 'Real-Time Analytics', className: 'bg-green-500/20 border-green-500/50 text-green-300' },
               { text: '4+ DEX Support', className: 'bg-pink-500/20 border-pink-500/50 text-pink-300' },
             ].map((badge, idx) => (

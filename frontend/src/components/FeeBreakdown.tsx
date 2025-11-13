@@ -39,7 +39,7 @@ export default function FeeBreakdown({
       
       // Fixed platform fee: Competitive pricing strategy
       // For testnet: FREE (0 ETH) - encourage testing
-      // For mainnet: 0.01 ETH (~$30-35) - competitive with pump.fun alternatives
+      // For mainnet: 0.01 ETH (~$30-35) - competitive pricing
       // This is much more reasonable than 2% of total theoretical supply
       const isTestnet = window.location.hostname.includes('localhost') || 
                        window.location.hostname.includes('testnet') ||
