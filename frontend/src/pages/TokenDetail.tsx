@@ -626,7 +626,6 @@ export default function TokenDetail() {
   
   // Get token image URL for sharing - prefer banner, then logo, then default
   // This is used in SEO, schema, and TokenShareButton components
-  // @ts-expect-error - tokenImage is used but TypeScript control flow analysis doesn't detect it
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const tokenImage: string = useMemo(() => {
     if (bannerUrl) return bannerUrl;
