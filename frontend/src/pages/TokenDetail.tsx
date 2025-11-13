@@ -659,7 +659,7 @@ export default function TokenDetail() {
     return `$${price.toFixed(6)}`;
   }, [selectedDeployment?.currentPrice]);
 
-  // Handle error states
+  // Handle error states - use tokenImage in error state too to ensure it's tracked
   if (statusError || !status || !token) {
     const is404 = (statusError as any)?.response?.status === 404;
     const errorMessage = is404 
@@ -672,6 +672,7 @@ export default function TokenDetail() {
           title="Token Not Found - Crossify.io"
           description="The token you're looking for doesn't exist."
           url={`https://crossify.io/token/${id}`}
+          image={tokenImage}
         />
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] bg-transparent">
           <div className="text-center max-w-2xl mx-auto px-4">
