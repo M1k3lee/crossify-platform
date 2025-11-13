@@ -43,6 +43,21 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Send emails in background (non-blocking)
     const transporter = createTransporter();
+    
+    // Verify SMTP connection (non-blocking check)
+    transporter.verify((error, success) => {
+      if (error) {
+        console.error('❌ SMTP connection verification failed:', error);
+        console.error('📧 SMTP error details:', {
+          code: error.code,
+          command: error.command,
+          response: error.response,
+          message: error.message,
+        });
+      } else {
+        console.log('✅ SMTP connection verified successfully');
+      }
+    });
 
     // Email content
     const mailOptions = {
@@ -81,8 +96,26 @@ ${data.message}
 
     // Send contact email (non-blocking)
     transporter.sendMail(mailOptions)
-      .then(() => console.log('✅ Contact email sent successfully'))
-      .catch((err) => console.error('❌ Failed to send contact email:', err));
+      .then((info) => {
+        console.log('✅ Contact email sent successfully');
+        console.log('📧 Email info:', {
+          messageId: info.messageId,
+          response: info.response,
+          accepted: info.accepted,
+          rejected: info.rejected,
+        });
+      })
+      .catch((err) => {
+        console.error('❌ Failed to send contact email:', err);
+        console.error('📧 Error details:', {
+          code: err.code,
+          command: err.command,
+          response: err.response,
+          responseCode: err.responseCode,
+          message: err.message,
+          stack: err.stack,
+        });
+      });
 
     // Send confirmation email to user (non-blocking)
     const confirmationMailOptions = {
@@ -117,8 +150,22 @@ The Crossify.io Team
     };
 
     transporter.sendMail(confirmationMailOptions)
-      .then(() => console.log('✅ Confirmation email sent successfully'))
-      .catch((err) => console.error('❌ Failed to send confirmation email:', err));
+      .then((info) => {
+        console.log('✅ Confirmation email sent successfully');
+        console.log('📧 Confirmation email info:', {
+          messageId: info.messageId,
+          accepted: info.accepted,
+        });
+      })
+      .catch((err) => {
+        console.error('❌ Failed to send confirmation email:', err);
+        console.error('📧 Confirmation error details:', {
+          code: err.code,
+          command: err.command,
+          response: err.response,
+          message: err.message,
+        });
+      });
   } catch (error: any) {
     console.error('Contact form error:', error);
     
