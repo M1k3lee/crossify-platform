@@ -392,6 +392,23 @@ export default function Presale() {
             </motion.div>
           </div>
 
+          {/* Live Presale Notice */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mb-6"
+          >
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 flex items-start gap-3">
+              <Info className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-green-200">
+                  <span className="font-semibold">Live Presale:</span> This is the real, live presale for the actual CFY token that will be deployed on launch. Although it hasn't been widely shared yet, the presale is active and all transactions are being recorded and will count toward your token allocation.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
           <div className="grid md:grid-cols-2 gap-8 mb-8">
             {/* Main Presale Card */}
             <motion.div
