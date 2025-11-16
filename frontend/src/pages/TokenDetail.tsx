@@ -1476,10 +1476,15 @@ export default function TokenDetail() {
                     const chain = selectedDeployment.chain.toLowerCase();
                     const evmChain = chain.includes('sepolia') && !chain.includes('base') ? 'ethereum' :
                                     chain.includes('base') ? 'base' :
-                                    chain.includes('bsc') ? 'bsc' : null;
+                                    chain.includes('bsc') ? 'bsc' :
+                                    chain.includes('hedera') ? 'hedera' : null;
 
                     if (!evmChain) {
-                      toast.error('Solana deployment is not yet supported');
+                      if (chain.includes('solana')) {
+                        toast.error('Solana deployment is not yet supported');
+                      } else {
+                        toast.error(`Deployment to ${selectedDeployment.chain} is not yet supported`);
+                      }
                       return;
                     }
 
