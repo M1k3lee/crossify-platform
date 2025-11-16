@@ -531,7 +531,7 @@ export default function Builder() {
                 };
                 
                 toast.error(
-                  `Factory address not configured for ${chainName}.\n\nCheck frontend deployment platform environment variable: ${envVarName}\nExpected: ${correctAddresses[chain as keyof typeof correctAddresses]}\n\nAfter updating, trigger a new deploy.`,
+                  `Factory address not configured for ${chainName}.\n\nAdd ${envVarName} to GitHub Secrets:\nSettings → Secrets and variables → Actions → New repository secret\n\nExpected: ${correctAddresses[chain as keyof typeof correctAddresses]}\n\nAfter adding, push a commit or trigger GitHub Actions workflow.`,
                   { id: `deploy-${chain}`, duration: 15000 }
                 );
                 // Use testnet chain name for database storage

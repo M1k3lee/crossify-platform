@@ -204,7 +204,7 @@ export async function deployTokenOnEVM(
       hedera: 'Hedera Testnet'
     };
     const chainName = chainNames[chain] || chain;
-    const errorMsg = `Factory contract address not configured for ${chainName} (${chain}).\n\nPlease add ${envVarName} to your frontend deployment platform environment variables (Vercel/GitHub Pages/etc.).\n\nFactory addresses:\n- Sepolia: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n- BSC Testnet: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n- Base Sepolia: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n- Hedera Testnet: 0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D\n\nAfter setting the variables, trigger a new deploy.\n\nNote: Backend uses Railway, but frontend environment variables are set in your frontend deployment platform.`;
+    const errorMsg = `Factory contract address not configured for ${chainName} (${chain}).\n\nPlease add ${envVarName} to your GitHub Secrets:\n1. Go to your repository Settings → Secrets and variables → Actions\n2. Click "New repository secret"\n3. Name: ${envVarName}\n4. Value: (see factory addresses below)\n5. Click "Add secret"\n6. Push a new commit or manually trigger the GitHub Actions workflow\n\nFactory addresses:\n- Sepolia: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n- BSC Testnet: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n- Base Sepolia: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n- Hedera Testnet: 0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D`;
     console.error(`❌ ${errorMsg}`);
     throw new Error(errorMsg);
   }
