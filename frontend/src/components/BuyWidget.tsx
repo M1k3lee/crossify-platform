@@ -1022,7 +1022,38 @@ export default function BuyWidget({
         maxFeePerGas: txOptions.maxFeePerGas?.toString(),
       });
 
+      // Debug: Check contract interface before calling
+      console.log('🔍 Contract details:', {
+        address: curveAddress,
+        chain: chain,
+        tokenAmount: tokenAmount.toString(),
+        value: totalCostWei.toString(),
+        hasBuyFunction: !!curveContract.buy,
+      });
+
+      // For Hedera, ensure we're using the correct provider
+      // Try to encode the transaction manually to verify it works
+      try {
+        const iface = new ethers.Interface(bondingCurveABI);
+        const encodedData = iface.encodeFunctionData('buy', [tokenAmount]);
+        console.log('✅ Function call encoded:', {
+          dataLength: encodedData.length,
+          dataPreview: encodedData.substring(0, 20) + '...',
+        });
+      } catch (encodeError) {
+        console.error('❌ Failed to encode function call:', encodeError);
+        throw new Error(`Failed to encode buy transaction: ${encodeError instanceof Error ? encodeError.message : 'Unknown error'}`);
+      }
+
       const tx = await curveContract.buy(tokenAmount, txOptions);
+      
+      // Debug: Log transaction details
+      console.log('📤 Transaction sent:', {
+        hash: tx.hash,
+        to: tx.to,
+        value: tx.value?.toString(),
+        data: tx.data?.substring(0, 20) + '...' || 'EMPTY',
+      });
 
       toast.loading(`Transaction submitted: ${tx.hash}`, { id: 'buy-tx' });
       
