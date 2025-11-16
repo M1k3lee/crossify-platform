@@ -531,7 +531,7 @@ export default function Builder() {
                 };
                 
                 toast.error(
-                  `Factory address not configured for ${chainName}.\n\nCheck Netlify environment variable: ${envVarName}\nExpected: ${correctAddresses[chain as keyof typeof correctAddresses]}\n\nAfter updating, trigger a new deploy in Netlify.`,
+                  `Factory address not configured for ${chainName}.\n\nCheck frontend deployment platform environment variable: ${envVarName}\nExpected: ${correctAddresses[chain as keyof typeof correctAddresses]}\n\nAfter updating, trigger a new deploy.`,
                   { id: `deploy-${chain}`, duration: 15000 }
                 );
                 // Use testnet chain name for database storage
