@@ -1046,42 +1046,55 @@ export default function BuyWidget({
         throw new Error(`Failed to encode buy transaction: ${encodeError instanceof Error ? encodeError.message : 'Unknown error'}`);
       }
 
-      // For Hedera, manually construct transaction to ensure data is included
+      // For Hedera, try using contract method first (standard approach)
+      // If that fails, fall back to manual transaction construction
       let tx: any;
       if (chainLower.includes('hedera')) {
-        console.log('⚡ Using manual transaction construction for Hedera');
-        console.log('📋 Encoded data length:', encodedData.length);
-        console.log('📋 Encoded data (first 100 chars):', encodedData.substring(0, 100));
-        
-        // Manually construct the transaction to ensure data is properly included
-        // Use TransactionRequest type from ethers
-        const txRequest = {
-          to: curveAddress,
-          data: encodedData,
-          value: totalCostWei,
-          gasLimit: txOptions.gasLimit,
-        } as any;
-        
-        // Add gas price if available
-        if (txOptions.gasPrice) {
-          txRequest.gasPrice = txOptions.gasPrice;
+        console.log('⚡ Hedera transaction - trying contract method first');
+        try {
+          // Try using the contract method directly (standard approach)
+          // This should properly encode and send the transaction
+          tx = await curveContract.buy(tokenAmount, {
+            ...txOptions,
+            value: totalCostWei,
+          });
+          console.log('✅ Used contract method for Hedera transaction');
+        } catch (contractError: any) {
+          console.warn('⚠️ Contract method failed, trying manual construction:', contractError.message);
+          // Fall back to manual transaction construction
+          console.log('📋 Encoded data length:', encodedData.length);
+          console.log('📋 Encoded data (first 100 chars):', encodedData.substring(0, 100));
+          
+          // Manually construct the transaction to ensure data is properly included
+          const txRequest = {
+            to: curveAddress,
+            data: encodedData,
+            value: totalCostWei,
+            gasLimit: txOptions.gasLimit,
+          } as any;
+          
+          // Add gas price if available
+          if (txOptions.gasPrice) {
+            txRequest.gasPrice = txOptions.gasPrice;
+          }
+          
+          console.log('📋 Manual transaction request:', {
+            to: txRequest.to,
+            data: txRequest.data ? txRequest.data.substring(0, 50) + '...' : 'MISSING!',
+            dataLength: txRequest.data?.length || 0,
+            value: txRequest.value.toString(),
+            gasLimit: txRequest.gasLimit,
+            gasPrice: txRequest.gasPrice?.toString(),
+          });
+          
+          // Verify data is not empty before sending
+          if (!txRequest.data || txRequest.data === '0x' || txRequest.data.length < 10) {
+            throw new Error('Transaction data is empty or invalid. Cannot send transaction without function call data.');
+          }
+          
+          tx = await signer.sendTransaction(txRequest);
+          console.log('✅ Used manual construction for Hedera transaction');
         }
-        
-        console.log('📋 Manual transaction request:', {
-          to: txRequest.to,
-          data: txRequest.data ? txRequest.data.substring(0, 50) + '...' : 'MISSING!',
-          dataLength: txRequest.data?.length || 0,
-          value: txRequest.value.toString(),
-          gasLimit: txRequest.gasLimit,
-          gasPrice: txRequest.gasPrice?.toString(),
-        });
-        
-        // Verify data is not empty before sending
-        if (!txRequest.data || txRequest.data === '0x' || txRequest.data.length < 10) {
-          throw new Error('Transaction data is empty or invalid. Cannot send transaction without function call data.');
-        }
-        
-        tx = await signer.sendTransaction(txRequest);
         
         // Verify the transaction object has data
         console.log('📤 Transaction object after send:', {
@@ -1093,7 +1106,10 @@ export default function BuyWidget({
         });
       } else {
         // For other chains, use the contract method (standard approach)
-        tx = await curveContract.buy(tokenAmount, txOptions);
+        tx = await curveContract.buy(tokenAmount, {
+          ...txOptions,
+          value: totalCostWei,
+        });
       }
       
       // Debug: Log transaction details
