@@ -11,9 +11,12 @@
  * - Extremely low cost (~$0.0001 per message)
  * 
  * Phase 2 Implementation: This is the foundation for Phase 2 integration
+ * 
+ * NOTE: @hashgraph/sdk is not installed yet as this is Phase 2.
+ * Uncomment the import and install the package when ready to implement.
  */
 
-import { Client, TopicCreateTransaction, TopicMessageSubmitTransaction, TopicId } from "@hashgraph/sdk";
+// import { Client, TopicCreateTransaction, TopicMessageSubmitTransaction, TopicId } from "@hashgraph/sdk";
 
 export interface PriceSyncEvent {
   tokenAddress: string;
@@ -39,15 +42,24 @@ export interface BondingCurveTransaction {
 }
 
 export class HederaAuditService {
-  private client: Client | null = null;
-  private topicId: TopicId | null = null;
+  private client: any = null; // Client from @hashgraph/sdk (Phase 2)
+  private topicId: any = null; // TopicId from @hashgraph/sdk (Phase 2)
   private initialized: boolean = false;
 
   /**
    * Initialize HCS client and topic
    * Call this once at application startup
+   * 
+   * NOTE: This is Phase 2 functionality. Install @hashgraph/sdk to enable.
    */
   async initialize(): Promise<void> {
+    // Phase 2: Not yet implemented
+    // Install @hashgraph/sdk and uncomment the import to enable
+    console.log("ℹ️  Hedera Audit Service (HCS) is Phase 2 - not yet active");
+    console.log("   Install @hashgraph/sdk to enable HCS audit logging");
+    return;
+    
+    /* Phase 2 Implementation (uncomment when @hashgraph/sdk is installed):
     if (this.initialized) {
       return;
     }
@@ -92,15 +104,22 @@ export class HederaAuditService {
       console.error("❌ Error initializing Hedera Audit Service:", error);
       console.error("   Audit logging will be disabled");
     }
+    */
   }
 
   /**
    * Log a price synchronization event to HCS
    * This creates an immutable, timestamped record of cross-chain price updates
+   * 
+   * NOTE: Phase 2 - not yet implemented
    */
   async logPriceSyncEvent(event: PriceSyncEvent): Promise<void> {
+    // Phase 2: Not yet implemented
+    // Silently fail - audit logging is optional
+    return;
+    
+    /* Phase 2 Implementation (uncomment when @hashgraph/sdk is installed):
     if (!this.initialized || !this.client || !this.topicId) {
-      // Silently fail if not initialized (graceful degradation)
       return;
     }
 
@@ -123,15 +142,22 @@ export class HederaAuditService {
       console.log(`📝 Logged price sync event to HCS: ${receipt.status}`);
     } catch (error) {
       console.error("❌ Error logging price sync event to HCS:", error);
-      // Don't throw - audit logging failure shouldn't break the main flow
     }
+    */
   }
 
   /**
    * Log a bonding curve transaction to HCS
    * This creates an immutable record of all buy/sell transactions
+   * 
+   * NOTE: Phase 2 - not yet implemented
    */
   async logBondingCurveTransaction(event: BondingCurveTransaction): Promise<void> {
+    // Phase 2: Not yet implemented
+    // Silently fail - audit logging is optional
+    return;
+    
+    /* Phase 2 Implementation (uncomment when @hashgraph/sdk is installed):
     if (!this.initialized || !this.client || !this.topicId) {
       return;
     }
@@ -156,6 +182,7 @@ export class HederaAuditService {
     } catch (error) {
       console.error("❌ Error logging bonding curve transaction to HCS:", error);
     }
+    */
   }
 
   /**

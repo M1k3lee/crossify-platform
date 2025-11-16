@@ -43,7 +43,7 @@ router.post('/', async (req: Request, res: Response) => {
     resend.emails.send({
       from: 'Crossify <onboarding@resend.dev>', // Will need to verify domain or use Resend's domain
       to: 'webapp@crossify.io',
-      replyTo: data.email,
+      reply_to: data.email,
       subject: `[Crossify Contact] ${data.subject}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -63,7 +63,7 @@ router.post('/', async (req: Request, res: Response) => {
         </div>
       `,
     })
-      .then((response) => {
+      .then((response: any) => {
         console.log('✅ Contact email sent successfully');
         console.log('📧 Email response:', response);
       })
@@ -92,7 +92,7 @@ router.post('/', async (req: Request, res: Response) => {
         </div>
       `,
     })
-      .then((response) => {
+      .then((response: any) => {
         console.log('✅ Confirmation email sent successfully');
         console.log('📧 Confirmation response:', response);
       })

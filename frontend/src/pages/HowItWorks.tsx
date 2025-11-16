@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Rocket, Network, Layers, Zap, Shield, TrendingUp, Globe, 
   ArrowRight, CheckCircle, Coins, Gauge, Lock, Sparkles,
-  Activity, Users, ArrowDown, ArrowUp
+  Activity, FileText
 } from 'lucide-react';
 import QuantumBackground from '../components/QuantumBackground';
 import SEO from '../components/SEO';
