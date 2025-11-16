@@ -1,86 +1,9 @@
-import { useState } from 'react';
 import { Gift, CheckCircle, Clock, Users, ExternalLink, Sparkles, Zap, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
-import toast from 'react-hot-toast';
 import SEO from '../components/SEO';
 
 export default function Airdrop() {
-  const [walletAddress, setWalletAddress] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
-  const [eligibilityStatus, setEligibilityStatus] = useState<{
-    isEligible: boolean;
-    reason?: string;
-    checked: boolean;
-  }>({ isEligible: false, checked: false });
-
-  // Validate wallet address format
-  const isValidAddress = (address: string): boolean => {
-    // EVM address validation (0x followed by 40 hex characters)
-    const evmRegex = /^0x[a-fA-F0-9]{40}$/;
-    // Solana address validation (base58, 32-44 characters)
-    const solanaRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-    return evmRegex.test(address) || solanaRegex.test(address);
-  };
-
-  const handleCheckEligibility = async () => {
-    const trimmedAddress = walletAddress.trim();
-    
-    if (!trimmedAddress) {
-      toast.error('Please enter a wallet address');
-      return;
-    }
-
-    if (!isValidAddress(trimmedAddress)) {
-      toast.error('Please enter a valid wallet address (EVM or Solana format)');
-      return;
-    }
-
-    setIsChecking(true);
-    setEligibilityStatus({ isEligible: false, checked: false });
-
-    try {
-      // Simulate API call - in production, this would check against actual eligibility criteria
-      // For now, we'll implement basic validation logic
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
-
-      // Eligibility criteria (placeholder logic - replace with actual backend check)
-      // For MVP, we'll check:
-      // 1. Address format is valid
-      // 2. Address hasn't been checked before (in production, check database)
-      // 3. Address meets criteria (early adopter, community member, etc.)
-      
-      // For now, we'll randomly determine eligibility for demo purposes
-      // In production, replace this with actual backend API call
-      const isEligible = Math.random() > 0.5; // 50% chance for demo
-      
-      // In production, you would do:
-      // const response = await axios.post('/api/airdrop/check-eligibility', { address: trimmedAddress });
-      // const isEligible = response.data.eligible;
-
-      if (isEligible) {
-        setEligibilityStatus({
-          isEligible: true,
-          reason: 'Your wallet meets the eligibility criteria for the airdrop!',
-          checked: true,
-        });
-        toast.success('You are eligible for the airdrop!');
-      } else {
-        setEligibilityStatus({
-          isEligible: false,
-          reason: 'Your wallet does not currently meet the eligibility criteria. Complete quests on Zealy or become an early adopter to become eligible.',
-          checked: true,
-        });
-        toast.error('Not eligible at this time');
-      }
-    } catch (error) {
-      console.error('Error checking eligibility:', error);
-      toast.error('Failed to check eligibility. Please try again.');
-      setEligibilityStatus({ isEligible: false, checked: false });
-    } finally {
-      setIsChecking(false);
-    }
-  };
 
   return (
     <>
