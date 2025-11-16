@@ -1033,9 +1033,10 @@ export default function BuyWidget({
 
       // For Hedera, ensure we're using the correct provider
       // Try to encode the transaction manually to verify it works
+      let encodedData: string;
       try {
         const iface = new ethers.Interface(bondingCurveABI);
-        const encodedData = iface.encodeFunctionData('buy', [tokenAmount]);
+        encodedData = iface.encodeFunctionData('buy', [tokenAmount]);
         console.log('✅ Function call encoded:', {
           dataLength: encodedData.length,
           dataPreview: encodedData.substring(0, 20) + '...',
@@ -1045,7 +1046,35 @@ export default function BuyWidget({
         throw new Error(`Failed to encode buy transaction: ${encodeError instanceof Error ? encodeError.message : 'Unknown error'}`);
       }
 
-      const tx = await curveContract.buy(tokenAmount, txOptions);
+      // For Hedera, manually construct transaction to ensure data is included
+      let tx: any;
+      if (chainLower.includes('hedera')) {
+        console.log('⚡ Using manual transaction construction for Hedera');
+        // Manually construct the transaction to ensure data is properly included
+        const txRequest = {
+          to: curveAddress,
+          data: encodedData,
+          value: totalCostWei,
+          gasLimit: txOptions.gasLimit,
+        };
+        
+        // Add gas price if available
+        if (txOptions.gasPrice) {
+          txRequest.gasPrice = txOptions.gasPrice;
+        }
+        
+        console.log('📋 Manual transaction request:', {
+          to: txRequest.to,
+          data: txRequest.data.substring(0, 20) + '...',
+          value: txRequest.value.toString(),
+          gasLimit: txRequest.gasLimit,
+        });
+        
+        tx = await signer.sendTransaction(txRequest);
+      } else {
+        // For other chains, use the contract method (standard approach)
+        tx = await curveContract.buy(tokenAmount, txOptions);
+      }
       
       // Debug: Log transaction details
       console.log('📤 Transaction sent:', {
