@@ -1520,7 +1520,7 @@ export default function TokenDetail() {
                       };
 
                       // Deploy to blockchain
-                      const result = await deployTokenOnEVM(evmChain as 'ethereum' | 'bsc' | 'base', {
+                      const result = await deployTokenOnEVM(evmChain as 'ethereum' | 'bsc' | 'base' | 'hedera', {
                         chain: evmChain as any,
                         tokenData,
                         curveData,
