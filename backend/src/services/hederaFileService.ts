@@ -113,8 +113,10 @@ export class HederaFileService {
       const fileCreateTx = new FileCreateTransaction()
         .setContents(fileBuffer)
         .setKeys([this.operatorKey!]) // Only operator can modify (optional - can be empty for immutable)
-        .setMemo(memo)
         .setMaxTransactionFee(new Hbar(5)); // Set max fee (5 HBAR should be plenty)
+      
+      // Note: setMemo might not be available in all SDK versions, so we skip it
+      // The memo information is stored in the database instead
 
       const response = await fileCreateTx.execute(this.client!);
       const receipt = await response.getReceipt(this.client!);

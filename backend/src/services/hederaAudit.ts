@@ -96,8 +96,12 @@ export class HederaAuditService {
         const receipt = await topicCreateResponse.getReceipt(this.client);
         this.topicId = receipt.topicId;
         
-        console.log(`✅ Created HCS topic: ${this.topicId.toString()}`);
-        console.log(`   Add this to your .env: HEDERA_HCS_TOPIC_ID=${this.topicId.toString()}`);
+        if (this.topicId) {
+          console.log(`✅ Created HCS topic: ${this.topicId.toString()}`);
+          console.log(`   Add this to your .env: HEDERA_HCS_TOPIC_ID=${this.topicId.toString()}`);
+        } else {
+          throw new Error('Topic creation failed - no topic ID returned');
+        }
       }
 
       this.initialized = true;

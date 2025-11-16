@@ -137,12 +137,12 @@ router.post('/', async (req: Request, res: Response) => {
               await auditService.logBondingCurveTransaction({
                 tokenAddress: deployment.token_address || '',
                 chain: chain,
-                transactionType: data.type.toUpperCase() as "BUY" | "SELL",
-                amount: data.amount,
-                price: data.price || '0',
+                transactionType: type.toUpperCase() as "BUY" | "SELL",
+                amount: amount || '0',
+                price: price || '0',
                 newSupply: newSupply.toString(),
-                txHash: data.txHash || '',
-                userAddress: data.fromAddress || '',
+                txHash: txHash || '',
+                userAddress: fromAddress || '',
                 timestamp: Date.now(),
               });
             } catch (auditError) {
