@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+// @ts-ignore - resend types may not be available in build environment
 import { Resend } from 'resend';
 
 export const router = Router();
