@@ -157,9 +157,12 @@ export default function Marketplace() {
                   consistent pricing across all chains. Buy on any chain, price updates everywhere instantly via LayerZero.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="px-3 py-1 bg-blue-500/20 border border-blue-500/50 rounded-full">
+                  <span className="text-blue-400 text-sm font-semibold">Powered by LayerZero</span>
+                </div>
                 <div className="px-3 py-1 bg-green-500/20 border border-green-500/50 rounded-full">
-                  <span className="text-green-400 text-sm font-semibold">Powered by LayerZero</span>
+                  <span className="text-green-400 text-sm font-semibold">Audited by Hedera</span>
                 </div>
               </div>
             </div>

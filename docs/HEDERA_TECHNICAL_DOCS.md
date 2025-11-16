@@ -260,7 +260,7 @@ All Chains: Price = $0.001 + ($0.0001 × 2,100) = $0.211
 
 ---
 
-## Hedera Consensus Service (HCS) - Phase 2
+## Hedera Consensus Service (HCS) - ✅ Implemented
 
 ### Overview
 
@@ -268,23 +268,24 @@ HCS provides immutable, timestamped audit logs for all cross-chain events.
 
 ### Implementation Status
 
-**Foundation Ready:** `backend/src/services/hederaAudit.ts`
+**✅ Fully Implemented:** `backend/src/services/hederaAudit.ts`
 
 **Features:**
 - `logPriceSyncEvent()` - Log cross-chain price syncs
 - `logBondingCurveTransaction()` - Log buy/sell transactions
 - Immutable, verifiable timestamps
 - ~$0.0001 per message
+- Automatically logs all price sync events and bonding curve transactions
 
-### Setup (When Ready)
+### Usage
 
 ```typescript
 import { initializeHederaAudit } from './services/hederaAudit';
 
-// At app startup
+// At app startup (already initialized in index.ts)
 await initializeHederaAudit();
 
-// Log events
+// Log events (automatically called by backend services)
 const auditService = getHederaAuditService();
 await auditService.logPriceSyncEvent({
   tokenAddress: '0x...',
@@ -295,6 +296,88 @@ await auditService.logPriceSyncEvent({
   timestamp: Date.now(),
 });
 ```
+
+---
+
+## Hedera File Service (HFS) - ✅ Implemented
+
+### Overview
+
+HFS provides decentralized, immutable file storage for token metadata (logos, banners, etc.).
+
+### Implementation Status
+
+**✅ Fully Implemented:** `backend/src/services/hederaFileService.ts`
+
+**Features:**
+- `uploadTokenLogo()` - Upload token logos to HFS
+- `uploadTokenBanner()` - Upload token banners to HFS
+- `uploadTokenMetadata()` - Upload metadata JSON to HFS
+- `getFile()` - Retrieve files from HFS
+- `getFileUrl()` - Get public URL via Mirror Node
+- Automatic fallback to Cloudinary/local storage if HFS unavailable
+
+### Benefits
+
+- **Decentralized:** No single point of failure
+- **Immutable:** Files cannot be deleted or modified
+- **Low Cost:** ~$0.001 per file (one-time, no monthly fees)
+- **Permanent:** Files never disappear (unlike IPFS which requires pinning)
+- **Enterprise-Grade:** Same infrastructure as Fortune 500 companies
+
+### Cost Comparison
+
+| Storage Solution | Cost per File | Monthly Fees |
+|-----------------|---------------|--------------|
+| Cloudinary | ~$0.10-0.50 | Yes |
+| IPFS Pinning | ~$0.10-0.20 | Yes |
+| **Hedera HFS** | **~$0.001** | **No** |
+
+### Usage
+
+```typescript
+import { getHederaFileService } from './services/hederaFileService';
+
+// At app startup (already initialized in index.ts)
+await initializeHederaFileService();
+
+// Upload logo
+const fileService = getHederaFileService();
+const result = await fileService.uploadTokenLogo(
+  fileBuffer,
+  tokenId,
+  filename
+);
+
+// Result contains:
+// - fileId: "0.0.xxxxx" (Hedera File ID)
+// - url: Public URL via Mirror Node
+// - storage: "hedera"
+```
+
+### File Access
+
+Files uploaded to HFS are accessible via Hedera Mirror Node:
+
+**Testnet:**
+```
+https://testnet.mirrornode.hedera.com/api/v1/files/{fileId}
+```
+
+**Mainnet:**
+```
+https://mainnet-public.mirrornode.hedera.com/api/v1/files/{fileId}
+```
+
+### Integration
+
+HFS is automatically used when uploading logos/banners via `/api/upload/logo` and `/api/upload/banner` endpoints. The system:
+
+1. **First tries HFS** (if configured and available)
+2. **Falls back to Cloudinary** (if HFS unavailable)
+3. **Falls back to local storage** (if both unavailable)
+
+This ensures seamless operation regardless of storage backend availability.
 
 ---
 

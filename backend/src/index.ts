@@ -184,6 +184,26 @@ async function start() {
     startHolderCountService();
     console.log('✅ Holder count service started');
 
+    // Initialize Hedera Audit Service (HCS) for immutable audit logging
+    try {
+      const { initializeHederaAudit } = await import('./services/hederaAudit');
+      await initializeHederaAudit();
+      console.log('✅ Hedera Audit Service initialized (Powered by Hedera)');
+    } catch (error) {
+      console.warn('⚠️  Hedera Audit Service not available (optional):', error instanceof Error ? error.message : error);
+      console.log('ℹ️  Continuing without Hedera HCS - audit logging will be disabled');
+    }
+
+    // Initialize Hedera File Service (HFS) for decentralized metadata storage
+    try {
+      const { initializeHederaFileService } = await import('./services/hederaFileService');
+      await initializeHederaFileService();
+      console.log('✅ Hedera File Service initialized (Powered by Hedera)');
+    } catch (error) {
+      console.warn('⚠️  Hedera File Service not available (optional):', error instanceof Error ? error.message : error);
+      console.log('ℹ️  Continuing without Hedera HFS - will use Cloudinary/local storage');
+    }
+
     // Start liquidity monitoring service (cross-chain bridge)
     startLiquidityMonitoringService();
     console.log('✅ Liquidity monitoring service started');

@@ -140,9 +140,11 @@ export default function Whitepaper() {
                 <h3 className="text-2xl font-semibold text-white mb-4">Cross-Chain Price Synchronization</h3>
                 <p className="text-gray-300 leading-relaxed mb-4">
                   Crossify.io introduces a revolutionary cross-chain price synchronization system powered by 
-                  <strong className="text-primary-400"> LayerZero</strong>. When tokens are traded on any DEX 
+                  <strong className="text-primary-400"> LayerZero</strong> with immutable audit trails via 
+                  <strong className="text-green-400"> Hedera Consensus Service</strong>. When tokens are traded on any DEX 
                   (Uniswap, PancakeSwap, etc.), our smart contracts automatically detect the trade and broadcast 
-                  price updates across all chains, ensuring perfect price consistency.
+                  price updates across all chains, ensuring perfect price consistency. Every sync event is immutably 
+                  logged to Hedera for enterprise-grade auditability.
                 </p>
                 <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/30">
                   <h4 className="text-lg font-semibold text-white mb-2">How Cross-Chain Sync Works:</h4>
@@ -155,18 +157,34 @@ export default function Whitepaper() {
                     <li><strong>Automatic Fee Collection:</strong> 0.5% fee on DEX trades covers cross-chain messaging costs</li>
                   </ul>
                 </div>
-                <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl p-6 border border-blue-500/30 mt-4">
-                  <h4 className="text-lg font-semibold text-white mb-2">Powered by LayerZero</h4>
-                  <p className="text-gray-300 text-sm mb-3">
-                    LayerZero is the leading cross-chain interoperability protocol, enabling secure and efficient 
-                    communication between blockchains. Our integration with LayerZero ensures reliable, trustless 
-                    price synchronization across all supported chains.
-                  </p>
-                  <div className="flex items-center gap-2 text-blue-400">
-                    <span className="text-xs">Learn more at</span>
-                    <a href="https://layerzero.network" target="_blank" rel="noopener noreferrer" className="text-xs underline hover:text-blue-300">
-                      layerzero.network
-                    </a>
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl p-6 border border-blue-500/30">
+                    <h4 className="text-lg font-semibold text-white mb-2">Powered by LayerZero</h4>
+                    <p className="text-gray-300 text-sm mb-3">
+                      LayerZero is the leading cross-chain interoperability protocol, enabling secure and efficient 
+                      communication between blockchains. Our integration with LayerZero ensures reliable, trustless 
+                      price synchronization across all supported chains.
+                    </p>
+                    <div className="flex items-center gap-2 text-blue-400">
+                      <span className="text-xs">Learn more at</span>
+                      <a href="https://layerzero.network" target="_blank" rel="noopener noreferrer" className="text-xs underline hover:text-blue-300">
+                        layerzero.network
+                      </a>
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl p-6 border border-green-500/30">
+                    <h4 className="text-lg font-semibold text-white mb-2">Audited by Hedera</h4>
+                    <p className="text-gray-300 text-sm mb-3">
+                      Hedera Consensus Service (HCS) provides immutable, timestamped audit logs for all cross-chain 
+                      price synchronization events. Every sync operation is cryptographically verified and permanently 
+                      recorded, providing enterprise-grade auditability and compliance.
+                    </p>
+                    <div className="flex items-center gap-2 text-green-400">
+                      <span className="text-xs">Learn more at</span>
+                      <a href="https://hedera.com" target="_blank" rel="noopener noreferrer" className="text-xs underline hover:text-green-300">
+                        hedera.com
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>

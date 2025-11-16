@@ -128,6 +128,27 @@ router.post('/', async (req: Request, res: Response) => {
             await updateGlobalSupply(tokenId, chain, newSupply.toString());
             await syncPriceAcrossChains(tokenId);
             console.log(`✅ Triggered price sync for ${tokenId} across all chains`);
+            
+            // Log bonding curve transaction to Hedera HCS for immutable audit trail
+            try {
+              const { getHederaAuditService } = await import('../services/hederaAudit');
+              const auditService = getHederaAuditService();
+              
+              await auditService.logBondingCurveTransaction({
+                tokenAddress: deployment.token_address || '',
+                chain: chain,
+                transactionType: data.type.toUpperCase() as "BUY" | "SELL",
+                amount: data.amount,
+                price: data.price || '0',
+                newSupply: newSupply.toString(),
+                txHash: data.txHash || '',
+                userAddress: data.fromAddress || '',
+                timestamp: Date.now(),
+              });
+            } catch (auditError) {
+              // Non-critical - don't fail if audit logging fails
+              console.warn('⚠️  Could not log to Hedera HCS (non-critical):', auditError instanceof Error ? auditError.message : auditError);
+            }
           } catch (syncError) {
             console.error('⚠️ Error syncing prices (non-critical):', syncError);
             // Don't fail transaction recording if sync fails

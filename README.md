@@ -1,10 +1,13 @@
 # Crossify.io - Multichain Token Launch Platform
 
-A complete multichain token launch platform that lets users create and launch tokens across Ethereum, BSC, Solana (SPL), and Base with bonding curve sales and automatic graduation to DEX.
+A complete multichain token launch platform that lets users create and launch tokens across Ethereum, BSC, Solana (SPL), Base, and Hedera with bonding curve sales and automatic graduation to DEX.
 
 ## Features
 
-- 🚀 **Multichain Deployment**: Deploy tokens on Ethereum, BSC, Solana, and Base
+- 🚀 **Multichain Deployment**: Deploy tokens on Ethereum, BSC, Solana, Base, and Hedera
+- ⚡ **Hedera Integration**: Ultra-fast (3-5s finality) and ultra-cheap (~$0.0001/tx) token launches
+- 📝 **Immutable Audit Logs**: Powered by Hedera Consensus Service (HCS) for enterprise-grade audit trails
+- 📁 **Decentralized Storage**: Token metadata stored on Hedera File Service (HFS) - permanent, immutable, ultra-low cost
 - 📈 **Bonding Curve Sales**: Auto-pricing with capped graduation threshold
 - 🎓 **Automatic DEX Graduation**: ✅ **Fully Implemented** - Automatic migration to DEX when market cap threshold is reached
   - **Multi-DEX Support**: Raydium (Solana), Uniswap V3 (Ethereum), PancakeSwap (BSC), BaseSwap (Base)

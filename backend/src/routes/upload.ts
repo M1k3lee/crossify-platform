@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import { uploadToCloudinary, isCloudinaryConfigured, getCloudinaryUrl } from '../services/cloudinary';
+import { getHederaFileService } from '../services/hederaFileService';
 
 export const router = Router();
 
@@ -176,6 +177,40 @@ router.post('/logo', upload.single('file'), async (req: Request, res: Response) 
       return res.status(400).json({ error: 'File size must be less than 5MB' });
     }
 
+    // Try Hedera File Service first (decentralized, low cost)
+    const hederaFileService = getHederaFileService();
+    if (hederaFileService.isAvailable()) {
+      try {
+        const fileBuffer = await fs.readFile(req.file.path);
+        const tokenId = req.body.tokenId || 'unknown';
+        const result = await hederaFileService.uploadTokenLogo(
+          fileBuffer,
+          tokenId,
+          req.file.originalname
+        );
+        
+        // Clean up local file after Hedera upload
+        try {
+          await fs.unlink(req.file.path);
+        } catch {}
+        
+        // Return Hedera File ID and URL
+        res.json({
+          success: true,
+          cid: result.fileId, // Store Hedera File ID
+          filename: result.fileId, // Store Hedera File ID as filename
+          url: result.url, // Public URL via Mirror Node
+          fileId: result.fileId, // Hedera File ID (0.0.xxxxx)
+          storage: 'hedera',
+          message: 'Logo uploaded successfully to Hedera File Service (Powered by Hedera)',
+        });
+        return;
+      } catch (hederaError: any) {
+        console.error('Hedera HFS upload failed, falling back to Cloudinary:', hederaError);
+        // Fall through to Cloudinary
+      }
+    }
+
     // Upload to Cloudinary if configured, otherwise use local storage
     if (isCloudinaryConfigured()) {
       try {
@@ -194,6 +229,7 @@ router.post('/logo', upload.single('file'), async (req: Request, res: Response) 
           filename: result.secure_url, // Store Cloudinary URL as filename
           url: result.secure_url, // Direct URL for immediate use
           public_id: result.public_id, // Cloudinary public ID for future reference
+          storage: 'cloudinary',
           message: 'Logo uploaded successfully to Cloudinary',
         });
         return;
@@ -203,11 +239,12 @@ router.post('/logo', upload.single('file'), async (req: Request, res: Response) 
       }
     }
 
-    // Fallback to local storage (for backward compatibility or if Cloudinary fails)
+    // Fallback to local storage (for backward compatibility or if all else fails)
     res.json({
       success: true,
       cid: req.file.filename, // Use filename as CID for backward compatibility
       filename: req.file.filename,
+      storage: 'local',
       message: 'Logo uploaded successfully (local storage)',
     });
   } catch (error) {
@@ -239,6 +276,40 @@ router.post('/banner', upload.single('file'), async (req: Request, res: Response
       return res.status(400).json({ error: 'File size must be less than 10MB' });
     }
 
+    // Try Hedera File Service first (decentralized, low cost)
+    const hederaFileService = getHederaFileService();
+    if (hederaFileService.isAvailable()) {
+      try {
+        const fileBuffer = await fs.readFile(req.file.path);
+        const tokenId = req.body.tokenId || 'unknown';
+        const result = await hederaFileService.uploadTokenBanner(
+          fileBuffer,
+          tokenId,
+          req.file.originalname
+        );
+        
+        // Clean up local file after Hedera upload
+        try {
+          await fs.unlink(req.file.path);
+        } catch {}
+        
+        // Return Hedera File ID and URL
+        res.json({
+          success: true,
+          cid: result.fileId, // Store Hedera File ID
+          filename: result.fileId, // Store Hedera File ID as filename
+          url: result.url, // Public URL via Mirror Node
+          fileId: result.fileId, // Hedera File ID (0.0.xxxxx)
+          storage: 'hedera',
+          message: 'Banner uploaded successfully to Hedera File Service (Powered by Hedera)',
+        });
+        return;
+      } catch (hederaError: any) {
+        console.error('Hedera HFS upload failed, falling back to Cloudinary:', hederaError);
+        // Fall through to Cloudinary
+      }
+    }
+
     // Upload to Cloudinary if configured, otherwise use local storage
     if (isCloudinaryConfigured()) {
       try {
@@ -257,6 +328,7 @@ router.post('/banner', upload.single('file'), async (req: Request, res: Response
           filename: result.secure_url, // Store Cloudinary URL as filename
           url: result.secure_url, // Direct URL for immediate use
           public_id: result.public_id, // Cloudinary public ID for future reference
+          storage: 'cloudinary',
           message: 'Banner uploaded successfully to Cloudinary',
         });
         return;
@@ -266,11 +338,12 @@ router.post('/banner', upload.single('file'), async (req: Request, res: Response
       }
     }
 
-    // Fallback to local storage (for backward compatibility or if Cloudinary fails)
+    // Fallback to local storage (for backward compatibility or if all else fails)
     res.json({
       success: true,
       cid: req.file.filename, // Use filename as CID for backward compatibility
       filename: req.file.filename,
+      storage: 'local',
       message: 'Banner uploaded successfully (local storage)',
     });
   } catch (error) {

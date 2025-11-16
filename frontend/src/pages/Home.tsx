@@ -201,10 +201,18 @@ export default function Home() {
                     <Layers className="w-6 h-6 text-blue-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">Automatic Price Sync</h3>
-                  <p className="text-gray-400 text-sm">
-                    Powered by LayerZero, prices stay synchronized across all chains in real-time. 
+                  <p className="text-gray-400 text-sm mb-3">
+                    Prices stay synchronized across all chains in real-time. 
                     Buy on any chain, price updates everywhere.
                   </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="px-2 py-1 bg-blue-500/20 border border-blue-500/50 rounded-full">
+                      <span className="text-blue-400 text-xs font-semibold">Powered by LayerZero</span>
+                    </div>
+                    <div className="px-2 py-1 bg-green-500/20 border border-green-500/50 rounded-full">
+                      <span className="text-green-400 text-xs font-semibold">Audited by Hedera</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50">
@@ -216,6 +224,20 @@ export default function Home() {
                     Automatic detection of DEX trades triggers cross-chain sync. 
                     Works seamlessly with Uniswap, PancakeSwap, and more.
                   </p>
+                </div>
+
+                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50">
+                  <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+                    <Globe className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Decentralized Storage</h3>
+                  <p className="text-gray-400 text-sm mb-3">
+                    Token metadata stored permanently on Hedera File Service. 
+                    Immutable, decentralized, and ultra-low cost.
+                  </p>
+                  <div className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/50 rounded-full inline-block">
+                    <span className="text-emerald-400 text-xs font-semibold">Powered by Hedera</span>
+                  </div>
                 </div>
               </div>
             </div>

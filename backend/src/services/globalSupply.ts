@@ -116,6 +116,9 @@ export async function syncPriceAcrossChains(tokenId: string): Promise<void> {
       return;
     }
 
+    // Get old global supply for audit logging
+    const oldGlobalSupply = await getGlobalSupply(tokenId);
+
     // Calculate global price
     const globalPrice = await calculatePriceWithGlobalSupply(
       tokenId,
@@ -123,11 +126,17 @@ export async function syncPriceAcrossChains(tokenId: string): Promise<void> {
       token.slope
     );
 
+    // Get new global supply
+    const newGlobalSupply = await getGlobalSupply(tokenId);
+
     // Update market cap for all deployments
     const deployments = await dbAll(
-      `SELECT chain, current_supply FROM token_deployments WHERE token_id = ?`,
+      `SELECT chain, current_supply, token_address FROM token_deployments WHERE token_id = ?`,
       [tokenId]
-    ) as Array<{ chain: string; current_supply: string }>;
+    ) as Array<{ chain: string; current_supply: string; token_address: string }>;
+
+    const chains = deployments.map(d => d.chain);
+    const sourceChain = deployments[0]?.chain || 'unknown';
 
     for (const dep of deployments) {
       const supply = parseFloat(dep.current_supply) || 0;
@@ -142,6 +151,25 @@ export async function syncPriceAcrossChains(tokenId: string): Promise<void> {
     }
 
     console.log(`Synced prices for ${tokenId} across all chains: $${globalPrice.toFixed(6)}`);
+
+    // Log to Hedera Consensus Service for immutable audit trail
+    try {
+      const { getHederaAuditService } = await import('./hederaAudit');
+      const auditService = getHederaAuditService();
+      
+      await auditService.logPriceSyncEvent({
+        tokenAddress: deployments[0]?.token_address || '',
+        sourceChain: sourceChain,
+        targetChains: chains.filter(c => c !== sourceChain),
+        oldGlobalSupply: oldGlobalSupply,
+        newGlobalSupply: newGlobalSupply,
+        timestamp: Date.now(),
+        layerZeroTxHash: undefined, // Would be set if LayerZero message was sent
+      });
+    } catch (auditError) {
+      // Non-critical - don't fail price sync if audit logging fails
+      console.warn('⚠️  Could not log to Hedera HCS (non-critical):', auditError instanceof Error ? auditError.message : auditError);
+    }
   } catch (error) {
     console.error('Error syncing prices:', error);
   }

@@ -10,13 +10,16 @@
  * - No smart contract required (just message submission)
  * - Extremely low cost (~$0.0001 per message)
  * 
- * Phase 2 Implementation: This is the foundation for Phase 2 integration
- * 
- * NOTE: @hashgraph/sdk is not installed yet as this is Phase 2.
- * Uncomment the import and install the package when ready to implement.
+ * Powered by Hedera - providing enterprise-grade audit trails for cross-chain operations
  */
 
-// import { Client, TopicCreateTransaction, TopicMessageSubmitTransaction, TopicId } from "@hashgraph/sdk";
+import { 
+  Client, 
+  TopicCreateTransaction, 
+  TopicMessageSubmitTransaction, 
+  TopicId,
+  PrivateKey 
+} from "@hashgraph/sdk";
 
 export interface PriceSyncEvent {
   tokenAddress: string;
@@ -42,24 +45,17 @@ export interface BondingCurveTransaction {
 }
 
 export class HederaAuditService {
-  private client: any = null; // Client from @hashgraph/sdk (Phase 2)
-  private topicId: any = null; // TopicId from @hashgraph/sdk (Phase 2)
+  private client: Client | null = null;
+  private topicId: TopicId | null = null;
   private initialized: boolean = false;
 
   /**
    * Initialize HCS client and topic
    * Call this once at application startup
    * 
-   * NOTE: This is Phase 2 functionality. Install @hashgraph/sdk to enable.
+   * Powered by Hedera Consensus Service
    */
   async initialize(): Promise<void> {
-    // Phase 2: Not yet implemented
-    // Install @hashgraph/sdk and uncomment the import to enable
-    console.log("ℹ️  Hedera Audit Service (HCS) is Phase 2 - not yet active");
-    console.log("   Install @hashgraph/sdk to enable HCS audit logging");
-    return;
-    
-    /* Phase 2 Implementation (uncomment when @hashgraph/sdk is installed):
     if (this.initialized) {
       return;
     }
@@ -67,16 +63,22 @@ export class HederaAuditService {
     try {
       // Get Hedera account credentials from environment
       const accountId = process.env.HEDERA_ACCOUNT_ID;
-      const privateKey = process.env.HEDERA_PRIVATE_KEY;
+      const privateKeyStr = process.env.HEDERA_PRIVATE_KEY;
 
-      if (!accountId || !privateKey) {
+      if (!accountId || !privateKeyStr) {
         console.warn("⚠️  Hedera credentials not configured. HCS audit logging disabled.");
         console.warn("   Set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY to enable.");
         return;
       }
 
       // Initialize Hedera client
-      this.client = Client.forTestnet(); // Use forMainnet() in production
+      const isMainnet = process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true';
+      this.client = isMainnet ? Client.forMainnet() : Client.forTestnet();
+      
+      // Parse private key (remove 0x prefix if present)
+      const privateKeyHex = privateKeyStr.replace(/^0x/, '');
+      const privateKey = PrivateKey.fromString(privateKeyHex);
+      
       this.client.setOperator(accountId, privateKey);
 
       // Get or create HCS topic
@@ -99,28 +101,23 @@ export class HederaAuditService {
       }
 
       this.initialized = true;
-      console.log("✅ Hedera Audit Service initialized");
+      console.log("✅ Hedera Audit Service initialized (Powered by Hedera)");
     } catch (error) {
       console.error("❌ Error initializing Hedera Audit Service:", error);
       console.error("   Audit logging will be disabled");
+      // Don't throw - allow system to continue without audit logging
     }
-    */
   }
 
   /**
    * Log a price synchronization event to HCS
    * This creates an immutable, timestamped record of cross-chain price updates
    * 
-   * NOTE: Phase 2 - not yet implemented
+   * Powered by Hedera Consensus Service
    */
   async logPriceSyncEvent(event: PriceSyncEvent): Promise<void> {
-    // Phase 2: Not yet implemented
-    // Silently fail - audit logging is optional
-    return;
-    
-    /* Phase 2 Implementation (uncomment when @hashgraph/sdk is installed):
     if (!this.initialized || !this.client || !this.topicId) {
-      return;
+      return; // Silently fail if not initialized
     }
 
     try {
@@ -130,6 +127,7 @@ export class HederaAuditService {
         ...event,
         verified: true,
         timestamp: new Date().toISOString(),
+        poweredBy: "Hedera Consensus Service",
       });
 
       const transaction = new TopicMessageSubmitTransaction()
@@ -139,27 +137,22 @@ export class HederaAuditService {
       const response = await transaction.execute(this.client);
       const receipt = await response.getReceipt(this.client);
       
-      console.log(`📝 Logged price sync event to HCS: ${receipt.status}`);
+      console.log(`📝 Logged price sync event to HCS (Powered by Hedera): ${receipt.status}`);
     } catch (error) {
       console.error("❌ Error logging price sync event to HCS:", error);
+      // Don't throw - audit logging failure shouldn't break main flow
     }
-    */
   }
 
   /**
    * Log a bonding curve transaction to HCS
    * This creates an immutable record of all buy/sell transactions
    * 
-   * NOTE: Phase 2 - not yet implemented
+   * Powered by Hedera Consensus Service
    */
   async logBondingCurveTransaction(event: BondingCurveTransaction): Promise<void> {
-    // Phase 2: Not yet implemented
-    // Silently fail - audit logging is optional
-    return;
-    
-    /* Phase 2 Implementation (uncomment when @hashgraph/sdk is installed):
     if (!this.initialized || !this.client || !this.topicId) {
-      return;
+      return; // Silently fail if not initialized
     }
 
     try {
@@ -169,6 +162,7 @@ export class HederaAuditService {
         ...event,
         verified: true,
         timestamp: new Date().toISOString(),
+        poweredBy: "Hedera Consensus Service",
       });
 
       const transaction = new TopicMessageSubmitTransaction()
@@ -178,11 +172,11 @@ export class HederaAuditService {
       const response = await transaction.execute(this.client);
       const receipt = await response.getReceipt(this.client);
       
-      console.log(`📝 Logged bonding curve transaction to HCS: ${receipt.status}`);
+      console.log(`📝 Logged bonding curve transaction to HCS (Powered by Hedera): ${receipt.status}`);
     } catch (error) {
       console.error("❌ Error logging bonding curve transaction to HCS:", error);
+      // Don't throw - audit logging failure shouldn't break main flow
     }
-    */
   }
 
   /**
