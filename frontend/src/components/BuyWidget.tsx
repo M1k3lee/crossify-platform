@@ -985,10 +985,44 @@ export default function BuyWidget({
         );
       }
       
-      const tx = await curveContract.buy(tokenAmount, {
+      // Build transaction options
+      const txOptions: any = {
         value: totalCostWei,
         gasLimit: 500000,
+      };
+
+      // Hedera requires explicit gas price (minimum 570000000000 tinybar = 0.00000057 HBAR)
+      // For other chains, let ethers handle gas price automatically
+      const chainLower = chain.toLowerCase();
+      if (chainLower.includes('hedera')) {
+        // Hedera minimum gas price is 570000000000 tinybar (0.00000057 HBAR per gas unit)
+        // We'll let Hedera auto-determine, but ensure we have enough gas
+        // Hedera uses a fixed fee model, so we don't need to set gasPrice explicitly
+        // The provider will handle it
+        console.log('⚡ Hedera transaction - using auto gas price');
+      } else {
+        // For other chains, try to get fee data
+        try {
+          const feeData = await provider.getFeeData();
+          if (feeData?.gasPrice) {
+            txOptions.gasPrice = feeData.gasPrice;
+          } else if (feeData?.maxFeePerGas && feeData?.maxPriorityFeePerGas) {
+            txOptions.maxFeePerGas = feeData.maxFeePerGas;
+            txOptions.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+          }
+        } catch (feeError) {
+          console.warn('⚠️ Could not get fee data, using defaults');
+        }
+      }
+
+      console.log('📋 Transaction options:', {
+        value: totalCostWei.toString(),
+        gasLimit: txOptions.gasLimit,
+        gasPrice: txOptions.gasPrice?.toString(),
+        maxFeePerGas: txOptions.maxFeePerGas?.toString(),
       });
+
+      const tx = await curveContract.buy(tokenAmount, txOptions);
 
       toast.loading(`Transaction submitted: ${tx.hash}`, { id: 'buy-tx' });
       
