@@ -519,31 +519,34 @@ export default function BuyWidget({
         };
         console.log('🔍 HashPack detection check:', detectionDetails);
         
-        // If HashPack isn't detected but we're on Hedera and have a wallet, 
-        // check if it might be HashPack by looking at the provider
-        // HashPack might inject as window.ethereum without the isHashPack flag
-        if (!recommendation.hasRecommended && window.ethereum && !window.ethereum.isMetaMask) {
-          console.log('⚠️ HashPack not detected, but wallet exists and is not MetaMask - might be HashPack');
-          console.log('   Proceeding with transaction - HashPack detection is not blocking');
-        }
-        
-        if (!recommendation.hasRecommended) {
-          // Check if window.ethereum exists - HashPack might be installed but not detected
-          // HashPack injects as window.ethereum, so if we have ethereum and it's not MetaMask/Phantom,
-          // it might be HashPack (especially on Hedera network)
-          if (window.ethereum) {
-            const isMetaMask = window.ethereum.isMetaMask;
-            const isPhantom = !!(window.ethereum as any).isPhantom;
-            
-            // If we have window.ethereum but it's not MetaMask or Phantom, it might be HashPack
-            // HashPack injects as window.ethereum directly, similar to MetaMask
-            if (!isMetaMask && !isPhantom) {
-              console.log('✅ Likely HashPack detected (window.ethereum exists but not MetaMask/Phantom)');
-              // Don't show warning, just proceed - HashPack is likely installed
+        // Try to manually find HashPack in providers array
+        if (!recommendation.hasRecommended && window.ethereum?.providers) {
+          const { getHashPackProvider } = await import('../services/blockchain');
+          const hashpackProvider = getHashPackProvider();
+          if (hashpackProvider) {
+            console.log('✅ HashPack found manually in providers array!');
+            // Update window.ethereum to use HashPack provider
+            // This is a workaround - we'll use the HashPack provider directly
+            console.log('   HashPack will be used for this transaction');
+            // Don't show warning since we found it
+          } else {
+            // HashPack not found - show helpful message
+            if (window.ethereum.isMetaMask) {
+              console.warn('⚠️ MetaMask detected, but HashPack is recommended for Hedera');
+              toast(
+                'HashPack is recommended for Hedera transactions.\n\n' +
+                'If you have HashPack installed, you may need to:\n' +
+                '1. Disable MetaMask temporarily, or\n' +
+                '2. Use HashPack directly by connecting it first\n\n' +
+                'Proceeding with MetaMask, but HashPack provides better Hedera support.',
+                { 
+                  id: 'hedera-wallet-warning',
+                  duration: 12000,
+                  icon: '⚠️',
+                }
+              );
             } else {
-              console.warn('⚠️ HashPack not detected, but window.ethereum exists. Proceeding with transaction...');
-              console.warn('   If you have HashPack installed, make sure it\'s enabled and refresh the page.');
-              // Don't block the transaction, just warn
+              console.warn('⚠️ HashPack not detected. Proceeding with current wallet...');
               toast(
                 'HashPack not detected. If you have HashPack installed, make sure it\'s enabled. Proceeding with current wallet...',
                 { 
@@ -552,6 +555,25 @@ export default function BuyWidget({
                   icon: '⚠️',
                 }
               );
+            }
+          }
+        } else if (!recommendation.hasRecommended) {
+          // No providers array or HashPack not found
+          if (window.ethereum) {
+            const isMetaMask = window.ethereum.isMetaMask;
+            if (isMetaMask) {
+              console.warn('⚠️ MetaMask detected, but HashPack is recommended for Hedera');
+              toast(
+                'HashPack is recommended for Hedera. MetaMask will work, but HashPack provides better support.\n\n' +
+                'Install HashPack: https://www.hashpack.app/',
+                { 
+                  id: 'hedera-wallet-warning',
+                  duration: 10000,
+                  icon: '⚠️',
+                }
+              );
+            } else {
+              console.warn('⚠️ HashPack not detected, but wallet exists. Proceeding...');
             }
           } else {
             // No wallet at all - show full error
