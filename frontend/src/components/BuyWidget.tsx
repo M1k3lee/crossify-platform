@@ -84,6 +84,12 @@ export default function BuyWidget({
       return 'https://ethereum-sepolia-rpc.publicnode.com';
     }
     
+    // Handle Hedera Testnet
+    if (chainLower === 'hedera-testnet' || chainLower.includes('hedera')) {
+      console.log(`   → Using Hedera Testnet RPC`);
+      return 'https://testnet.hashio.io/api';
+    }
+    
     // Default to Base Sepolia (most common testnet)
     console.log(`   → Using Base Sepolia RPC (default fallback)`);
     return 'https://base-sepolia-rpc.publicnode.com';
