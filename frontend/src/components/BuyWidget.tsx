@@ -503,7 +503,7 @@ export default function BuyWidget({
         const recommendation = getHederaWalletRecommendation();
         
         // Debug: Log detection details
-        console.log('🔍 HashPack detection check:', {
+        const detectionDetails = {
           hasRecommended: recommendation.hasRecommended,
           windowHashpack: !!(window as any).hashpack,
           windowEthereum: !!window.ethereum,
@@ -516,7 +516,16 @@ export default function BuyWidget({
             isHashPack: p.isHashPack,
             constructor: p.constructor?.name,
           })) || [],
-        });
+        };
+        console.log('🔍 HashPack detection check:', detectionDetails);
+        
+        // If HashPack isn't detected but we're on Hedera and have a wallet, 
+        // check if it might be HashPack by looking at the provider
+        // HashPack might inject as window.ethereum without the isHashPack flag
+        if (!recommendation.hasRecommended && window.ethereum && !window.ethereum.isMetaMask) {
+          console.log('⚠️ HashPack not detected, but wallet exists and is not MetaMask - might be HashPack');
+          console.log('   Proceeding with transaction - HashPack detection is not blocking');
+        }
         
         if (!recommendation.hasRecommended) {
           // Check if window.ethereum exists - HashPack might be installed but not detected
