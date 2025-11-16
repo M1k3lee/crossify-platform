@@ -1092,7 +1092,36 @@ export default function BuyWidget({
 
       toast.loading(`Transaction submitted: ${tx.hash}`, { id: 'buy-tx' });
       
-      const receipt = await tx.wait();
+      // Wait for transaction confirmation
+      let receipt: any;
+      try {
+        receipt = await tx.wait();
+        console.log('✅ Transaction confirmed:', {
+          hash: receipt.hash,
+          status: receipt.status,
+          gasUsed: receipt.gasUsed?.toString(),
+          blockNumber: receipt.blockNumber,
+        });
+        
+        // Check if transaction failed
+        if (receipt.status === 0) {
+          throw new Error('Transaction reverted. The contract call failed. This could be due to insufficient funds, contract revert, or invalid parameters.');
+        }
+      } catch (waitError: any) {
+        console.error('❌ Transaction wait error:', waitError);
+        // If it's a receipt error, try to get more details
+        if (waitError.receipt) {
+          console.error('Transaction receipt:', {
+            status: waitError.receipt.status,
+            gasUsed: waitError.receipt.gasUsed?.toString(),
+            logs: waitError.receipt.logs,
+          });
+          if (waitError.receipt.status === 0) {
+            throw new Error('Transaction reverted. The contract call failed. Check the contract state or try a smaller amount.');
+          }
+        }
+        throw waitError;
+      }
       
       // Calculate price per token from the transaction (use priceEstimateWei, not totalCostWei which includes fees)
       const pricePerToken = parseFloat(ethers.formatEther(priceEstimateWei)) / parseFloat(amount);
@@ -1139,6 +1168,21 @@ export default function BuyWidget({
       }
     } catch (error: any) {
       console.error('Buy error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        reason: error.reason,
+        data: error.data,
+        receipt: error.receipt ? {
+          status: error.receipt.status,
+          gasUsed: error.receipt.gasUsed?.toString(),
+        } : undefined,
+        transaction: error.transaction ? {
+          to: error.transaction.to,
+          data: error.transaction.data?.substring(0, 20) + '...',
+          value: error.transaction.value?.toString(),
+        } : undefined,
+      });
       
       if (error.code === 4001) {
         toast.error('Transaction rejected by user', { id: 'buy-tx' });
