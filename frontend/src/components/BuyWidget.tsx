@@ -1050,19 +1050,17 @@ export default function BuyWidget({
       let tx: any;
       if (chainLower.includes('hedera')) {
         console.log('⚡ Using manual transaction construction for Hedera');
+        console.log('📋 Encoded data length:', encodedData.length);
+        console.log('📋 Encoded data (first 100 chars):', encodedData.substring(0, 100));
+        
         // Manually construct the transaction to ensure data is properly included
-        const txRequest: {
-          to: string;
-          data: string;
-          value: bigint;
-          gasLimit: number;
-          gasPrice?: bigint;
-        } = {
+        // Use TransactionRequest type from ethers
+        const txRequest = {
           to: curveAddress,
           data: encodedData,
           value: totalCostWei,
           gasLimit: txOptions.gasLimit,
-        };
+        } as any;
         
         // Add gas price if available
         if (txOptions.gasPrice) {
@@ -1071,12 +1069,28 @@ export default function BuyWidget({
         
         console.log('📋 Manual transaction request:', {
           to: txRequest.to,
-          data: txRequest.data.substring(0, 20) + '...',
+          data: txRequest.data ? txRequest.data.substring(0, 50) + '...' : 'MISSING!',
+          dataLength: txRequest.data?.length || 0,
           value: txRequest.value.toString(),
           gasLimit: txRequest.gasLimit,
+          gasPrice: txRequest.gasPrice?.toString(),
         });
         
+        // Verify data is not empty before sending
+        if (!txRequest.data || txRequest.data === '0x' || txRequest.data.length < 10) {
+          throw new Error('Transaction data is empty or invalid. Cannot send transaction without function call data.');
+        }
+        
         tx = await signer.sendTransaction(txRequest);
+        
+        // Verify the transaction object has data
+        console.log('📤 Transaction object after send:', {
+          hash: tx.hash,
+          to: tx.to,
+          data: tx.data ? tx.data.substring(0, 50) + '...' : 'MISSING!',
+          dataLength: tx.data?.length || 0,
+          value: tx.value?.toString(),
+        });
       } else {
         // For other chains, use the contract method (standard approach)
         tx = await curveContract.buy(tokenAmount, txOptions);
