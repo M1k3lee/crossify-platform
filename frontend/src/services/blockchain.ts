@@ -4,8 +4,49 @@ import { ethers, BrowserProvider } from 'ethers';
 // Helper to check if HashPack wallet is installed
 export function isHashPackInstalled(): boolean {
   if (typeof window === 'undefined') return false;
-  // HashPack exposes itself via window.hashpack
-  return !!(window as any).hashpack;
+  
+  // HashPack can expose itself in multiple ways:
+  // 1. Via window.hashpack
+  // 2. Via window.ethereum with isHashPack flag
+  // 3. Via window.ethereum.providers array with HashPack provider
+  
+  // Check window.hashpack
+  if ((window as any).hashpack) {
+    return true;
+  }
+  
+  // Check if window.ethereum has HashPack flag
+  if (window.ethereum && (window.ethereum as any).isHashPack) {
+    return true;
+  }
+  
+  // Check if HashPack is in providers array
+  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+    const hashpack = window.ethereum.providers.find((p: any) => 
+      p.isHashPack || 
+      (p as any).__hashpack ||
+      p.constructor?.name === 'HashPackProvider'
+    );
+    if (hashpack) {
+      return true;
+    }
+  }
+  
+  // Check if the user agent or other indicators suggest HashPack
+  // HashPack might inject itself differently, so also check if we're on Hedera network
+  // and window.ethereum exists (HashPack injects as window.ethereum)
+  if (window.ethereum) {
+    // Try to detect by checking if it's not MetaMask or other known wallets
+    const isMetaMask = window.ethereum.isMetaMask;
+    const isPhantom = (window.ethereum as any).isPhantom;
+    const isCoinbase = (window.ethereum as any).isCoinbaseWallet;
+    
+    // If we have an ethereum provider that's not a known wallet, it might be HashPack
+    // But this is less reliable, so we'll be more conservative
+    // Actually, let's not do this - it's too unreliable
+  }
+  
+  return false;
 }
 
 // Helper to get the preferred EVM provider
