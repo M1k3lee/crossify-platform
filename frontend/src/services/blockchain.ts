@@ -32,20 +32,6 @@ export function isHashPackInstalled(): boolean {
     }
   }
   
-  // Check if the user agent or other indicators suggest HashPack
-  // HashPack might inject itself differently, so also check if we're on Hedera network
-  // and window.ethereum exists (HashPack injects as window.ethereum)
-  if (window.ethereum) {
-    // Try to detect by checking if it's not MetaMask or other known wallets
-    const isMetaMask = window.ethereum.isMetaMask;
-    const isPhantom = (window.ethereum as any).isPhantom;
-    const isCoinbase = (window.ethereum as any).isCoinbaseWallet;
-    
-    // If we have an ethereum provider that's not a known wallet, it might be HashPack
-    // But this is less reliable, so we'll be more conservative
-    // Actually, let's not do this - it's too unreliable
-  }
-  
   return false;
 }
 

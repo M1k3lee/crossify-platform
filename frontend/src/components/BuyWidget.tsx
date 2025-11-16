@@ -518,11 +518,12 @@ export default function BuyWidget({
             console.warn('⚠️ HashPack not detected, but window.ethereum exists. Proceeding with transaction...');
             console.warn('   If you have HashPack installed, make sure it\'s enabled and refresh the page.');
             // Don't block the transaction, just warn
-            toast.warning(
+            toast(
               'HashPack not detected. If you have HashPack installed, make sure it\'s enabled. Proceeding with current wallet...',
               { 
                 id: 'hedera-wallet-warning',
                 duration: 8000,
+                icon: '⚠️',
               }
             );
           } else {
