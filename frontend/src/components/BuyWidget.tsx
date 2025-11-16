@@ -5,7 +5,7 @@ import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import { getTestnetInfo, getPreferredEVMProvider, switchNetwork } from '../services/blockchain';
+import { getTestnetInfo, getPreferredEVMProvider, switchNetwork, isHashPackInstalled, getHederaWalletRecommendation } from '../services/blockchain';
 import { API_BASE } from '../config/api';
 import { trackTokenTransaction, trackButtonClick } from './GoogleAnalytics';
 

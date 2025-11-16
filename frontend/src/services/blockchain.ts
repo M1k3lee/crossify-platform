@@ -1,31 +1,87 @@
 // Frontend blockchain service for real testnet deployments
 import { ethers, BrowserProvider } from 'ethers';
 
-// Helper to get the preferred EVM provider (MetaMask > others)
-export function getPreferredEVMProvider(): any {
+// Helper to check if HashPack wallet is installed
+export function isHashPackInstalled(): boolean {
+  if (typeof window === 'undefined') return false;
+  // HashPack exposes itself via window.hashpack
+  return !!(window as any).hashpack;
+}
+
+// Helper to get the preferred EVM provider
+// For Hedera: Prioritize HashPack > MetaMask
+// For other chains: Prioritize MetaMask > others
+export function getPreferredEVMProvider(chain?: string): any {
   if (typeof window === 'undefined') {
     throw new Error('Window is not available');
   }
 
+  const chainLower = chain?.toLowerCase() || '';
+  const isHedera = chainLower.includes('hedera');
+
+  // For Hedera, prioritize HashPack
+  if (isHedera && isHashPackInstalled()) {
+    console.log('✅ HashPack detected - recommended for Hedera');
+    // HashPack exposes itself via window.ethereum when installed
+    // It should be in the providers array or as the main provider
+    if (window.ethereum) {
+      if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
+        // Look for HashPack in providers (it might have isHashPack flag)
+        const hashpack = window.ethereum.providers.find((p: any) => p.isHashPack || (p as any).__hashpack);
+        if (hashpack) {
+          console.log('✅ Using HashPack provider from providers array');
+          return hashpack;
+        }
+      }
+      // HashPack might be the main provider
+      if ((window.ethereum as any).isHashPack) {
+        console.log('✅ Using HashPack as main provider');
+        return window.ethereum;
+      }
+      // If HashPack is installed but not found, still use window.ethereum
+      // HashPack might inject itself differently
+      console.log('✅ HashPack installed, using window.ethereum (HashPack should handle Hedera)');
+      return window.ethereum;
+    }
+  }
+
   // Check if window.ethereum exists
   if (!window.ethereum) {
+    if (isHedera) {
+      throw new Error('No Hedera wallet detected. Please install HashPack wallet for the best Hedera experience.');
+    }
     throw new Error('No EVM wallet detected. Please install MetaMask or another EVM-compatible wallet.');
   }
 
-  // If window.ethereum.providers exists (multiple wallets), prioritize MetaMask
+  // If window.ethereum.providers exists (multiple wallets), prioritize based on chain
   if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
-    // Look for MetaMask first (isMetaMask flag)
+    if (isHedera) {
+      // For Hedera, look for HashPack first, then MetaMask
+      const hashpack = window.ethereum.providers.find((p: any) => p.isHashPack || (p as any).__hashpack);
+      if (hashpack) {
+        console.log('✅ Found HashPack provider, using it for Hedera');
+        return hashpack;
+      }
+    }
+    
+    // Look for MetaMask
     const metaMask = window.ethereum.providers.find((p: any) => p.isMetaMask);
     if (metaMask) {
       console.log('✅ Found MetaMask provider, using it');
       return metaMask;
     }
-    // If no MetaMask, use the first provider
-    console.log('⚠️ MetaMask not found, using first available provider');
+    
+    // If no preferred wallet, use the first provider
+    console.log('⚠️ Preferred wallet not found, using first available provider');
     return window.ethereum.providers[0];
   }
 
-  // Single provider - check if it's MetaMask or Phantom
+  // Single provider - check if it's MetaMask, HashPack, or Phantom
+  if ((window.ethereum as any).isHashPack) {
+    console.log('✅ Using HashPack provider');
+    return window.ethereum;
+  }
+  
   if (window.ethereum.isMetaMask) {
     console.log('✅ Using MetaMask provider');
     return window.ethereum;
@@ -132,6 +188,30 @@ function checkEVMWallet(): void {
 }
 
 // Helper function to switch network
+// Helper to check if user has a recommended wallet for Hedera
+export function getHederaWalletRecommendation(): {
+  hasRecommended: boolean;
+  walletName: string;
+  installUrl: string;
+  instructions: string[];
+} {
+  const hasHashPack = isHashPackInstalled();
+  
+  return {
+    hasRecommended: hasHashPack,
+    walletName: 'HashPack',
+    installUrl: 'https://www.hashpack.app/',
+    instructions: [
+      '1. Visit https://www.hashpack.app/',
+      '2. Click "Get HashPack" and install the browser extension',
+      '3. Create a new wallet or import an existing one',
+      '4. Make sure you\'re on Hedera Testnet (switch in HashPack settings)',
+      '5. Fund your wallet with testnet HBAR from https://portal.hedera.com',
+      '6. Return here and connect your HashPack wallet',
+    ],
+  };
+}
+
 export async function switchNetwork(chain: 'ethereum' | 'bsc' | 'base' | 'hedera'): Promise<void> {
   checkEVMWallet();
   const provider = getPreferredEVMProvider();
