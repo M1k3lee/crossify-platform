@@ -1178,6 +1178,23 @@ export default function BuyWidget({
           });
           
           if (waitError.receipt.status === 0) {
+            // Check if this is the Hedera/MetaMask data stripping issue
+            const isHedera = chainLower.includes('hedera');
+            const hasEmptyData = waitError.transaction?.data === '' || waitError.transaction?.data === undefined;
+            
+            if (isHedera && hasEmptyData) {
+              throw new Error(
+                `Transaction failed: MetaMask stripped the transaction data field. This is a known Hedera/MetaMask compatibility issue.\n\n` +
+                `SOLUTION: Install the Hedera Wallet Snap in MetaMask:\n` +
+                `1. Open MetaMask → Click the three dots (⋮) → Settings\n` +
+                `2. Go to "Snaps" → "Discover Snaps"\n` +
+                `3. Search for "Hedera Wallet" by Tuum Technologies\n` +
+                `4. Click "Add to MetaMask" and follow the prompts\n` +
+                `5. Try the transaction again\n\n` +
+                `The Hedera Wallet Snap extends MetaMask to properly support Hedera transactions.`
+              );
+            }
+            
             // Try to decode revert reason if available
             let revertReason = 'Unknown revert reason';
             if (waitError.receipt.logs && waitError.receipt.logs.length === 0) {
