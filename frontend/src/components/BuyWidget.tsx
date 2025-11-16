@@ -919,7 +919,63 @@ export default function BuyWidget({
         }
       } catch (err: any) {
         console.error('⚠️ Error getting price estimate:', err);
-        throw new Error(`Failed to get price estimate: ${err.message}. Please try again or contact support.`);
+        
+        // Try to decode hex-encoded ASCII error messages (common in Hedera)
+        let errorMessage = err.message || 'Unknown error';
+        const errorData = err.data || err.error?.data;
+        
+        if (errorData && typeof errorData === 'string' && errorData.startsWith('0x') && errorData.length > 2) {
+          try {
+            // Remove 0x prefix and decode hex to ASCII
+            const hexString = errorData.slice(2);
+            let decoded = '';
+            for (let i = 0; i < hexString.length; i += 2) {
+              const charCode = parseInt(hexString.substr(i, 2), 16);
+              if (charCode >= 32 && charCode <= 126) { // Printable ASCII range
+                decoded += String.fromCharCode(charCode);
+              } else {
+                break; // Stop at first non-printable character
+              }
+            }
+            if (decoded.length > 0) {
+              console.log(`📝 Decoded error message: ${decoded}`);
+              
+              // Handle specific Hedera errors
+              if (decoded.includes('INSUFFICIENT_PAYER_BALANCE')) {
+                // Get user's balance to show helpful error
+                try {
+                  const provider = new ethers.BrowserProvider(window.ethereum);
+                  const signer = await provider.getSigner();
+                  const address = await signer.getAddress();
+                  const balance = await provider.getBalance(address);
+                  const balanceFormatted = ethers.formatEther(balance);
+                  
+                  throw new Error(
+                    `Insufficient HBAR balance. You have ${balanceFormatted} HBAR, but need more to complete this transaction.\n\n` +
+                    `Get testnet HBAR from: https://portal.hedera.com\n\n` +
+                    `The transaction requires HBAR to pay for gas fees and the token purchase.`
+                  );
+                } catch (balanceErr: any) {
+                  // If we can't get balance, just show the decoded error
+                  throw new Error(
+                    `Insufficient HBAR balance. You need more HBAR to complete this transaction.\n\n` +
+                    `Get testnet HBAR from: https://portal.hedera.com`
+                  );
+                }
+              }
+              
+              // Use decoded message if it's more informative
+              if (decoded.length > 10) {
+                errorMessage = decoded;
+              }
+            }
+          } catch (decodeErr) {
+            // If decoding fails, continue with original error handling
+            console.warn('Could not decode error message:', decodeErr);
+          }
+        }
+        
+        throw new Error(`Failed to get price estimate: ${errorMessage}. Please try again or contact support.`);
       }
       
       // Final validation: price should be valid (not NaN/Infinity) and within contract limits
