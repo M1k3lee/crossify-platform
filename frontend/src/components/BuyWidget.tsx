@@ -1107,17 +1107,55 @@ export default function BuyWidget({
           throw new Error('Populated transaction data is empty. This indicates a problem with transaction encoding.');
         }
         
-        // For Hedera, the issue is that MetaMask may strip the data field
-        // We've verified the populated transaction has data, so the issue is with MetaMask/Hedera RPC
-        // Note: This is a known issue with Hedera and MetaMask - the data field may be stripped
-        // SOLUTION: Users should install the Hedera Wallet Snap in MetaMask
-        console.log('📤 Sending populated transaction (data should be preserved)...');
-        console.log('⚠️ NOTE: If transaction fails with empty data, install Hedera Wallet Snap in MetaMask');
-        console.log('   MetaMask → Settings → Snaps → Discover → Search "Hedera Wallet" by Tuum Technologies');
+        // For Hedera, even with Hedera Wallet Snap installed, MetaMask may still strip the data field
+        // The snap might not automatically intercept all transactions
+        // Try using the provider's sendTransaction method directly with explicit data
+        console.log('📤 Attempting Hedera transaction with explicit data preservation...');
+        console.log('📋 Populated transaction has data:', populatedTx.data ? 'YES' : 'NO');
+        console.log('📋 Data length:', populatedTx.data?.length || 0);
         
-        // Send the populated transaction
-        tx = await signer.sendTransaction(populatedTx);
-        console.log('✅ Sent Hedera transaction with populated transaction');
+        // Try to use provider.sendTransaction with a raw transaction request
+        // This might work better with Hedera Wallet Snap
+        try {
+          const provider = signer.provider;
+          if (!provider) {
+            throw new Error('No provider available');
+          }
+          
+          // Get the signer's address
+          const signerAddress = await signer.getAddress();
+          
+          // Build a complete transaction request with all fields
+          const rawTxRequest = {
+            from: signerAddress,
+            to: populatedTx.to!,
+            data: populatedTx.data!,
+            value: populatedTx.value || 0n,
+            gasLimit: populatedTx.gasLimit || BigInt(txOptions.gasLimit || 1000000),
+            gasPrice: populatedTx.gasPrice,
+            nonce: populatedTx.nonce,
+            chainId: populatedTx.chainId,
+          };
+          
+          console.log('📋 Raw transaction request (before signing):', {
+            from: rawTxRequest.from,
+            to: rawTxRequest.to,
+            data: rawTxRequest.data.substring(0, 50) + '...',
+            dataLength: rawTxRequest.data.length,
+            value: rawTxRequest.value.toString(),
+            gasLimit: rawTxRequest.gasLimit.toString(),
+          });
+          
+          // Use signer.sendTransaction which should preserve the data through MetaMask
+          // The Hedera Wallet Snap should intercept this if properly configured
+          tx = await signer.sendTransaction(rawTxRequest);
+          console.log('✅ Sent via signer.sendTransaction with raw request');
+        } catch (rawError: any) {
+          console.warn('⚠️ Raw transaction failed, using populated transaction:', rawError.message);
+          // Fallback to populated transaction
+          tx = await signer.sendTransaction(populatedTx);
+          console.log('✅ Sent via signer.sendTransaction with populated transaction (fallback)');
+        }
       } else {
         // For other chains, use the contract method (standard approach)
         tx = await curveContract.buy(tokenAmount, {
