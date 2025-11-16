@@ -456,6 +456,13 @@ export default function BuyWidget({
       return 'ETH';
     }
     
+    // Handle Hedera
+    if (chainLower === 'hedera' || 
+        chainLower === 'hedera-testnet' ||
+        chainLower.includes('hedera')) {
+      return 'HBAR';
+    }
+    
     // Handle Solana
     if (chainLower === 'solana' || 
         chainLower === 'sol' ||
@@ -501,7 +508,7 @@ export default function BuyWidget({
       // Map chain name to chain ID (handle testnet variants)
       const chainLower = chain.toLowerCase();
       let expectedChainIdHex: string;
-      let switchChainName: 'ethereum' | 'bsc' | 'base';
+      let switchChainName: 'ethereum' | 'bsc' | 'base' | 'hedera';
       
       if (chainLower.includes('bsc') || chainLower === 'bsc-testnet') {
         expectedChainIdHex = '0x61'; // BSC Testnet
@@ -512,6 +519,9 @@ export default function BuyWidget({
       } else if (chainLower.includes('base') || chainLower === 'base-sepolia') {
         expectedChainIdHex = '0x14A34'; // Base Sepolia
         switchChainName = 'base';
+      } else if (chainLower.includes('hedera') || chainLower === 'hedera-testnet') {
+        expectedChainIdHex = '0x128'; // Hedera Testnet (296)
+        switchChainName = 'hedera';
       } else {
         // Default to Base Sepolia
         expectedChainIdHex = '0x14A34';
@@ -904,8 +914,8 @@ export default function BuyWidget({
       console.log(`💰 Total cost with 2% buffer: ${totalCostEth.toFixed(6)} ${chainSymbol}`);
       
       // Final validation before sending - must be valid and within contract limits
-      // Use correct price for chain: BNB ~$600, ETH ~$3000
-      const nativeTokenPriceUSD = chainSymbol === 'BNB' ? 600 : 3000;
+      // Use correct price for chain: BNB ~$600, ETH ~$3000, HBAR ~$0.10
+      const nativeTokenPriceUSD = chainSymbol === 'BNB' ? 600 : chainSymbol === 'HBAR' ? 0.10 : 3000;
       const totalCostUSD = totalCostEth * nativeTokenPriceUSD;
       
       // Only validate that total cost is a valid number and within contract's 100 ETH/BNB limit
