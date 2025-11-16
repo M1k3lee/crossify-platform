@@ -562,16 +562,19 @@ export default function BuyWidget({
         'function buy(uint256 tokenAmount) external payable',
         'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
         'function getCurrentPrice() external view returns (uint256)',
-        'function isGraduated() external view returns (bool)',
+        'function isGraduated() external view returns (uint256)',
         'function buyFeePercent() external view returns (uint256)',
         'function sellFeePercent() external view returns (uint256)',
       ];
 
       const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
       
-      // Verify contract is on the correct chain
-      const code = await provider.getCode(curveAddress);
-      if (!code || code === '0x') {
+      // Verify contract is on the correct chain using RPC provider (not wallet provider)
+      // This ensures we check the contract on the correct network even if wallet is on wrong network
+      const rpcUrl = getRpcUrlForChain(chain);
+      const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+      const code = await rpcProvider.getCode(curveAddress);
+      if (!code || code === '0x' || code === '0x0') {
         throw new Error(`Bonding curve contract not found at ${curveAddress} on ${chain}. Please deploy the token first.`);
       }
       
