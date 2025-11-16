@@ -1,5 +1,6 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { sepolia, baseSepolia, bscTestnet, defineChain } from 'wagmi/chains';
+import { sepolia, baseSepolia, bscTestnet } from 'wagmi/chains';
+import { defineChain } from 'viem/chains';
 
 // Use environment variable or get a real project ID from https://cloud.walletconnect.com
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
