@@ -533,7 +533,7 @@ export default function BuyWidget({
       const currentChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
       
       // Map chain name to chain ID (handle testnet variants)
-      const chainLower = chain.toLowerCase();
+      // chainLower already declared above
       let expectedChainIdHex: string;
       let switchChainName: 'ethereum' | 'bsc' | 'base' | 'hedera';
       
