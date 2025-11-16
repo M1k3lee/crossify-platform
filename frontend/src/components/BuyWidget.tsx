@@ -497,12 +497,39 @@ export default function BuyWidget({
     try {
       setLoading(true);
       
+      // For Hedera, check if user has recommended wallet (HashPack)
+      const chainLower = chain.toLowerCase();
+      if (chainLower.includes('hedera')) {
+        const recommendation = getHederaWalletRecommendation();
+        if (!recommendation.hasRecommended) {
+          // Show user-friendly error with HashPack installation instructions
+          const errorMessage = 
+            `HashPack wallet is recommended for Hedera transactions.\n\n` +
+            `HashPack provides native Hedera support and better compatibility than MetaMask.\n\n` +
+            `Installation:\n${recommendation.instructions.join('\n')}\n\n` +
+            `Alternatively, you can use MetaMask with Hedera Wallet Snap, but HashPack is recommended for the best experience.`;
+          
+          toast.error(errorMessage, { 
+            id: 'hedera-wallet',
+            duration: 15000,
+          });
+          
+          setLoading(false);
+          throw new Error('HashPack wallet is recommended for Hedera. Please install HashPack or use MetaMask with Hedera Wallet Snap configured for testnet.');
+        } else {
+          console.log('✅ HashPack detected - recommended wallet for Hedera');
+        }
+      }
+
       if (typeof window.ethereum === 'undefined') {
+        if (chainLower.includes('hedera')) {
+          throw new Error('No Hedera wallet detected. Please install HashPack wallet (recommended) or MetaMask with Hedera Wallet Snap.');
+        }
         throw new Error('MetaMask is not installed');
       }
 
       // Check current network first
-      const ethereumProvider = getPreferredEVMProvider();
+      const ethereumProvider = getPreferredEVMProvider(chain);
       const currentChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
       
       // Map chain name to chain ID (handle testnet variants)
