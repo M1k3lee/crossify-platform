@@ -9,14 +9,17 @@ export function isHashPackInstalled(): boolean {
   // 1. Via window.hashpack
   // 2. Via window.ethereum with isHashPack flag
   // 3. Via window.ethereum.providers array with HashPack provider
+  // 4. HashPack injects as window.ethereum directly (like MetaMask does)
   
   // Check window.hashpack
   if ((window as any).hashpack) {
+    console.log('✅ HashPack detected via window.hashpack');
     return true;
   }
   
   // Check if window.ethereum has HashPack flag
   if (window.ethereum && (window.ethereum as any).isHashPack) {
+    console.log('✅ HashPack detected via window.ethereum.isHashPack');
     return true;
   }
   
@@ -25,10 +28,29 @@ export function isHashPackInstalled(): boolean {
     const hashpack = window.ethereum.providers.find((p: any) => 
       p.isHashPack || 
       (p as any).__hashpack ||
-      p.constructor?.name === 'HashPackProvider'
+      p.constructor?.name === 'HashPackProvider' ||
+      (p as any).isHashPackWallet
     );
     if (hashpack) {
+      console.log('✅ HashPack detected in providers array');
       return true;
+    }
+  }
+  
+  // HashPack injects as window.ethereum directly (similar to MetaMask)
+  // If we have window.ethereum but it's not MetaMask or Phantom, it might be HashPack
+  // This is a fallback detection method
+  if (window.ethereum) {
+    const isMetaMask = window.ethereum.isMetaMask;
+    const isPhantom = !!(window.ethereum as any).isPhantom;
+    const isCoinbase = !!(window.ethereum as any).isCoinbaseWallet;
+    
+    // If we have an ethereum provider that's not a known wallet, it might be HashPack
+    // But we'll be conservative - only if it's clearly not one of the known wallets
+    if (!isMetaMask && !isPhantom && !isCoinbase) {
+      // This could be HashPack, but we can't be 100% sure
+      // We'll return false here and let the BuyWidget handle it with a warning
+      // The transaction will still proceed
     }
   }
   
