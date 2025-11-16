@@ -196,7 +196,7 @@ const createTokenSchema = z.object({
 });
 
 const deployTokenSchema = z.object({
-  chains: z.array(z.enum(['ethereum', 'bsc', 'solana', 'base'])).min(1),
+  chains: z.array(z.enum(['ethereum', 'bsc', 'solana', 'base', 'hedera'])).min(1),
   deployments: z.array(z.object({
     chain: z.string(),
     tokenAddress: z.string().optional(),
