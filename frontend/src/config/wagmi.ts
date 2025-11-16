@@ -1,6 +1,6 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { sepolia, baseSepolia, bscTestnet } from 'wagmi/chains';
-import { defineChain } from 'viem/chains';
+import type { Chain } from 'wagmi/chains';
 
 // Use environment variable or get a real project ID from https://cloud.walletconnect.com
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
@@ -14,7 +14,8 @@ if (!hasValidProjectId) {
 }
 
 // Define Hedera Testnet chain (not included in wagmi/chains by default)
-const hederaTestnet = defineChain({
+// Using plain object that matches Chain type instead of defineChain
+const hederaTestnet: Chain = {
   id: 296,
   name: 'Hedera Testnet',
   nativeCurrency: {
@@ -37,7 +38,7 @@ const hederaTestnet = defineChain({
     },
   },
   testnet: true,
-});
+} as Chain;
 
 // Configure RainbowKit with wallet options that prioritize injected providers
 export const config = getDefaultConfig({
