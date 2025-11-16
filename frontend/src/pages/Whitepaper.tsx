@@ -71,10 +71,11 @@ export default function Whitepaper() {
                 leading to fragmented liquidity, price discrepancies, and complex user experiences.
               </p>
               <p className="text-gray-300 leading-relaxed text-lg">
-                Our platform enables creators to launch tokens simultaneously across Ethereum, BSC, Solana, and Base 
+                Our platform enables creators to launch tokens simultaneously across Ethereum, BSC, Solana, Base, and Hedera 
                 with unified virtual liquidity, ensuring consistent pricing and seamless cross-chain trading. Through 
                 innovative bonding curve mechanics and automatic DEX graduation, Crossify.io democratizes token creation 
-                while maintaining security and transparency.
+                while maintaining security and transparency. Hedera brings enterprise-grade performance with 10,000+ TPS, 
+                3-5 second finality, and carbon-negative sustainability.
               </p>
             </div>
           </div>
@@ -401,6 +402,11 @@ export default function Whitepaper() {
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-indigo-500 rounded-full" />
                     <span className="text-gray-300">Base Sepolia (Testnet)</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full" />
+                    <span className="text-gray-300">Hedera Testnet ⚡</span>
+                    <span className="text-xs text-green-400">Fast & Cheap</span>
                   </div>
                   <div className="mt-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
                     <p className="text-yellow-300 text-sm">

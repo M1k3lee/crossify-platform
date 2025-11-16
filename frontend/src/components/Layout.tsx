@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Home, Coins, Rocket, LayoutDashboard, LogIn, Menu, X } from 'lucide-react';
+import { Home, Coins, Rocket, LayoutDashboard, LogIn, Menu, X, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Logo from './Logo';
@@ -24,6 +24,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { path: '/', label: 'Home', icon: Home },
+    { path: '/how-it-works', label: 'How It Works', icon: Info },
     { path: '/marketplace', label: 'Marketplace', icon: Coins },
     { path: '/builder', label: 'Launch Token', icon: Rocket },
     // { path: '/presale', label: 'Presale', icon: Zap, highlight: true }, // Hidden for now

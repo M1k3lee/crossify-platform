@@ -150,3 +150,7 @@ All split transactions are recorded with hashes. You can verify on Solscan:
 
 This is a **backend-driven automation**, not a blockchain smart contract. The backend service acts as an automated manager that watches and splits funds according to your tokenomics.
 
+
+
+
+

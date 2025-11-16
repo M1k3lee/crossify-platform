@@ -11,7 +11,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1000, // Higher runs = smaller code size but higher gas costs
+        runs: 1, // Minimum runs = maximum size reduction (needed for Hedera's 24KB limit)
       },
       viaIR: true, // Enable IR-based compilation to fix "Stack too deep" errors
     },
@@ -41,6 +41,19 @@ const config: HardhatUserConfig = {
       url: process.env.ETHEREUM_MAINNET_RPC_URL || process.env.ETHEREUM_RPC_URL || "https://eth.llamarpc.com",
       accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim()] : [],
       chainId: 1,
+    },
+    hederaTestnet: {
+      url: process.env.HEDERA_TESTNET_RPC_URL || process.env.HEDERA_RPC_URL || "https://testnet.hashio.io/api",
+      accounts: (process.env.HEDERA_PRIVATE_KEY || process.env.PRIVATE_KEY) ? [(process.env.HEDERA_PRIVATE_KEY || process.env.PRIVATE_KEY).trim().replace(/^0x/, '')] : [],
+      chainId: 296,
+      // Hedera requires minimum gas price of 570000000000 tinybar (0.0000057 HBAR)
+      // Let Hedera determine gas price automatically by not setting it
+    },
+    hedera: {
+      url: process.env.HEDERA_MAINNET_RPC_URL || process.env.HEDERA_RPC_URL || "https://mainnet.hashio.io/api",
+      accounts: (process.env.HEDERA_PRIVATE_KEY || process.env.PRIVATE_KEY) && (process.env.HEDERA_PRIVATE_KEY || process.env.PRIVATE_KEY).trim() !== '' ? [(process.env.HEDERA_PRIVATE_KEY || process.env.PRIVATE_KEY).trim().replace(/^0x/, '')] : [],
+      chainId: 295,
+      // Let Hedera determine gas price automatically
     },
   },
   etherscan: {

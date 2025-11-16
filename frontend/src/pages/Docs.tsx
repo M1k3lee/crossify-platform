@@ -14,7 +14,7 @@ export default function Docs() {
       content: [
         {
           title: 'What is Crossify.io?',
-          description: 'Crossify.io is a multichain token launch platform that enables creators to deploy tokens simultaneously across Ethereum, BSC, Solana, and Base with unified virtual liquidity and cross-chain price synchronization.',
+          description: 'Crossify.io is a multichain token launch platform that enables creators to deploy tokens simultaneously across Ethereum, BSC, Solana, Base, and Hedera with unified virtual liquidity and cross-chain price synchronization. Hedera offers ultra-fast transactions (3-5 second finality) and extremely low fees (~$0.0001 per transaction).',
         },
         {
           title: 'Key Features',
@@ -94,7 +94,7 @@ export default function Docs() {
         },
         {
           title: 'Chain Selection & Cross-Chain Option',
-          description: 'Select which chains to deploy on:\n• Ethereum (Sepolia testnet)\n• BSC (BSC Testnet)\n• Base (Base Sepolia)\n• Solana (Devnet)\n\nYou can deploy to all chains simultaneously!\n\nCross-Chain Sync: When deploying to 2+ chains, you can enable cross-chain price synchronization. This uses LayerZero v2 to keep prices consistent across all chains automatically. The system tracks global supply across all chains and ensures unified pricing.\n\nNote: Currently deployed on testnets only. Mainnet deployment coming after security audits.',
+          description: 'Select which chains to deploy on:\n• Ethereum (Sepolia testnet)\n• BSC (BSC Testnet)\n• Base (Base Sepolia)\n• Solana (Devnet)\n• Hedera (Testnet) ⚡ - Ultra-fast (3-5s finality) & extremely low fees (~$0.0001/tx)\n\nYou can deploy to all chains simultaneously!\n\nCross-Chain Sync: When deploying to 2+ chains, you can enable cross-chain price synchronization. This uses LayerZero v2 to keep prices consistent across all chains automatically. The system tracks global supply across all chains and ensures unified pricing.\n\nNote: Currently deployed on testnets only. Mainnet deployment coming after security audits.',
         },
         {
           title: 'Metadata',
@@ -143,6 +143,38 @@ export default function Docs() {
         {
           title: 'Security & Auditing',
           description: 'Our contracts are built with security as the top priority:\n\n🛡️ Security Features:\n• OpenZeppelin audited contracts (ERC20, Ownable, ReentrancyGuard)\n• LayerZero v2 secure messaging\n• Comprehensive input validation\n• Maximum price protection (100 ETH limit)\n• Access control (Ownable pattern)\n• Reentrancy protection on all external calls\n\n🔍 Auditing:\n• Built on battle-tested OpenZeppelin contracts\n• LayerZero infrastructure audited by top security firms\n• Comprehensive test coverage\n• Continuous security monitoring\n\n🤝 Technology Partners:\n• LayerZero - Cross-chain messaging\n• OpenZeppelin - Security standards\n• Supra Oracles - Price feeds (future)',
+        },
+      ],
+    },
+    {
+      id: 'hedera-integration',
+      title: 'Hedera Integration',
+      icon: Zap,
+      color: 'from-green-500 to-emerald-600',
+      content: [
+        {
+          title: 'What is Hedera?',
+          description: 'Hedera is a high-performance, carbon-negative distributed ledger technology that offers:\n\n⚡ Performance:\n• 10,000+ transactions per second\n• 3-5 second finality (instant confirmation)\n• ~$0.0001 per transaction (ultra-low fees)\n• Carbon-negative (removes more CO2 than it produces)\n\n🔧 Technical:\n• EVM-compatible (works with Solidity)\n• Hashgraph consensus (not blockchain)\n• Enterprise-grade infrastructure\n• Governed by major corporations (Google, IBM, etc.)',
+        },
+        {
+          title: 'Hedera on Crossify',
+          description: 'Hedera is fully integrated into Crossify as the 5th supported blockchain:\n\n✅ Features:\n• Deploy tokens simultaneously on Hedera with other chains\n• Participate in cross-chain price synchronization\n• Ultra-fast transactions (3-5 seconds)\n• Extremely low fees (~$0.0001 per transaction)\n• Same bonding curve and token features as other chains\n\n🎯 Use Cases:\n• High-frequency trading tokens\n• Micro-transactions\n• Environmentally conscious projects\n• Enterprise token launches',
+        },
+        {
+          title: 'Deployed Contracts',
+          description: 'Hedera Testnet Contracts:\n\n📦 GlobalSupplyTracker:\nAddress: 0xc443F7e5F0e62C4803030E938d5Cc762F0829A02\nView: https://hashscan.io/testnet/address/0xc443F7e5F0e62C4803030E938d5Cc762F0829A02\n\n🏭 TokenFactory:\nAddress: 0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D\nView: https://hashscan.io/testnet/address/0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D\n\n🔍 Account:\nAccount ID: 0.0.7268944\nEVM Address: 0x30314630fEb44E1b1DF77397906240Ff5c40F6D2\nView: https://hashscan.io/testnet/account/0.0.7268944',
+        },
+        {
+          title: 'Cross-Chain Sync with Hedera',
+          description: 'Hedera tokens participate in the global price synchronization system:\n\n1. **Local Supply Tracking:** Each Hedera deployment tracks local supply\n2. **Global Supply Calculation:** Backend sums all chains (Ethereum + BSC + Base + Solana + Hedera)\n3. **Unified Pricing:** All chains use the same global supply for price calculation\n4. **Cross-Chain Sync:** When supply changes on Hedera, it syncs to other chains (and vice versa)\n\n⚡ Example Flow:\n• User buys 100 tokens on Hedera\n• Local supply: 100\n• Global supply: 2,000 + 100 = 2,100\n• Price updates on ALL chains (Ethereum, BSC, Base, Solana, Hedera)\n• All chains show: Price = $0.001 + ($0.0001 × 2,100) = $0.211\n\n✅ Result: Perfect price consistency across all 5 chains!',
+        },
+        {
+          title: 'Technical Details',
+          description: 'For developers and technical users:\n\n📚 Network Configuration:\n• Network: Hedera Testnet\n• Chain ID: 296\n• RPC URL: https://testnet.hashio.io/api\n• Explorer: https://hashscan.io/testnet\n• Native Currency: HBAR\n\n💻 Development:\n• EVM-compatible (uses ethers.js)\n• Solidity 0.8.20\n• Contract size limit: 24,576 bytes\n• Gas model: Similar to Ethereum (but much cheaper)\n\n🔗 Cross-Chain Messaging:\n• LayerZero support: Being verified\n• Alternative: Chainlink CCIP (Hedera has CCIP integration)\n• HCS (Hedera Consensus Service): For audit logging (Phase 2)\n\n📖 Full Technical Documentation:\nSee docs/HEDERA_TECHNICAL_DOCS.md for complete technical details, deployment instructions, and troubleshooting.',
+        },
+        {
+          title: 'Getting Started with Hedera',
+          description: 'To deploy tokens on Hedera:\n\n1. **Select Hedera:** In the token builder, check "Hedera" as one of your chains\n2. **Configure Token:** Set your token details (name, symbol, supply, etc.)\n3. **Enable Cross-Chain Sync:** If deploying to 2+ chains, enable cross-chain synchronization\n4. **Deploy:** Click deploy and your token will be created on Hedera and other selected chains\n\n💡 Tips:\n• Hedera transactions are extremely fast (3-5 seconds)\n• Fees are minimal (~$0.0001 per transaction)\n• Works seamlessly with other chains via cross-chain sync\n• Perfect for high-frequency trading or micro-transactions',
         },
       ],
     },

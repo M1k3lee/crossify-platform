@@ -31,6 +31,8 @@ function getTestnetChainName(chain: string): string {
       return 'base-sepolia';
     case 'solana':
       return 'solana'; // Solana doesn't have a separate testnet name in our system
+    case 'hedera':
+      return 'hedera-testnet'; // Hedera testnet
     default:
       return chain; // Return as-is if unknown
   }
@@ -1162,8 +1164,8 @@ export default function Builder() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white mb-6">Select Chains</h2>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {['ethereum', 'bsc', 'base', 'solana'].map((chain) => (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {['ethereum', 'bsc', 'base', 'solana', 'hedera'].map((chain) => (
                   <button
                     key={chain}
                     type="button"
@@ -1192,8 +1194,17 @@ export default function Builder() {
                     }`}
                   >
                     <div className="text-center">
-                      <div className="text-2xl mb-2">{chain === 'ethereum' ? '⟠' : chain === 'bsc' ? '◉' : chain === 'solana' ? '◎' : '⬡'}</div>
+                      <div className="text-2xl mb-2">
+                        {chain === 'ethereum' ? '⟠' : 
+                         chain === 'bsc' ? '◉' : 
+                         chain === 'solana' ? '◎' : 
+                         chain === 'hedera' ? '⚡' : 
+                         '⬡'}
+                      </div>
                       <div className="text-sm font-medium text-white capitalize">{chain}</div>
+                      {chain === 'hedera' && (
+                        <div className="text-xs text-green-400 mt-1">⚡ Fast & Cheap</div>
+                      )}
                       {formData.chains.includes(chain) && (
                         <Check className="w-5 h-5 mx-auto mt-2 text-primary-400" />
                       )}

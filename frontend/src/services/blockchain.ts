@@ -44,7 +44,7 @@ export function getPreferredEVMProvider(): any {
 }
 
 export interface DeploymentConfig {
-  chain: 'ethereum' | 'bsc' | 'base' | 'solana';
+  chain: 'ethereum' | 'bsc' | 'base' | 'solana' | 'hedera';
   tokenData: {
     name: string;
     symbol: string;
@@ -84,6 +84,13 @@ const CHAIN_CONFIGS = {
     rpcUrls: ['https://base-sepolia-rpc.publicnode.com'],
     blockExplorerUrls: ['https://sepolia-explorer.base.org'],
   },
+  hedera: {
+    chainId: '0x128', // 296 in hex (Hedera Testnet)
+    chainName: 'Hedera Testnet',
+    nativeCurrency: { name: 'HBAR', symbol: 'HBAR', decimals: 18 },
+    rpcUrls: ['https://testnet.hashio.io/api'],
+    blockExplorerUrls: ['https://hashscan.io/testnet'],
+  },
 };
 
 // Testnet Factory Addresses (must be deployed first)
@@ -91,6 +98,7 @@ const FACTORY_ADDRESSES: Record<string, string> = {
   ethereum: import.meta.env.VITE_ETH_FACTORY || import.meta.env.VITE_ETHEREUM_FACTORY || '',
   bsc: import.meta.env.VITE_BSC_FACTORY || '',
   base: import.meta.env.VITE_BASE_FACTORY || '',
+  hedera: import.meta.env.VITE_HEDERA_FACTORY || '',
 };
 
 // Debug: Log factory addresses at build time (will show in console)
@@ -98,11 +106,13 @@ console.log('🏭 Factory Addresses Configuration:', {
   ethereum: FACTORY_ADDRESSES.ethereum || 'NOT SET',
   bsc: FACTORY_ADDRESSES.bsc || 'NOT SET',
   base: FACTORY_ADDRESSES.base || 'NOT SET',
+  hedera: FACTORY_ADDRESSES.hedera || 'NOT SET',
   envVars: {
     VITE_ETH_FACTORY: import.meta.env.VITE_ETH_FACTORY || 'NOT SET',
     VITE_ETHEREUM_FACTORY: import.meta.env.VITE_ETHEREUM_FACTORY || 'NOT SET',
     VITE_BSC_FACTORY: import.meta.env.VITE_BSC_FACTORY || 'NOT SET',
     VITE_BASE_FACTORY: import.meta.env.VITE_BASE_FACTORY || 'NOT SET',
+    VITE_HEDERA_FACTORY: import.meta.env.VITE_HEDERA_FACTORY || 'NOT SET',
   }
 });
 
@@ -122,7 +132,7 @@ function checkEVMWallet(): void {
 }
 
 // Helper function to switch network
-export async function switchNetwork(chain: 'ethereum' | 'bsc' | 'base'): Promise<void> {
+export async function switchNetwork(chain: 'ethereum' | 'bsc' | 'base' | 'hedera'): Promise<void> {
   checkEVMWallet();
   const provider = getPreferredEVMProvider();
   const config = CHAIN_CONFIGS[chain];
@@ -164,7 +174,7 @@ export async function switchNetwork(chain: 'ethereum' | 'bsc' | 'base'): Promise
 }
 
 export async function deployTokenOnEVM(
-  chain: 'ethereum' | 'bsc' | 'base',
+  chain: 'ethereum' | 'bsc' | 'base' | 'hedera',
   config: DeploymentConfig
 ): Promise<{ tokenAddress: string; curveAddress: string; txHash: string }> {
   console.log(`🚀 Starting deployment to ${chain}...`);
@@ -187,8 +197,14 @@ export async function deployTokenOnEVM(
   
   if (!factoryAddress || factoryAddress === '') {
     const envVarName = chain === 'ethereum' ? 'VITE_ETH_FACTORY or VITE_ETHEREUM_FACTORY' : `VITE_${chain.toUpperCase()}_FACTORY`;
-    const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : 'Base Sepolia';
-    const errorMsg = `Factory contract address not configured for ${chainName} (${chain}).\n\nPlease add ${envVarName} to your Netlify environment variables.\n\nFactory addresses:\n- Sepolia: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n- BSC Testnet: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n- Base Sepolia: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n\nAfter setting the variables in Netlify, trigger a new deploy.\n\nSee NETLIFY_FACTORY_SETUP.md for setup instructions.`;
+    const chainNames: Record<string, string> = {
+      ethereum: 'Sepolia',
+      bsc: 'BSC Testnet',
+      base: 'Base Sepolia',
+      hedera: 'Hedera Testnet'
+    };
+    const chainName = chainNames[chain] || chain;
+    const errorMsg = `Factory contract address not configured for ${chainName} (${chain}).\n\nPlease add ${envVarName} to your Netlify environment variables.\n\nFactory addresses:\n- Sepolia: 0x8eF1A74d477448630282EFC130ac9D17f495Bca4\n- BSC Testnet: 0xFF8c690B5b65905da20D8de87Cd6298c223a40B6\n- Base Sepolia: 0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58\n- Hedera Testnet: (deploy first)\n\nAfter setting the variables in Netlify, trigger a new deploy.\n\nSee NETLIFY_FACTORY_SETUP.md for setup instructions.`;
     console.error(`❌ ${errorMsg}`);
     throw new Error(errorMsg);
   }

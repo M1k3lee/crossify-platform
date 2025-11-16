@@ -60,3 +60,7 @@ echo "2. Ensure SOLANA_OPERATOR_PRIVATE_KEY is set (must be presale wallet's pri
 echo "3. Test fund splitting with a small amount first"
 echo "4. Monitor split history via: GET $API_URL/api/presale/$PRESALE_ID/splits"
 
+
+
+
+

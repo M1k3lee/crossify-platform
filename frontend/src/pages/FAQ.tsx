@@ -14,7 +14,7 @@ const faqs: FAQItem[] = [
   // General
   {
     question: 'What is Crossify.io?',
-    answer: 'Crossify.io is a multi-chain token launch platform that enables you to create and deploy tokens simultaneously on Ethereum, Binance Smart Chain (BSC), Base, and Solana. Our platform features automatic cross-chain price synchronization, bonding curves, and a comprehensive marketplace for token discovery.',
+    answer: 'Crossify.io is a multi-chain token launch platform that enables you to create and deploy tokens simultaneously on Ethereum, Binance Smart Chain (BSC), Base, Solana, and Hedera. Our platform features automatic cross-chain price synchronization, bonding curves, and a comprehensive marketplace for token discovery. Hedera offers ultra-fast transactions (3-5 second finality) and extremely low fees (~$0.0001 per transaction).',
     category: 'general',
   },
   {
@@ -29,7 +29,7 @@ const faqs: FAQItem[] = [
   },
   {
     question: 'Which blockchains does Crossify support?',
-    answer: 'Currently, Crossify supports Ethereum (Sepolia testnet), Binance Smart Chain (BSC Testnet), Base (Base Sepolia), and Solana (Devnet). Mainnet support is coming soon. We plan to add support for additional blockchains in the future.',
+    answer: 'Currently, Crossify supports Ethereum (Sepolia testnet), Binance Smart Chain (BSC Testnet), Base (Base Sepolia), Solana (Devnet), and Hedera (Testnet). Hedera offers exceptional performance with 10,000+ TPS, 3-5 second finality, and extremely low fees (~$0.0001 per transaction). Mainnet support is coming soon. We plan to add support for additional blockchains in the future.',
     category: 'general',
   },
   

@@ -16,7 +16,7 @@ export default function Home() {
     },
     {
       name: 'Select Blockchains',
-      text: 'Choose which blockchains to deploy on: Ethereum, BSC, Base, or Solana.',
+      text: 'Choose which blockchains to deploy on: Ethereum, BSC, Base, Solana, or Hedera.',
     },
     {
       name: 'Deploy Your Token',
@@ -27,7 +27,7 @@ export default function Home() {
   const faqs = [
     {
       question: 'How do I launch a token on multiple blockchains?',
-      answer: 'Crossify allows you to launch your token simultaneously on Ethereum, BSC, Base, and Solana with one click. Simply configure your token settings and select the blockchains you want to deploy on.',
+      answer: 'Crossify allows you to launch your token simultaneously on Ethereum, BSC, Base, Solana, and Hedera with one click. Simply configure your token settings and select the blockchains you want to deploy on.',
     },
     {
       question: 'What is cross-chain price synchronization?',
@@ -43,7 +43,7 @@ export default function Home() {
     },
     {
       question: 'Which blockchains does Crossify support?',
-      answer: 'Crossify currently supports Ethereum, Binance Smart Chain (BSC), Base, and Solana. More blockchains will be added in the future.',
+      answer: 'Crossify currently supports Ethereum, Binance Smart Chain (BSC), Base, Solana, and Hedera. Hedera offers ultra-fast transactions (3-5 second finality) and extremely low fees (~$0.0001 per transaction). More blockchains will be added in the future.',
     },
   ];
 
@@ -51,7 +51,7 @@ export default function Home() {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: 'Crossify.io - Launch Your Token on All Chains',
-    description: 'Launch your token simultaneously on Ethereum, BSC, Base, and Solana with one click.',
+        description: 'Launch your token simultaneously on Ethereum, BSC, Base, Solana, and Hedera with one click.',
     url: 'https://crossify.io',
   };
 
@@ -117,8 +117,9 @@ export default function Home() {
             Deploy your token simultaneously on{' '}
             <span className="text-primary-400 font-semibold">Ethereum</span>,{' '}
             <span className="text-yellow-400 font-semibold">BSC</span>,{' '}
-            <span className="text-blue-400 font-semibold">Base</span>, and{' '}
-            <span className="text-purple-400 font-semibold">Solana</span>
+            <span className="text-blue-400 font-semibold">Base</span>,{' '}
+            <span className="text-purple-400 font-semibold">Solana</span>, and{' '}
+            <span className="text-green-400 font-semibold">⚡ Hedera</span>
           </p>
           
           <p className="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
@@ -190,7 +191,7 @@ export default function Home() {
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-2">Multi-Chain Launch</h3>
                   <p className="text-gray-400 text-sm">
-                    Deploy to Ethereum, BSC, Base, and Solana simultaneously with one transaction. 
+                    Deploy to Ethereum, BSC, Base, Solana, and Hedera simultaneously with one transaction. 
                     Your token is live on all chains instantly.
                   </p>
                 </div>
@@ -227,7 +228,7 @@ export default function Home() {
             {
               icon: Network,
               title: 'Launch on All Chains',
-              description: 'Deploy simultaneously on Ethereum, BSC, Base, and Solana with one click. No need for separate deployments.',
+              description: 'Deploy simultaneously on Ethereum, BSC, Base, Solana, and Hedera with one click. No need for separate deployments.',
               gradient: 'from-primary-500 to-blue-600',
             },
             {
@@ -284,7 +285,7 @@ export default function Home() {
               {
                 step: '01',
                 title: 'Launch on Multiple Chains',
-                description: 'Deploy your token simultaneously on Ethereum, BSC, Base, and Solana. All chains are live instantly.',
+                description: 'Deploy your token simultaneously on Ethereum, BSC, Base, Solana, and Hedera. All chains are live instantly.',
                 icon: Rocket,
               },
               {
@@ -412,6 +413,46 @@ export default function Home() {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </motion.div>
+
+        {/* Hedera Highlight Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.3 }}
+          className="mb-20"
+        >
+          <div className="bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-teal-500/20 backdrop-blur-sm rounded-2xl p-8 md:p-12 border-2 border-green-500/30 shadow-2xl">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="inline-flex items-center gap-3 px-4 py-2 bg-green-500/20 rounded-full mb-4">
+                <Zap className="w-5 h-5 text-green-400" />
+                <span className="text-green-300 font-semibold">Now Supporting Hedera</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                Ultra-Fast & Ultra-Cheap Token Launches
+              </h2>
+              <p className="text-lg text-gray-300 mb-6">
+                Hedera brings enterprise-grade performance to Crossify with lightning-fast transactions and minimal fees.
+              </p>
+              <div className="grid md:grid-cols-3 gap-6 mt-8">
+                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50">
+                  <div className="text-3xl font-bold text-green-400 mb-2">10,000+</div>
+                  <div className="text-gray-300 text-sm">Transactions Per Second</div>
+                </div>
+                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50">
+                  <div className="text-3xl font-bold text-green-400 mb-2">3-5s</div>
+                  <div className="text-gray-300 text-sm">Transaction Finality</div>
+                </div>
+                <div className="bg-gray-900/50 rounded-xl p-6 border border-gray-700/50">
+                  <div className="text-3xl font-bold text-green-400 mb-2">~$0.0001</div>
+                  <div className="text-gray-300 text-sm">Per Transaction</div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-400 mt-6">
+                Perfect for high-frequency trading tokens and micro-transactions. Carbon-negative and enterprise-grade infrastructure.
+              </p>
+            </div>
           </div>
         </motion.div>
 

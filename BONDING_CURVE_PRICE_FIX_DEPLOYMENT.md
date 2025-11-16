@@ -107,3 +107,10 @@ After deployment, verify:
 2. Test by creating a new token
 3. Verify failed transactions don't increase price
 
+
+
+
+
+
+
+

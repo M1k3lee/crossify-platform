@@ -123,7 +123,7 @@ export async function getChainPrice(
  * Get prices across all chains for a token
  */
 export async function getAllChainPrices(tokenId: string): Promise<ChainPrice[]> {
-  const chains = ['ethereum', 'bsc', 'base', 'solana'];
+  const chains = ['ethereum', 'bsc', 'base', 'solana', 'hedera'];
   const prices: ChainPrice[] = [];
 
   for (const chain of chains) {

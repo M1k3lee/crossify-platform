@@ -56,13 +56,16 @@ contract CrossChainSync is Ownable, ILayerZeroReceiver {
         
         // Initialize LayerZero EIDs (Endpoint IDs) for testnets
         // Sepolia: 40161, BSC Testnet: 40102, Base Sepolia: 40245
+        // Note: Hedera EID may need to be verified with LayerZero or use CCIP instead
         chainEIDs["ethereum"] = 40161;
         chainEIDs["bsc"] = 40102;
         chainEIDs["base"] = 40245;
+        chainEIDs["hedera"] = 0; // TODO: Verify LayerZero EID for Hedera or use CCIP
         
         eidToChain[40161] = "ethereum";
         eidToChain[40102] = "bsc";
         eidToChain[40245] = "base";
+        // Hedera EID will be set once verified
     }
     
     /**

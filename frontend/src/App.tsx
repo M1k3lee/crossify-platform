@@ -22,6 +22,7 @@ import CFYStaking from './pages/CFYStaking';
 import CFYDashboard from './pages/CFYDashboard';
 import Contact from './pages/Contact';
 import Docs from './pages/Docs';
+import HowItWorks from './pages/HowItWorks';
 import Whitepaper from './pages/Whitepaper';
 import CreatorDashboard from './pages/CreatorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -122,6 +123,7 @@ function App() {
                     <Route path="/cfy/vesting" element={<Layout><CFYVesting /></Layout>} />
                     <Route path="/cfy/staking" element={<Layout><CFYStaking /></Layout>} />
                     <Route path="/contact" element={<Layout><Contact /></Layout>} />
+                    <Route path="/how-it-works" element={<Layout><HowItWorks /></Layout>} />
                     <Route path="/docs" element={<Layout><Docs /></Layout>} />
                     <Route path="/whitepaper" element={<Layout><Whitepaper /></Layout>} />
                     <Route path="/tokenomics" element={<Layout><Tokenomics /></Layout>} />
