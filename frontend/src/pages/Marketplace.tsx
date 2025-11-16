@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Network, Globe, Layers, Sparkles, Zap, CheckCircle, Info } from 'lucide-react';
@@ -8,6 +8,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { API_BASE } from '../config/api';
+import { useDebounce } from '../hooks/useDebounce';
 
 // Helper to construct image URL from filename or CID
 const getImageUrl = (imageId: string | null | undefined): string | null => {
@@ -33,62 +34,67 @@ export default function Marketplace() {
   });
   const [sortBy, setSortBy] = useState<string>('newest');
 
+  // Debounce search query for performance
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   const { data: marketplace, isLoading } = useQuery({
-    queryKey: ['marketplace', filters, sortBy],
+    queryKey: ['marketplace', sortBy], // Removed filters from queryKey to prevent unnecessary refetches
     queryFn: async () => {
       const response = await axios.get(`${API_BASE}/tokens/marketplace`, {
         params: { sortBy }
       });
       return response.data;
     },
+    staleTime: 30000, // Cache for 30 seconds
+    gcTime: 60000, // Keep in cache for 1 minute
   });
 
   const tokens = marketplace?.tokens || [];
   
-  // Debug logging
-  if (tokens.length === 0 && !isLoading) {
-    console.log('⚠️ Marketplace: No tokens found. Response:', marketplace);
-  }
+  // Memoize filtered tokens for performance
+  const filteredTokens = useMemo(() => {
+    return tokens.filter((token: any) => {
+      // Search filter (using debounced query)
+      if (debouncedSearchQuery) {
+        const query = debouncedSearchQuery.toLowerCase();
+        if (
+          !token.name?.toLowerCase().includes(query) &&
+          !token.symbol?.toLowerCase().includes(query) &&
+          !token.description?.toLowerCase().includes(query)
+        ) {
+          return false;
+        }
+      }
 
-  const filteredTokens = tokens.filter((token: any) => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (
-        !token.name?.toLowerCase().includes(query) &&
-        !token.symbol?.toLowerCase().includes(query) &&
-        !token.description?.toLowerCase().includes(query)
-      ) {
+      // Chain filter
+      if (filters.chains.length > 0) {
+        const tokenChains = token.deployments?.map((d: any) => d.chain) || [];
+        if (!filters.chains.some((chain) => tokenChains.includes(chain))) {
+          return false;
+        }
+      }
+
+      // Cross-chain filter
+      if (filters.crossChain && !token.crossChainEnabled) {
         return false;
       }
-    }
 
-    // Chain filter
-    if (filters.chains.length > 0) {
-      const tokenChains = token.deployments?.map((d: any) => d.chain) || [];
-      if (!filters.chains.some((chain) => tokenChains.includes(chain))) {
+      // Verified filter
+      if (filters.verified && !token.verified) {
         return false;
       }
-    }
 
-    // Cross-chain filter
-    if (filters.crossChain && !token.crossChainEnabled) {
-      return false;
-    }
-
-    // Verified filter
-    if (filters.verified && !token.verified) {
-      return false;
-    }
-
-    return true;
-  });
+      return true;
+    });
+  }, [tokens, debouncedSearchQuery, filters]);
 
   const CHAIN_COLORS: Record<string, string> = {
     ethereum: '#627EEA',
     bsc: '#F3BA2F',
     solana: '#9945FF',
     base: '#0052FF',
+    hedera: '#00A86B',
+    'hedera-testnet': '#00A86B',
   };
 
   return (
@@ -214,7 +220,7 @@ export default function Marketplace() {
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Chains</label>
                 <div className="flex flex-wrap gap-2">
-                  {['ethereum', 'bsc', 'base', 'solana'].map((chain) => (
+                  {['ethereum', 'bsc', 'base', 'solana', 'hedera'].map((chain) => (
                     <label
                       key={chain}
                       className={`flex items-center px-3 py-1.5 rounded cursor-pointer transition ${
@@ -350,10 +356,28 @@ export default function Marketplace() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="group relative bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700 hover:border-primary-500/50 transition-all hover:shadow-lg hover:shadow-primary-500/20"
+                  className="group relative bg-gray-800/80 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-700 hover:border-primary-500/50 transition-all hover:shadow-lg hover:shadow-primary-500/20"
                 >
+                  {/* Banner Image */}
+                  {(() => {
+                    const bannerUrl = token.bannerUrl || getImageUrl(token.bannerImageIpfs);
+                    return bannerUrl ? (
+                      <div className="w-full h-32 overflow-hidden">
+                        <img
+                          src={bannerUrl}
+                          alt={`${token.name} banner`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ) : null;
+                  })()}
+
+                  <div className="p-6">
                   {/* Badges */}
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
+                  <div className="absolute top-4 right-4 flex flex-col gap-2 items-end z-10">
                     {token.verified && (
                       <div className="px-2 py-1 bg-blue-500/20 border border-blue-500/50 rounded-full">
                         <div className="flex items-center gap-1">
@@ -477,6 +501,7 @@ export default function Marketplace() {
                         Buy Now
                       </button>
                     )}
+                  </div>
                   </div>
                 </motion.div>
               );
