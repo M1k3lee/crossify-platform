@@ -562,7 +562,7 @@ export default function BuyWidget({
         'function buy(uint256 tokenAmount) external payable',
         'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
         'function getCurrentPrice() external view returns (uint256)',
-        'function isGraduated() external view returns (uint256)',
+        'function isGraduated() external view returns (bool)',
         'function buyFeePercent() external view returns (uint256)',
         'function sellFeePercent() external view returns (uint256)',
       ];
