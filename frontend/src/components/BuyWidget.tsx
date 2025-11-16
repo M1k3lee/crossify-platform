@@ -1046,64 +1046,67 @@ export default function BuyWidget({
         throw new Error(`Failed to encode buy transaction: ${encodeError instanceof Error ? encodeError.message : 'Unknown error'}`);
       }
 
-      // For Hedera, try using contract method first (standard approach)
-      // If that fails, fall back to manual transaction construction
+      // For Hedera, we need to use manual transaction construction
+      // because MetaMask/Hedera RPC may strip data from contract method calls
       let tx: any;
       if (chainLower.includes('hedera')) {
-        console.log('⚡ Hedera transaction - trying contract method first');
-        try {
-          // Try using the contract method directly (standard approach)
-          // This should properly encode and send the transaction
-          tx = await curveContract.buy(tokenAmount, {
-            ...txOptions,
-            value: totalCostWei,
-          });
-          console.log('✅ Used contract method for Hedera transaction');
-        } catch (contractError: any) {
-          console.warn('⚠️ Contract method failed, trying manual construction:', contractError.message);
-          // Fall back to manual transaction construction
-          console.log('📋 Encoded data length:', encodedData.length);
-          console.log('📋 Encoded data (first 100 chars):', encodedData.substring(0, 100));
-          
-          // Manually construct the transaction to ensure data is properly included
-          const txRequest = {
-            to: curveAddress,
-            data: encodedData,
-            value: totalCostWei,
-            gasLimit: txOptions.gasLimit,
-          } as any;
-          
-          // Add gas price if available
-          if (txOptions.gasPrice) {
-            txRequest.gasPrice = txOptions.gasPrice;
-          }
-          
-          console.log('📋 Manual transaction request:', {
-            to: txRequest.to,
-            data: txRequest.data ? txRequest.data.substring(0, 50) + '...' : 'MISSING!',
-            dataLength: txRequest.data?.length || 0,
-            value: txRequest.value.toString(),
-            gasLimit: txRequest.gasLimit,
-            gasPrice: txRequest.gasPrice?.toString(),
-          });
-          
-          // Verify data is not empty before sending
-          if (!txRequest.data || txRequest.data === '0x' || txRequest.data.length < 10) {
-            throw new Error('Transaction data is empty or invalid. Cannot send transaction without function call data.');
-          }
-          
-          tx = await signer.sendTransaction(txRequest);
-          console.log('✅ Used manual construction for Hedera transaction');
+        console.log('⚡ Hedera transaction - using manual construction with explicit data');
+        console.log('📋 Encoded data length:', encodedData.length);
+        console.log('📋 Encoded data (first 100 chars):', encodedData.substring(0, 100));
+        
+        // Manually construct the transaction with explicit data field
+        // This is necessary because Hedera/MetaMask may not properly handle contract method calls
+        const txRequest: {
+          to: string;
+          data: string;
+          value: bigint;
+          gasLimit: bigint;
+          gasPrice?: bigint;
+        } = {
+          to: curveAddress,
+          data: encodedData, // Explicitly set the encoded function call data
+          value: totalCostWei,
+          gasLimit: BigInt(txOptions.gasLimit || 1000000),
+        };
+        
+        // Add gas price if available
+        if (txOptions.gasPrice) {
+          txRequest.gasPrice = txOptions.gasPrice;
         }
         
-        // Verify the transaction object has data
-        console.log('📤 Transaction object after send:', {
-          hash: tx.hash,
-          to: tx.to,
-          data: tx.data ? tx.data.substring(0, 50) + '...' : 'MISSING!',
-          dataLength: tx.data?.length || 0,
-          value: tx.value?.toString(),
+        console.log('📋 Manual transaction request (before send):', {
+          to: txRequest.to,
+          data: txRequest.data ? txRequest.data.substring(0, 50) + '...' : 'MISSING!',
+          dataLength: txRequest.data?.length || 0,
+          value: txRequest.value.toString(),
+          gasLimit: txRequest.gasLimit.toString(),
+          gasPrice: txRequest.gasPrice?.toString(),
         });
+        
+        // Verify data is not empty before sending
+        if (!txRequest.data || txRequest.data === '0x' || txRequest.data.length < 10) {
+          throw new Error('Transaction data is empty or invalid. Cannot send transaction without function call data.');
+        }
+        
+        // Use populateTransaction to get the full transaction object, then send it
+        // This ensures all fields are properly set
+        const populatedTx = await signer.populateTransaction(txRequest);
+        console.log('📋 Populated transaction:', {
+          to: populatedTx.to,
+          data: populatedTx.data ? populatedTx.data.substring(0, 50) + '...' : 'MISSING!',
+          dataLength: populatedTx.data?.length || 0,
+          value: populatedTx.value?.toString(),
+          gasLimit: populatedTx.gasLimit?.toString(),
+        });
+        
+        // Verify populated transaction has data
+        if (!populatedTx.data || populatedTx.data === '0x' || populatedTx.data.length < 10) {
+          throw new Error('Populated transaction data is empty. This indicates a problem with transaction encoding.');
+        }
+        
+        // Send the populated transaction
+        tx = await signer.sendTransaction(populatedTx);
+        console.log('✅ Sent Hedera transaction with manual construction');
       } else {
         // For other chains, use the contract method (standard approach)
         tx = await curveContract.buy(tokenAmount, {
@@ -1111,6 +1114,15 @@ export default function BuyWidget({
           value: totalCostWei,
         });
       }
+      
+      // Verify the transaction object has data (after sending)
+      console.log('📤 Transaction object after send:', {
+        hash: tx.hash,
+        to: tx.to,
+        data: tx.data ? tx.data.substring(0, 50) + '...' : 'MISSING!',
+        dataLength: tx.data?.length || 0,
+        value: tx.value?.toString(),
+      });
       
       // Debug: Log transaction details
       console.log('📤 Transaction sent:', {
