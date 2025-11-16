@@ -159,7 +159,7 @@ export default function Home() {
         </motion.div>
 
         {/* Presale Banner - Below Hero */}
-        <PresaleBanner />
+        {/* <PresaleBanner /> */} {/* Hidden for now */}
 
         {/* Cross-Chain Highlight Section */}
         <motion.div

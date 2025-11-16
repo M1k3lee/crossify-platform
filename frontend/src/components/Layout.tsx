@@ -26,7 +26,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/', label: 'Home', icon: Home },
     { path: '/marketplace', label: 'Marketplace', icon: Coins },
     { path: '/builder', label: 'Launch Token', icon: Rocket },
-    { path: '/presale', label: 'Presale', icon: Zap, highlight: true },
+    // { path: '/presale', label: 'Presale', icon: Zap, highlight: true }, // Hidden for now
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   ];
 
