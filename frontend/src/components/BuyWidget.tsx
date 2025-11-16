@@ -993,7 +993,7 @@ export default function BuyWidget({
 
       // Hedera requires explicit gas price (minimum 570000000000 tinybar = 0.00000057 HBAR)
       // For other chains, let ethers handle gas price automatically
-      const chainLower = chain.toLowerCase();
+      // Reuse chainLower from earlier in the function
       if (chainLower.includes('hedera')) {
         // Hedera minimum gas price is 570000000000 tinybar (0.00000057 HBAR per gas unit)
         // We'll let Hedera auto-determine, but ensure we have enough gas
@@ -1051,7 +1051,13 @@ export default function BuyWidget({
       if (chainLower.includes('hedera')) {
         console.log('⚡ Using manual transaction construction for Hedera');
         // Manually construct the transaction to ensure data is properly included
-        const txRequest = {
+        const txRequest: {
+          to: string;
+          data: string;
+          value: bigint;
+          gasLimit: number;
+          gasPrice?: bigint;
+        } = {
           to: curveAddress,
           data: encodedData,
           value: totalCostWei,

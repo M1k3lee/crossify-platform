@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Network, Globe, Layers, Sparkles, Zap, CheckCircle, Info } from 'lucide-react';
@@ -361,7 +361,6 @@ export default function Marketplace() {
                   {/* Banner Image */}
                   {(() => {
                     const bannerUrl = token.bannerUrl || getImageUrl(token.bannerImageIpfs);
-                    const hasBanner = !!bannerUrl;
                     return bannerUrl ? (
                       <div className="w-full h-32 overflow-hidden relative">
                         <img
