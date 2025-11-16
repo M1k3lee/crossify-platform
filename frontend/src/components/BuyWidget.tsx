@@ -1223,13 +1223,14 @@ export default function BuyWidget({
             if (isHedera && hasEmptyData) {
               throw new Error(
                 `Transaction failed: MetaMask stripped the transaction data field. This is a known Hedera/MetaMask compatibility issue.\n\n` +
-                `SOLUTION: Install the Hedera Wallet Snap in MetaMask:\n` +
+                `SOLUTION: Configure Hedera Wallet Snap for TESTNET:\n` +
                 `1. Open MetaMask → Click the three dots (⋮) → Settings\n` +
-                `2. Go to "Snaps" → "Discover Snaps"\n` +
-                `3. Search for "Hedera Wallet" by Tuum Technologies\n` +
-                `4. Click "Add to MetaMask" and follow the prompts\n` +
-                `5. Try the transaction again\n\n` +
-                `The Hedera Wallet Snap extends MetaMask to properly support Hedera transactions.`
+                `2. Go to "Snaps" → Find "Hedera Wallet Snap"\n` +
+                `3. Open the snap and check the network setting\n` +
+                `4. Make sure it's set to "testnet" (not "mainnet")\n` +
+                `5. If you see "Account not activated", visit https://portal.hedera.com to activate your testnet account\n` +
+                `6. Try the transaction again\n\n` +
+                `NOTE: The Hedera Wallet Snap must be configured for the same network (testnet) as your MetaMask network.`
               );
             }
             
