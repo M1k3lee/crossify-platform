@@ -508,24 +508,42 @@ export default function BuyWidget({
           windowHashpack: !!(window as any).hashpack,
           windowEthereum: !!window.ethereum,
           ethereumIsHashPack: !!(window.ethereum as any)?.isHashPack,
+          ethereumIsMetaMask: window.ethereum?.isMetaMask,
+          ethereumIsPhantom: !!(window.ethereum as any)?.isPhantom,
           providers: window.ethereum?.providers?.length || 0,
+          providerDetails: window.ethereum?.providers?.map((p: any) => ({
+            isMetaMask: p.isMetaMask,
+            isHashPack: p.isHashPack,
+            constructor: p.constructor?.name,
+          })) || [],
         });
         
         if (!recommendation.hasRecommended) {
           // Check if window.ethereum exists - HashPack might be installed but not detected
-          // In this case, allow the transaction to proceed but warn the user
+          // HashPack injects as window.ethereum, so if we have ethereum and it's not MetaMask/Phantom,
+          // it might be HashPack (especially on Hedera network)
           if (window.ethereum) {
-            console.warn('⚠️ HashPack not detected, but window.ethereum exists. Proceeding with transaction...');
-            console.warn('   If you have HashPack installed, make sure it\'s enabled and refresh the page.');
-            // Don't block the transaction, just warn
-            toast(
-              'HashPack not detected. If you have HashPack installed, make sure it\'s enabled. Proceeding with current wallet...',
-              { 
-                id: 'hedera-wallet-warning',
-                duration: 8000,
-                icon: '⚠️',
-              }
-            );
+            const isMetaMask = window.ethereum.isMetaMask;
+            const isPhantom = !!(window.ethereum as any).isPhantom;
+            
+            // If we have window.ethereum but it's not MetaMask or Phantom, it might be HashPack
+            // HashPack injects as window.ethereum directly, similar to MetaMask
+            if (!isMetaMask && !isPhantom) {
+              console.log('✅ Likely HashPack detected (window.ethereum exists but not MetaMask/Phantom)');
+              // Don't show warning, just proceed - HashPack is likely installed
+            } else {
+              console.warn('⚠️ HashPack not detected, but window.ethereum exists. Proceeding with transaction...');
+              console.warn('   If you have HashPack installed, make sure it\'s enabled and refresh the page.');
+              // Don't block the transaction, just warn
+              toast(
+                'HashPack not detected. If you have HashPack installed, make sure it\'s enabled. Proceeding with current wallet...',
+                { 
+                  id: 'hedera-wallet-warning',
+                  duration: 8000,
+                  icon: '⚠️',
+                }
+              );
+            }
           } else {
             // No wallet at all - show full error
             const errorMessage = 
