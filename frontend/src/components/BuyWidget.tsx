@@ -1109,17 +1109,36 @@ export default function BuyWidget({
         }
       } catch (waitError: any) {
         console.error('❌ Transaction wait error:', waitError);
+        console.error('Error message:', waitError.message);
+        console.error('Error code:', waitError.code);
+        console.error('Error reason:', waitError.reason);
+        
         // If it's a receipt error, try to get more details
         if (waitError.receipt) {
-          console.error('Transaction receipt:', {
+          console.error('Transaction receipt details:', {
             status: waitError.receipt.status,
             gasUsed: waitError.receipt.gasUsed?.toString(),
-            logs: waitError.receipt.logs,
+            blockNumber: waitError.receipt.blockNumber,
+            contractAddress: waitError.receipt.contractAddress,
+            logs: waitError.receipt.logs?.length || 0,
+            logsBloom: waitError.receipt.logsBloom?.substring(0, 20) + '...',
           });
+          
           if (waitError.receipt.status === 0) {
-            throw new Error('Transaction reverted. The contract call failed. Check the contract state or try a smaller amount.');
+            // Try to decode revert reason if available
+            let revertReason = 'Unknown revert reason';
+            if (waitError.receipt.logs && waitError.receipt.logs.length === 0) {
+              revertReason = 'Transaction reverted with no logs. This usually means the contract call failed (e.g., require() failed, insufficient funds, or invalid parameters).';
+            }
+            throw new Error(`Transaction reverted (status: 0). ${revertReason} Check the contract state, your HBAR balance, or try a smaller amount.`);
           }
         }
+        
+        // Check if it's a timeout or network error
+        if (waitError.code === 'TIMEOUT' || waitError.message?.includes('timeout')) {
+          throw new Error('Transaction timeout. The transaction may still be pending. Please check the explorer or try again.');
+        }
+        
         throw waitError;
       }
       
@@ -1168,21 +1187,31 @@ export default function BuyWidget({
       }
     } catch (error: any) {
       console.error('Buy error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        reason: error.reason,
-        data: error.data,
-        receipt: error.receipt ? {
-          status: error.receipt.status,
-          gasUsed: error.receipt.gasUsed?.toString(),
-        } : undefined,
-        transaction: error.transaction ? {
-          to: error.transaction.to,
-          data: error.transaction.data?.substring(0, 20) + '...',
-          value: error.transaction.value?.toString(),
-        } : undefined,
-      });
+      console.error('Error message:', error.message || 'No error message');
+      console.error('Error code:', error.code || 'No error code');
+      console.error('Error reason:', error.reason || 'No reason');
+      console.error('Error data:', error.data || 'No data');
+      console.error('Error name:', error.name || 'No name');
+      
+      if (error.receipt) {
+        console.error('Receipt status:', error.receipt.status);
+        console.error('Receipt gasUsed:', error.receipt.gasUsed?.toString());
+        console.error('Receipt blockNumber:', error.receipt.blockNumber);
+        console.error('Receipt contractAddress:', error.receipt.contractAddress);
+      }
+      
+      if (error.transaction) {
+        console.error('Transaction to:', error.transaction.to);
+        console.error('Transaction data:', error.transaction.data?.substring(0, 50) + '...' || 'EMPTY');
+        console.error('Transaction value:', error.transaction.value?.toString());
+      }
+      
+      // Log full error object as JSON for debugging
+      try {
+        console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      } catch (jsonError) {
+        console.error('Could not stringify error:', jsonError);
+      }
       
       if (error.code === 4001) {
         toast.error('Transaction rejected by user', { id: 'buy-tx' });
