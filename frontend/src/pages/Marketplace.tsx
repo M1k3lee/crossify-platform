@@ -361,8 +361,9 @@ export default function Marketplace() {
                   {/* Banner Image */}
                   {(() => {
                     const bannerUrl = token.bannerUrl || getImageUrl(token.bannerImageIpfs);
+                    const hasBanner = !!bannerUrl;
                     return bannerUrl ? (
-                      <div className="w-full h-32 overflow-hidden">
+                      <div className="w-full h-32 overflow-hidden relative">
                         <img
                           src={bannerUrl}
                           alt={`${token.name} banner`}
@@ -371,13 +372,18 @@ export default function Marketplace() {
                             (e.target as HTMLImageElement).style.display = 'none';
                           }}
                         />
+                        {/* Gradient overlay for better badge visibility */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-transparent pointer-events-none" />
                       </div>
                     ) : null;
                   })()}
 
                   <div className="p-6">
                   {/* Badges */}
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 items-end z-10">
+                  <div className={`absolute ${(() => {
+                    const bannerUrl = token.bannerUrl || getImageUrl(token.bannerImageIpfs);
+                    return bannerUrl ? 'top-28' : 'top-4';
+                  })()} right-4 flex flex-col gap-2 items-end z-10`}>
                     {token.verified && (
                       <div className="px-2 py-1 bg-blue-500/20 border border-blue-500/50 rounded-full">
                         <div className="flex items-center gap-1">
