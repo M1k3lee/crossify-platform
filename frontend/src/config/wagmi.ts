@@ -12,11 +12,37 @@ if (!hasValidProjectId) {
   console.warn('   WalletConnect features will be disabled to prevent errors.');
 }
 
+// Define Hedera Testnet chain (not included in wagmi/chains by default)
+const hederaTestnet = defineChain({
+  id: 296,
+  name: 'Hedera Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'HBAR',
+    symbol: 'HBAR',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://testnet.hashio.io/api'],
+    },
+    public: {
+      http: ['https://testnet.hashio.io/api'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'HashScan',
+      url: 'https://hashscan.io/testnet',
+    },
+  },
+  testnet: true,
+});
+
 // Configure RainbowKit with wallet options that prioritize injected providers
 export const config = getDefaultConfig({
   appName: 'Crossify.io',
   projectId: hasValidProjectId ? projectId : '0000000000000000000000000000000000000000',
-  chains: [sepolia, baseSepolia, bscTestnet],
+  chains: [sepolia, baseSepolia, bscTestnet, hederaTestnet],
   ssr: false,
   // Only enable WalletConnect if we have a valid project ID
   // This prevents API errors and unwanted redirects
