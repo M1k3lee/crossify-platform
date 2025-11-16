@@ -1097,6 +1097,9 @@ export default function BuyWidget({
           dataLength: populatedTx.data?.length || 0,
           value: populatedTx.value?.toString(),
           gasLimit: populatedTx.gasLimit?.toString(),
+          gasPrice: populatedTx.gasPrice?.toString(),
+          nonce: populatedTx.nonce?.toString(),
+          chainId: populatedTx.chainId?.toString(),
         });
         
         // Verify populated transaction has data
@@ -1104,9 +1107,16 @@ export default function BuyWidget({
           throw new Error('Populated transaction data is empty. This indicates a problem with transaction encoding.');
         }
         
+        // For Hedera, the issue is that MetaMask may strip the data field
+        // We've verified the populated transaction has data, so the issue is with MetaMask/Hedera RPC
+        // Try sending the populated transaction directly
+        // Note: This is a known issue with Hedera and MetaMask - the data field may be stripped
+        console.log('📤 Sending populated transaction (data should be preserved)...');
+        console.log('⚠️ NOTE: If transaction fails with empty data, this is a MetaMask/Hedera compatibility issue');
+        
         // Send the populated transaction
         tx = await signer.sendTransaction(populatedTx);
-        console.log('✅ Sent Hedera transaction with manual construction');
+        console.log('✅ Sent Hedera transaction with populated transaction');
       } else {
         // For other chains, use the contract method (standard approach)
         tx = await curveContract.buy(tokenAmount, {
