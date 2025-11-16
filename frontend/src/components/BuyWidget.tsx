@@ -1109,10 +1109,11 @@ export default function BuyWidget({
         
         // For Hedera, the issue is that MetaMask may strip the data field
         // We've verified the populated transaction has data, so the issue is with MetaMask/Hedera RPC
-        // Try sending the populated transaction directly
         // Note: This is a known issue with Hedera and MetaMask - the data field may be stripped
+        // SOLUTION: Users should install the Hedera Wallet Snap in MetaMask
         console.log('📤 Sending populated transaction (data should be preserved)...');
-        console.log('⚠️ NOTE: If transaction fails with empty data, this is a MetaMask/Hedera compatibility issue');
+        console.log('⚠️ NOTE: If transaction fails with empty data, install Hedera Wallet Snap in MetaMask');
+        console.log('   MetaMask → Settings → Snaps → Discover → Search "Hedera Wallet" by Tuum Technologies');
         
         // Send the populated transaction
         tx = await signer.sendTransaction(populatedTx);
