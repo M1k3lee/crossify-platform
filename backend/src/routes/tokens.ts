@@ -1831,35 +1831,86 @@ router.get('/:id/related', async (req: Request, res: Response) => {
 router.get('/:id/price-sync', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { ethers } = await import('ethers');
     
-    // Get token parameters for virtual liquidity pricing
+    // Get token parameters
     const token = await dbGet('SELECT base_price, slope FROM tokens WHERE id = ?', [id]) as any;
     if (!token) {
       return res.status(404).json({ error: 'Token not found' });
     }
     
-    // Get global supply for virtual liquidity pricing
-    const { getGlobalSupply, getSupplyByChain, calculatePriceWithGlobalSupply } = await import('../services/globalSupply');
+    // Get global supply for reference
+    const { getGlobalSupply, getSupplyByChain } = await import('../services/globalSupply');
     const globalSupply = await getGlobalSupply(id);
-    const globalPrice = await calculatePriceWithGlobalSupply(id, token.base_price, token.slope);
     const supplyByChain = await getSupplyByChain(id);
     
     const deployments = await dbAll(
-      'SELECT chain, token_address, market_cap, current_supply FROM token_deployments WHERE token_id = ? AND status = ?',
+      'SELECT chain, token_address, curve_address, market_cap, current_supply FROM token_deployments WHERE token_id = ? AND status = ?',
       [id, 'deployed']
     ) as any[];
     
     const prices: Record<string, number> = {};
     const marketCaps: Record<string, number> = {};
     
-    // All chains use the same global price (virtual liquidity)
+    // CRITICAL: Query ACTUAL bonding curve contract price for each chain
+    // This ensures we show the REAL trading price, not a calculated display price
     for (const dep of deployments) {
-      prices[dep.chain] = globalPrice; // Same price across all chains!
+      let actualPrice = 0;
+      
+      if (dep.curve_address) {
+        try {
+          // Get RPC URL for chain
+          const rpcUrls: Record<string, string> = {
+            'ethereum': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+            'sepolia': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+            'bsc': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+            'bsc-testnet': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+            'base': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+            'base-sepolia': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+            'hedera': process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
+            'hedera-testnet': process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
+          };
+          
+          const chainLower = dep.chain.toLowerCase();
+          const rpcUrl = rpcUrls[chainLower] || rpcUrls['base-sepolia'];
+          
+          if (rpcUrl) {
+            const provider = new ethers.JsonRpcProvider(rpcUrl);
+            
+            // Query actual bonding curve contract
+            const bondingCurveABI = [
+              'function getCurrentPrice() external view returns (uint256)',
+            ];
+            
+            const curveContract = new ethers.Contract(dep.curve_address, bondingCurveABI, provider);
+            const currentPriceWei = await curveContract.getCurrentPrice();
+            actualPrice = parseFloat(ethers.formatEther(currentPriceWei));
+            
+            console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${actualPrice} ETH`);
+          } else {
+            console.warn(`⚠️ No RPC URL for chain ${dep.chain}, using fallback calculation`);
+            // Fallback to base price if we can't query contract
+            actualPrice = token.base_price || 0;
+          }
+        } catch (error: any) {
+          console.error(`❌ Error fetching price from bonding curve for ${dep.chain}:`, error.message);
+          // Fallback to base price if contract query fails
+          actualPrice = token.base_price || 0;
+        }
+      } else {
+        // No curve address, use base price
+        actualPrice = token.base_price || 0;
+      }
+      
+      // Convert to USD (assuming ETH = $3000)
+      const priceUSD = actualPrice * 3000;
+      prices[dep.chain] = priceUSD;
+      
       const localSupply = parseFloat(dep.current_supply || '0');
-      marketCaps[dep.chain] = globalPrice * localSupply; // Market cap = price * local supply
+      marketCaps[dep.chain] = priceUSD * localSupply; // Market cap = price * local supply
     }
     
-    // Calculate variance (should be near 0% with virtual liquidity)
+    // Calculate variance
     const priceValues = Object.values(prices);
     const avgPrice = priceValues.reduce((a, b) => a + b, 0) / priceValues.length || 0;
     const variance = priceValues.length > 1
@@ -1871,7 +1922,6 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       prices,
       marketCaps,
       globalSupply,
-      globalPrice,
       supplyByChain,
       variance,
       inSync: variance < 0.5, // In sync if variance < 0.5%
