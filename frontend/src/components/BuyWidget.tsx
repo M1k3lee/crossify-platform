@@ -174,8 +174,8 @@ export default function BuyWidget({
     };
 
     fetchCurrentPrice();
-    // Refresh price every 10 seconds
-    const interval = setInterval(fetchCurrentPrice, 10000);
+    // Refresh price every 30 seconds (reduced from 10 to reduce excessive logging)
+    const interval = setInterval(fetchCurrentPrice, 30000);
     return () => clearInterval(interval);
   }, [curveAddress, chain]);
 
@@ -809,10 +809,15 @@ export default function BuyWidget({
       const bondingCurveABI = [
         'function buy(uint256 tokenAmount) external payable',
         'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
+        'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
         'function getCurrentPrice() external view returns (uint256)',
         'function isGraduated() external view returns (bool)',
         'function buyFeePercent() external view returns (uint256)',
         'function sellFeePercent() external view returns (uint256)',
+        'function basePrice() external view returns (uint256)',
+        'function slope() external view returns (uint256)',
+        'function totalSupplySold() external view returns (uint256)',
+        'function useGlobalSupply() external view returns (bool)',
       ];
 
       const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
@@ -999,11 +1004,27 @@ export default function BuyWidget({
               // Last resort: Calculate price manually using basePrice and slope
               // This matches the contract's calculation: price = basePrice + (slope * supply)
               try {
+                console.log('📊 Attempting manual price calculation...');
                 const [basePriceWei, slopeWei, localSupplyWei] = await Promise.all([
-                  curveContract.basePrice().catch(() => null),
-                  curveContract.slope().catch(() => null),
-                  curveContract.totalSupplySold().catch(() => null),
+                  curveContract.basePrice().catch((e: any) => {
+                    console.warn('⚠️ Failed to get basePrice:', e.message);
+                    return null;
+                  }),
+                  curveContract.slope().catch((e: any) => {
+                    console.warn('⚠️ Failed to get slope:', e.message);
+                    return null;
+                  }),
+                  curveContract.totalSupplySold().catch((e: any) => {
+                    console.warn('⚠️ Failed to get totalSupplySold:', e.message);
+                    return null;
+                  }),
                 ]);
+                
+                console.log('📊 Manual calculation parameters:', {
+                  basePriceWei: basePriceWei?.toString() || 'null',
+                  slopeWei: slopeWei?.toString() || 'null',
+                  localSupplyWei: localSupplyWei?.toString() || 'null',
+                });
                 
                 if (basePriceWei && slopeWei !== null && localSupplyWei !== null) {
                   // Manual calculation matching contract logic
@@ -1017,7 +1038,7 @@ export default function BuyWidget({
                   // Total price = pricePerToken * amountInTokens
                   const totalPriceWei = BigInt(Math.floor(pricePerTokenWei * amountInTokens));
                   
-                  console.log('📊 Manual price calculation:', {
+                  console.log('✅ Manual price calculation successful:', {
                     basePrice: ethers.formatEther(basePriceWei),
                     slope: ethers.formatEther(slopeWei),
                     supply: supplyInTokens,
@@ -1028,12 +1049,17 @@ export default function BuyWidget({
                   
                   priceFromContract = totalPriceWei;
                 } else {
-                  throw new Error('Could not get contract parameters for manual calculation');
+                  const missingParams = [];
+                  if (!basePriceWei) missingParams.push('basePrice');
+                  if (slopeWei === null) missingParams.push('slope');
+                  if (localSupplyWei === null) missingParams.push('totalSupplySold');
+                  throw new Error(`Could not get contract parameters for manual calculation. Missing: ${missingParams.join(', ')}`);
                 }
               } catch (manualErr: any) {
+                console.error('❌ Manual calculation failed:', manualErr.message);
                 throw new Error(
                   `Failed to get price estimate: ${decodedReason || err.message || 'Contract call reverted'}. ` +
-                  `Both contract functions and manual calculation failed. ` +
+                  `Manual calculation also failed: ${manualErr.message}. ` +
                   `This might indicate the token has graduated, the amount is too large, or there's an issue with the contract.`
                 );
               }
