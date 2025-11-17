@@ -1856,49 +1856,89 @@ export default function BuyWidget({
                 try {
                   const { getHashPackProvider } = require('../services/blockchain');
                   const hashpackProvider = getHashPackProvider();
-                  if (hashpackProvider) {
+                  
+                  // Also check for any non-MetaMask providers in the array
+                  let alternativeProvider: any = null;
+                  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+                    const nonMetaMask = window.ethereum.providers.find((p: any) => 
+                      !p.isMetaMask && !(p as any).isPhantom && !(p as any).isCoinbaseWallet
+                    );
+                    if (nonMetaMask) {
+                      alternativeProvider = nonMetaMask;
+                      console.log('🔍 Found alternative provider (might be HashPack):', {
+                        isMetaMask: nonMetaMask.isMetaMask,
+                        isPhantom: (nonMetaMask as any).isPhantom,
+                        constructor: nonMetaMask.constructor?.name,
+                      });
+                    }
+                  }
+                  
+                  const providerToUse = hashpackProvider || alternativeProvider;
+                  
+                  if (providerToUse) {
                     return (
                       <button
                         onClick={async () => {
                           try {
-                            // Request accounts from HashPack
-                            if (hashpackProvider.request) {
-                              await hashpackProvider.request({ method: 'eth_requestAccounts' });
+                            toast.loading('Connecting HashPack...', { id: 'connect-hashpack' });
+                            
+                            // Request accounts from the provider
+                            if (providerToUse.request) {
+                              const accounts = await providerToUse.request({ method: 'eth_requestAccounts' });
+                              console.log('✅ Accounts requested:', accounts);
+                              
                               // Connect via wagmi using injected connector
                               const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
                               if (injectedConnector) {
-                                // Temporarily set HashPack as the provider
+                                // Temporarily set the provider as window.ethereum
                                 const originalEthereum = window.ethereum;
-                                (window as any).ethereum = hashpackProvider;
+                                (window as any).ethereum = providerToUse;
+                                
                                 try {
                                   await connect({ connector: injectedConnector as any });
-                                  toast.success('HashPack connected successfully!');
+                                  toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
+                                  
+                                  // Switch to Hedera network
+                                  try {
+                                    await switchNetwork('hedera');
+                                  } catch (switchError) {
+                                    console.warn('Could not switch to Hedera network:', switchError);
+                                  }
                                 } catch (connectError: any) {
                                   console.error('Connection error:', connectError);
-                                  toast.error(`Connection failed: ${connectError.message || 'Unknown error'}`);
-                                } finally {
-                                  // Restore original if still not connected
-                                  setTimeout(() => {
-                                    if (!isConnected) {
-                                      (window as any).ethereum = originalEthereum;
-                                    }
-                                  }, 1000);
+                                  toast.error(`Connection failed: ${connectError.message || 'Unknown error'}`, { id: 'connect-hashpack' });
+                                  // Restore original
+                                  (window as any).ethereum = originalEthereum;
                                 }
+                              } else {
+                                toast.error('Injected connector not found', { id: 'connect-hashpack' });
                               }
+                            } else {
+                              toast.error('Provider does not support request method', { id: 'connect-hashpack' });
                             }
                           } catch (error: any) {
                             console.error('Failed to connect HashPack:', error);
-                            toast.error(`Failed to connect HashPack: ${error.message || 'Unknown error'}`);
+                            toast.error(`Failed to connect: ${error.message || 'Unknown error'}`, { id: 'connect-hashpack' });
                           }
                         }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
                       >
-                        Connect HashPack
+                        {hashpackProvider ? 'Connect HashPack' : 'Try Alternative Wallet (HashPack?)'}
                       </button>
                     );
                   }
+                  
+                  // If no provider found, show instructions
+                  if (window.ethereum?.providers && window.ethereum.providers.length > 1) {
+                    console.log('🔍 Available providers:', window.ethereum.providers.map((p: any) => ({
+                      isMetaMask: p.isMetaMask,
+                      isPhantom: (p as any).isPhantom,
+                      isCoinbase: (p as any).isCoinbaseWallet,
+                      constructor: p.constructor?.name,
+                    })));
+                  }
                 } catch (e) {
-                  // HashPack not available
+                  console.error('Error checking for HashPack:', e);
                 }
                 return null;
               })()}
