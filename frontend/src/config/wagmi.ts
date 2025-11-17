@@ -1,8 +1,6 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { sepolia, baseSepolia, bscTestnet } from 'wagmi/chains';
 import type { Chain } from 'wagmi/chains';
-import { createConnector } from 'wagmi';
-import { injected } from 'wagmi/connectors';
 
 // Use environment variable or get a real project ID from https://cloud.walletconnect.com
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
@@ -41,36 +39,6 @@ const hederaTestnet: Chain = {
   },
   testnet: true,
 } as Chain;
-
-// Helper to get HashPack provider
-function getHashPackProvider() {
-  if (typeof window === 'undefined') return null;
-  
-  // Check window.hashpack
-  if ((window as any).hashpack) {
-    const hashpack = (window as any).hashpack;
-    if (hashpack.provider) return hashpack.provider;
-    if (hashpack.ethereum) return hashpack.ethereum;
-    if (typeof hashpack.request === 'function') return hashpack;
-  }
-  
-  // Check providers array for HashPack
-  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
-    for (const provider of window.ethereum.providers) {
-      const keys = Object.keys(provider);
-      if (keys.some(k => k.toLowerCase().includes('hashpack'))) {
-        return provider;
-      }
-      // Check if provider is on Hedera chain (likely HashPack)
-      if (!provider.isMetaMask && !(provider as any).isPhantom && !(provider as any).isCoinbaseWallet) {
-        // This might be HashPack
-        return provider;
-      }
-    }
-  }
-  
-  return null;
-}
 
 // Configure RainbowKit with wallet options that prioritize injected providers
 export const config = getDefaultConfig({
