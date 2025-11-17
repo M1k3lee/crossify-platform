@@ -5,6 +5,8 @@ import { ethers, BrowserProvider } from 'ethers';
 export function isHashPackInstalled(): boolean {
   if (typeof window === 'undefined') return false;
   
+  console.log('🔍 Checking for HashPack wallet...');
+  
   // HashPack can expose itself in multiple ways:
   // 1. Via window.hashpack
   // 2. Via window.ethereum with isHashPack flag
@@ -23,8 +25,30 @@ export function isHashPackInstalled(): boolean {
     return true;
   }
   
+  // Check all window properties for "hashpack" (case-insensitive)
+  for (const key in window) {
+    if (key.toLowerCase().includes('hashpack')) {
+      console.log(`✅ HashPack detected via window.${key}`);
+      return true;
+    }
+  }
+  
   // Check if HashPack is in providers array (most common when multiple wallets installed)
   if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+    console.log(`🔍 Checking ${window.ethereum.providers.length} providers in array...`);
+    
+    // Log all providers for debugging
+    window.ethereum.providers.forEach((p: any, idx: number) => {
+      console.log(`   Provider ${idx}:`, {
+        isMetaMask: p.isMetaMask,
+        isPhantom: (p as any).isPhantom,
+        isCoinbase: (p as any).isCoinbaseWallet,
+        isHashPack: p.isHashPack,
+        constructor: p.constructor?.name,
+        keys: Object.keys(p).filter(k => k.toLowerCase().includes('hash') || k.toLowerCase().includes('pack')).slice(0, 5),
+      });
+    });
+    
     // Look for HashPack in providers - check multiple possible identifiers
     const hashpack = window.ethereum.providers.find((p: any) => {
       // Check various ways HashPack might identify itself
@@ -33,13 +57,19 @@ export function isHashPackInstalled(): boolean {
       if (p.constructor?.name === 'HashPackProvider') return true;
       if ((p as any).isHashPackWallet) return true;
       
+      // Check if any property name contains "hashpack"
+      const hasHashPackProperty = Object.keys(p).some(k => k.toLowerCase().includes('hashpack'));
+      if (hasHashPackProperty) return true;
+      
       // HashPack might not have a flag, but we can check if it's NOT MetaMask/Phantom
       // and if it supports Hedera network
       if (!p.isMetaMask && !(p as any).isPhantom && !(p as any).isCoinbaseWallet) {
-        // This might be HashPack - we'll check if it can handle Hedera
-        // by checking if it has Hedera-specific methods or properties
-        if ((p as any).isHashPack || (p as any).__hashpack) {
-          return true;
+        // This might be HashPack - check if it has Hedera-specific methods
+        // HashPack typically supports Hedera network (chainId 296)
+        if (typeof p.request === 'function') {
+          // Try to detect by checking if it can handle Hedera-specific requests
+          // This is a heuristic - we'll log it but not return true yet
+          console.log(`   ⚠️ Provider ${window.ethereum.providers.indexOf(p)} is not MetaMask/Phantom/Coinbase - might be HashPack`);
         }
       }
       return false;
@@ -47,6 +77,16 @@ export function isHashPackInstalled(): boolean {
     if (hashpack) {
       console.log('✅ HashPack detected in providers array');
       return true;
+    }
+    
+    // If we have providers but none match, check for any non-MetaMask provider
+    // This is a fallback - if user has HashPack installed, it should be in the array
+    const nonMetaMaskProviders = window.ethereum.providers.filter((p: any) => 
+      !p.isMetaMask && !(p as any).isPhantom && !(p as any).isCoinbaseWallet
+    );
+    if (nonMetaMaskProviders.length > 0) {
+      console.log(`⚠️ Found ${nonMetaMaskProviders.length} non-MetaMask provider(s) - one might be HashPack`);
+      // Don't return true here - we need user confirmation
     }
   }
   
@@ -57,14 +97,26 @@ export function isHashPackInstalled(): boolean {
     const isPhantom = !!(window.ethereum as any).isPhantom;
     const isCoinbase = !!(window.ethereum as any).isCoinbaseWallet;
     
+    console.log('🔍 window.ethereum check:', {
+      exists: true,
+      isMetaMask,
+      isPhantom,
+      isCoinbase,
+      hasProviders: !!window.ethereum.providers,
+      providerCount: window.ethereum.providers?.length || 0,
+    });
+    
     // If it's not a known wallet, it could be HashPack
     // But we can't be 100% sure, so we'll return false and let the user know
-    if (!isMetaMask && !isPhantom && !isCoinbase) {
-      console.log('⚠️ Unknown wallet provider detected - might be HashPack');
+    if (!isMetaMask && !isPhantom && !isCoinbase && !window.ethereum.providers) {
+      console.log('⚠️ Unknown wallet provider detected - might be HashPack (no providers array)');
       // Don't return true here - we need more certainty
     }
+  } else {
+    console.log('❌ window.ethereum not found');
   }
   
+  console.log('❌ HashPack not detected with current checks');
   return false;
 }
 
@@ -72,25 +124,47 @@ export function isHashPackInstalled(): boolean {
 export function getHashPackProvider(): any | null {
   if (typeof window === 'undefined') return null;
   
+  console.log('🔍 Getting HashPack provider...');
+  
   // Check window.hashpack first
   if ((window as any).hashpack) {
+    console.log('✅ Found HashPack via window.hashpack');
     return (window as any).hashpack;
   }
   
   // Check if window.ethereum is HashPack
   if (window.ethereum && (window.ethereum as any).isHashPack) {
+    console.log('✅ Found HashPack via window.ethereum.isHashPack');
     return window.ethereum;
+  }
+  
+  // Check all window properties for "hashpack" (case-insensitive)
+  for (const key in window) {
+    if (key.toLowerCase().includes('hashpack')) {
+      console.log(`✅ Found HashPack via window.${key}`);
+      return (window as any)[key];
+    }
   }
   
   // Check providers array
   if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
-    const hashpack = window.ethereum.providers.find((p: any) => 
-      p.isHashPack || 
-      (p as any).__hashpack ||
-      p.constructor?.name === 'HashPackProvider' ||
-      (p as any).isHashPackWallet
-    );
+    console.log(`🔍 Checking ${window.ethereum.providers.length} providers for HashPack...`);
+    
+    // First, look for explicit HashPack identifiers
+    const hashpack = window.ethereum.providers.find((p: any) => {
+      if (p.isHashPack) return true;
+      if ((p as any).__hashpack) return true;
+      if (p.constructor?.name === 'HashPackProvider') return true;
+      if ((p as any).isHashPackWallet) return true;
+      
+      // Check if any property name contains "hashpack"
+      const hasHashPackProperty = Object.keys(p).some(k => k.toLowerCase().includes('hashpack'));
+      if (hasHashPackProperty) return true;
+      
+      return false;
+    });
     if (hashpack) {
+      console.log('✅ Found HashPack in providers array (explicit identifier)');
       return hashpack;
     }
     
@@ -100,11 +174,23 @@ export function getHashPackProvider(): any | null {
       !p.isMetaMask && !(p as any).isPhantom && !(p as any).isCoinbaseWallet
     );
     if (nonMetaMaskProviders.length > 0) {
-      console.log('⚠️ Found non-MetaMask provider - might be HashPack, using first one');
+      console.log(`⚠️ Found ${nonMetaMaskProviders.length} non-MetaMask provider(s) - using first one (might be HashPack)`);
+      console.log('   Provider details:', {
+        constructor: nonMetaMaskProviders[0].constructor?.name,
+        hasRequest: typeof nonMetaMaskProviders[0].request === 'function',
+        keys: Object.keys(nonMetaMaskProviders[0]).slice(0, 10),
+      });
       return nonMetaMaskProviders[0];
     }
   }
   
+  // Last resort: if window.ethereum exists and is NOT a known wallet, it might be HashPack
+  if (window.ethereum && !window.ethereum.isMetaMask && !(window.ethereum as any).isPhantom && !(window.ethereum as any).isCoinbaseWallet && !window.ethereum.providers) {
+    console.log('⚠️ window.ethereum is not a known wallet and has no providers array - might be HashPack');
+    return window.ethereum;
+  }
+  
+  console.log('❌ HashPack provider not found');
   return null;
 }
 
