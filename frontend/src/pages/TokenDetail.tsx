@@ -469,14 +469,9 @@ export default function TokenDetail() {
       toast.success('Token metadata updated successfully!');
       setIsEditing(false);
       
-      // Invalidate queries to refresh data
+      // Invalidate queries to refresh data without full page reload
       queryClient.invalidateQueries({ queryKey: ['token-status', id] });
       queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
-      
-      // Reload page after a short delay to show updated data
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (error: any) {
       console.error('Error updating token:', error);
       toast.error(error.response?.data?.error || 'Failed to update token metadata');
@@ -1434,11 +1429,13 @@ export default function TokenDetail() {
                 tokenSymbol={tokenSymbol}
                 currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
                 onSuccess={() => {
-                  // Invalidate queries to refresh chart and other data
-                  // The chart will automatically refetch due to refetchInterval
-                  // Force a small delay to ensure transaction is recorded
+                  // Invalidate queries to refresh data without full page reload
                   setTimeout(() => {
-                    window.location.reload();
+                    queryClient.invalidateQueries({ queryKey: ['token-status', id] });
+                    queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
+                    queryClient.invalidateQueries({ queryKey: ['token-transactions', id] });
+                    queryClient.invalidateQueries({ queryKey: ['price-sync', id] });
+                    queryClient.invalidateQueries({ queryKey: ['audit-logs', id] });
                   }, 2000);
                 }}
               />
@@ -1542,13 +1539,12 @@ export default function TokenDetail() {
 
                       toast.success(`✅ Deployed to ${selectedDeployment.chain}!`, { id: 'deploy-token' });
                       
-                      // Refresh token data
+                      // Refresh token data without full page reload
                       queryClient.invalidateQueries({ queryKey: ['token-status', id] });
-                      
-                      // Reload page after a short delay
-                      setTimeout(() => {
-                        window.location.reload();
-                      }, 2000);
+                      queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
+                      queryClient.invalidateQueries({ queryKey: ['token-transactions', id] });
+                      queryClient.invalidateQueries({ queryKey: ['price-sync', id] });
+                      queryClient.invalidateQueries({ queryKey: ['audit-logs', id] });
                     } catch (error: any) {
                       console.error('Deployment error:', error);
                       toast.error(error.message || `Failed to deploy to ${selectedDeployment.chain}`, { 
@@ -2203,9 +2199,14 @@ export default function TokenDetail() {
           tokenSymbol={status.token?.symbol || 'TOKEN'}
           currentPrice={priceSync?.prices?.[liquidityModal.chain.toLowerCase()] || 0.001}
           onSuccess={() => {
+            // Invalidate queries to refresh data without full page reload
             setTimeout(() => {
-              window.location.reload();
-            }, 3000);
+              queryClient.invalidateQueries({ queryKey: ['token-status', id] });
+              queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
+              queryClient.invalidateQueries({ queryKey: ['token-transactions', id] });
+              queryClient.invalidateQueries({ queryKey: ['price-sync', id] });
+              queryClient.invalidateQueries({ queryKey: ['audit-logs', id] });
+            }, 2000);
           }}
         />
         )}
