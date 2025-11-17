@@ -1996,10 +1996,17 @@ export default function BuyWidget({
                         <div className="space-y-2">
                           <div className="text-xs text-yellow-300/80 space-y-1">
                             <p>
-                              HashPack not detected. If HashPack is installed:
+                              HashPack not detected. HashPack uses WalletConnect for pairing:
                             </p>
                             <ul className="list-disc list-inside ml-2 space-y-0.5">
-                              <li>Make sure HashPack extension is unlocked</li>
+                              <li>
+                                <strong>WalletConnect required:</strong> HashPack needs a WalletConnect Project ID to connect.
+                                Get one free from{' '}
+                                <a href="https://cloud.walletconnect.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">
+                                  cloud.walletconnect.com
+                                </a>
+                              </li>
+                              <li>Make sure HashPack extension is installed and unlocked</li>
                               <li>Try refreshing the page</li>
                               <li>If MetaMask is also installed, HashPack may not inject. Try:
                                 <ul className="list-disc list-inside ml-4 mt-0.5">

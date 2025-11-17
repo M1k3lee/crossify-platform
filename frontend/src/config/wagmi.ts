@@ -10,6 +10,7 @@ if (!hasValidProjectId) {
   console.warn('⚠️ WalletConnect Project ID not set. Using injected provider (MetaMask) only.');
   console.warn('   Get a free project ID from: https://cloud.walletconnect.com');
   console.warn('   MetaMask will still work via injected provider.');
+  console.warn('   ⚠️ HashPack requires WalletConnect for pairing - get a Project ID to enable HashPack connection.');
   console.warn('   WalletConnect features will be disabled to prevent errors.');
 }
 
