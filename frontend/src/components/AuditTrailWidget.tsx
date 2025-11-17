@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -30,6 +30,8 @@ interface AuditLog {
   oldGlobalSupply?: string;
   newGlobalSupply?: string;
   txHash?: string;
+  layerZeroTxHash?: string;
+  ccipTxHash?: string;
   userAddress?: string;
   timestamp?: string;
   hcsTimestamp?: string;
@@ -210,7 +212,7 @@ export default function AuditTrailWidget({ tokenId, chain }: AuditTrailWidgetPro
                           : `${log.transactionType} Transaction`}
                       </p>
                       {log.verified && (
-                        <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" title="Verified on Hedera" />
+                        <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1">
