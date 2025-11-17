@@ -82,9 +82,27 @@ export class HederaAuditService {
       const isMainnet = process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true';
       this.client = isMainnet ? Client.forMainnet() : Client.forTestnet();
       
-      // Parse private key (remove 0x prefix if present)
-      const privateKeyHex = privateKeyStr.replace(/^0x/, '');
-      const privateKey = PrivateKey.fromString(privateKeyHex);
+      // Parse private key - Hedera SDK supports multiple formats
+      let privateKey: PrivateKey;
+      try {
+        // Remove 0x prefix if present
+        const privateKeyHex = privateKeyStr.replace(/^0x/, '').trim();
+        
+        // Try parsing as hex string (most common format)
+        if (privateKeyHex.length === 64) {
+          // Convert hex string to bytes and create ED25519 private key
+          const keyBytes = Buffer.from(privateKeyHex, 'hex');
+          privateKey = PrivateKey.fromBytes(keyBytes);
+          console.log('✅ Parsed Hedera private key as hex bytes');
+        } else {
+          // Try parsing as string (DER format or other)
+          privateKey = PrivateKey.fromString(privateKeyStr);
+          console.log('✅ Parsed Hedera private key as string');
+        }
+      } catch (parseError) {
+        console.error('❌ Failed to parse Hedera private key:', parseError instanceof Error ? parseError.message : parseError);
+        throw new Error(`Invalid Hedera private key format: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+      }
       
       this.client.setOperator(accountId, privateKey);
 
