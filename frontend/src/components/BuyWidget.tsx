@@ -908,27 +908,68 @@ export default function BuyWidget({
           }
           
           // Diagnostic: Check contract state before calling price function
+          let totalSupply: bigint | null = null;
+          let basePriceValue: bigint | null = null;
+          let slopeValue: bigint | null = null;
+          let useGlobalSupply: boolean | null = null;
+          
           try {
-            const [totalSupply, basePrice, slopeValue, useGlobalSupply] = await Promise.all([
+            [totalSupply, basePriceValue, slopeValue, useGlobalSupply] = await Promise.all([
               curveContract.totalSupplySold().catch(() => null),
               curveContract.basePrice().catch(() => null),
               curveContract.slope().catch(() => null),
               curveContract.useGlobalSupply().catch(() => null),
             ]);
             
-            console.log('🔍 Contract state before price calculation:', {
-              totalSupply: totalSupply?.toString(),
-              basePrice: basePrice?.toString(),
-              slope: slopeValue?.toString(),
-              useGlobalSupply,
-              tokenAmount: tokenAmount.toString(),
-              amountInTokens: (tokenAmount / BigInt(1e18)).toString(),
-            });
-            
-            // Check if amount is reasonable
             const amountInTokens = Number(tokenAmount) / 1e18;
-            if (amountInTokens > 1e9) {
-              throw new Error('Amount is too large. Maximum is 1 billion tokens.');
+            const supplyInTokens = totalSupply ? Number(totalSupply) / 1e18 : 0;
+            const supplyForAvgPrice = supplyInTokens + (amountInTokens / 2);
+            
+            // Manual calculation to predict what the contract will do
+            if (basePriceValue && slopeValue !== null && totalSupply !== null) {
+              const slopeComponent = Number(slopeValue) * supplyForAvgPrice;
+              const avgPricePerToken = Number(basePriceValue) + slopeComponent;
+              const totalPrice = avgPricePerToken * amountInTokens;
+              
+              console.log('🔍 Contract state and predicted calculation:', {
+                totalSupply: totalSupply.toString(),
+                supplyInTokens,
+                basePrice: basePriceValue.toString(),
+                basePriceEth: ethers.formatEther(basePriceValue),
+                slope: slopeValue.toString(),
+                slopeEth: ethers.formatEther(slopeValue),
+                useGlobalSupply,
+                tokenAmount: tokenAmount.toString(),
+                amountInTokens,
+                supplyForAvgPrice,
+                slopeComponent: slopeComponent.toString(),
+                slopeComponentEth: ethers.formatEther(BigInt(Math.floor(slopeComponent))),
+                avgPricePerToken: avgPricePerToken.toString(),
+                avgPricePerTokenEth: ethers.formatEther(BigInt(Math.floor(avgPricePerToken))),
+                totalPrice: totalPrice.toString(),
+                totalPriceEth: ethers.formatEther(BigInt(Math.floor(totalPrice))),
+              });
+              
+              // Check contract limits manually
+              const maxPricePerToken = ethers.parseEther('1'); // 1 ETH
+              const maxTotalPrice = ethers.parseEther('100'); // 100 ETH
+              const maxSlopeComponent = BigInt(1e25);
+              
+              if (amountInTokens > 1e9) {
+                console.error('❌ Amount too large:', amountInTokens, '> 1e9');
+              }
+              if (supplyForAvgPrice > 1e9) {
+                console.error('❌ Supply too large:', supplyForAvgPrice, '> 1e9');
+              }
+              if (BigInt(Math.floor(slopeComponent)) > maxSlopeComponent) {
+                console.error('❌ Slope component too large:', slopeComponent, '> 1e25');
+              }
+              if (BigInt(Math.floor(avgPricePerToken)) > maxPricePerToken) {
+                console.error('❌ Price per token too high:', avgPricePerToken, '> 1 ETH');
+              }
+              if (BigInt(Math.floor(totalPrice)) > maxTotalPrice) {
+                console.error('❌ Total price too high:', totalPrice, '> 100 ETH');
+              }
             }
           } catch (diagErr: any) {
             console.warn('⚠️ Could not get contract diagnostics:', diagErr.message);
