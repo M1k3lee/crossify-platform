@@ -850,12 +850,86 @@ export default function BuyWidget({
         // Fallback to getPriceForAmount() for older contracts
         let priceFromContract: bigint;
         try {
+          // First check if contract is graduated (this might cause issues)
+          try {
+            const isGraduated = await curveContract.isGraduated();
+            if (isGraduated) {
+              throw new Error('Token has graduated to DEX. Please use a DEX to buy.');
+            }
+          } catch (gradCheckErr: any) {
+            if (gradCheckErr.message?.includes('graduated')) throw gradCheckErr;
+          }
+          
           priceFromContract = await curveContract.getPriceForAmountLocal(tokenAmount);
         } catch (err: any) {
+          console.error('Error calling getPriceForAmountLocal:', {
+            message: err.message,
+            code: err.code,
+            data: err.data,
+            reason: err.reason,
+            error: err.error,
+            transaction: err.transaction,
+          });
+          
+          // Try to decode error if it's a contract revert
+          let decodedReason = '';
+          if (err.data || err.error?.data) {
+            try {
+              const errorData = err.data || err.error?.data;
+              if (typeof errorData === 'string' && errorData.startsWith('0x') && errorData.length > 10) {
+                // Try to decode as a revert reason (Error(string) selector is 0x08c379a0)
+                // The actual string starts at offset 68 (0x44)
+                const hexString = errorData.slice(2);
+                // Skip selector (8 chars) and offset (64 chars) = 72 chars = 144 hex chars
+                if (hexString.length > 144) {
+                  const stringData = hexString.slice(144);
+                  let decoded = '';
+                  for (let i = 0; i < stringData.length; i += 2) {
+                    const charCode = parseInt(stringData.substr(i, 2), 16);
+                    if (charCode === 0) break;
+                    if (charCode >= 32 && charCode <= 126) {
+                      decoded += String.fromCharCode(charCode);
+                    }
+                  }
+                  if (decoded.length > 0) {
+                    decodedReason = decoded;
+                    console.log(`📝 Decoded revert reason: ${decodedReason}`);
+                  }
+                }
+              }
+            } catch (decodeErr) {
+              console.warn('Could not decode error data:', decodeErr);
+            }
+          }
+          
+          // Check for specific error messages
+          if (decodedReason.includes('graduated') || err.message?.includes('graduated')) {
+            throw new Error('Token has graduated to DEX. Please use a DEX to buy.');
+          }
+          if (decodedReason.includes('Amount too large') || err.message?.includes('Amount too large')) {
+            throw new Error('Amount is too large. Please try a smaller amount.');
+          }
+          if (decodedReason.includes('exceeds maximum') || err.message?.includes('exceeds maximum')) {
+            throw new Error('Price exceeds maximum limit. Please try a smaller amount.');
+          }
+          if (decodedReason.includes('Supply too large') || err.message?.includes('Supply too large')) {
+            throw new Error('Supply is too large for price calculation. Please try a smaller amount.');
+          }
+          if (decodedReason.includes('Slope calculation error') || err.message?.includes('Slope calculation')) {
+            throw new Error('Price calculation error. The token parameters may be invalid.');
+          }
+          
           // Fallback for older contracts that don't have getPriceForAmountLocal()
-          if (err.message?.includes('getPriceForAmountLocal')) {
-            console.warn('⚠️ Contract does not have getPriceForAmountLocal(), using getPriceForAmount() (may be less accurate)');
-            priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+          if (err.message?.includes('getPriceForAmountLocal') || err.message?.includes('execution reverted')) {
+            console.warn('⚠️ Contract does not have getPriceForAmountLocal() or call reverted, trying getPriceForAmount()');
+            try {
+              priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+            } catch (fallbackErr: any) {
+              throw new Error(
+                `Failed to get price estimate: ${decodedReason || err.message || 'Contract call reverted'}. ` +
+                `This might indicate the token has graduated, the amount is too large, or there's an issue with the contract.`
+              );
+            }
           } else {
             throw err;
           }
