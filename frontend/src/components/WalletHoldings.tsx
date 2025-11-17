@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAccount } from 'wagmi';
-import { ethers } from 'ethers';
+import { useAccount, useWalletClient } from 'wagmi';
+import { ethers, BrowserProvider } from 'ethers';
 import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { API_BASE } from '../config/api';
+import { getPreferredEVMProvider } from '../services/blockchain';
 
 interface WalletHoldingsProps {
   tokenId: string;
@@ -29,10 +30,13 @@ export default function WalletHoldings({
   tokenAddress,
   tokenSymbol,
   currentPrice,
+  curveAddress,
   onSell,
 }: WalletHoldingsProps) {
   const { isConnected, address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const [balance, setBalance] = useState<string>('0');
+  const [actualSellableValue, setActualSellableValue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
@@ -62,19 +66,36 @@ export default function WalletHoldings({
     return 'https://base-sepolia-rpc.publicnode.com';
   };
 
-  // Fetch wallet balance
+  // Fetch wallet balance and actual sellable value
   useEffect(() => {
     const fetchBalance = async () => {
       if (!isConnected || !address || !tokenAddress) {
         setBalance('0');
+        setActualSellableValue(null);
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        const rpcUrl = getRpcUrl(chain);
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        
+        // Try to use wallet provider first (avoids CORS and ensures correct chain)
+        let provider: ethers.Provider;
+        try {
+          if (walletClient) {
+            // Use wallet provider if available
+            const ethereumProvider = getPreferredEVMProvider();
+            provider = new BrowserProvider(ethereumProvider);
+          } else {
+            // Fallback to RPC provider
+            const rpcUrl = getRpcUrl(chain);
+            provider = new ethers.JsonRpcProvider(rpcUrl);
+          }
+        } catch (providerErr) {
+          // Fallback to RPC if wallet provider fails
+          const rpcUrl = getRpcUrl(chain);
+          provider = new ethers.JsonRpcProvider(rpcUrl);
+        }
         
         const tokenABI = ['function balanceOf(address account) external view returns (uint256)'];
         const tokenContract = new ethers.Contract(tokenAddress, tokenABI, provider);
@@ -82,19 +103,58 @@ export default function WalletHoldings({
         const balanceWei = await tokenContract.balanceOf(address);
         const balanceFormatted = ethers.formatUnits(balanceWei, 18);
         setBalance(balanceFormatted);
+        
+        // Calculate actual sellable value using bonding curve
+        if (curveAddress && parseFloat(balanceFormatted) > 0) {
+          try {
+            const bondingCurveABI = [
+              'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
+              'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
+            ];
+            const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, provider);
+            
+            const tokenAmountWei = balanceWei; // Use full balance
+            let sellPriceWei: bigint;
+            
+            try {
+              // Try getPriceForAmountLocal first (more accurate)
+              sellPriceWei = await curveContract.getPriceForAmountLocal(tokenAmountWei);
+            } catch (err) {
+              // Fallback to getPriceForAmount
+              try {
+                sellPriceWei = await curveContract.getPriceForAmount(tokenAmountWei);
+              } catch (fallbackErr) {
+                console.warn('Could not get sell price from bonding curve:', fallbackErr);
+                setActualSellableValue(null);
+                return;
+              }
+            }
+            
+            // Convert to ETH and then to USD (assuming ETH = $3000)
+            const sellPriceEth = parseFloat(ethers.formatEther(sellPriceWei));
+            const sellPriceUSD = sellPriceEth * 3000;
+            setActualSellableValue(sellPriceUSD);
+          } catch (curveErr) {
+            console.warn('Error calculating sellable value:', curveErr);
+            setActualSellableValue(null);
+          }
+        } else {
+          setActualSellableValue(null);
+        }
       } catch (error) {
         console.error('Error fetching balance:', error);
         setBalance('0');
+        setActualSellableValue(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchBalance();
-    // Refresh balance every 10 seconds
-    const interval = setInterval(fetchBalance, 10000);
+    // Refresh balance every 5 seconds (more frequent to catch updates)
+    const interval = setInterval(fetchBalance, 5000);
     return () => clearInterval(interval);
-  }, [isConnected, address, tokenAddress, chain]);
+  }, [isConnected, address, tokenAddress, chain, curveAddress, walletClient]);
 
   // Fetch user transactions for this token
   useEffect(() => {
@@ -168,7 +228,8 @@ export default function WalletHoldings({
 
     // Calculate average cost per token
     const avgCost = totalTokens > 0 ? totalCostBasis / totalTokens : 0;
-    const currentValue = parseFloat(balance) * currentPrice;
+    // Use actual sellable value if available, otherwise fall back to currentPrice * balance
+    const currentValue = actualSellableValue !== null ? actualSellableValue : (parseFloat(balance) * currentPrice);
     const costBasis = parseFloat(balance) * avgCost;
     const profit = currentValue - costBasis;
     const profitPercent = costBasis > 0 ? (profit / costBasis) * 100 : 0;
@@ -180,7 +241,7 @@ export default function WalletHoldings({
       profit,
       profitPercent,
     };
-  }, [transactions, balance, currentPrice]);
+  }, [transactions, balance, currentPrice, actualSellableValue]);
 
   // Handle quick sell
   const handleQuickSell = () => {
@@ -246,7 +307,9 @@ export default function WalletHoldings({
 
         {/* Current Value */}
         <div className="flex items-center justify-between">
-          <span className="text-gray-400">Current Value</span>
+          <span className="text-gray-400">
+            {actualSellableValue !== null ? 'Sellable Value' : 'Current Value'}
+          </span>
           <span className="text-lg font-semibold text-white">
             ${currentValue.toLocaleString(undefined, {
               minimumFractionDigits: 2,
@@ -254,6 +317,11 @@ export default function WalletHoldings({
             })}
           </span>
         </div>
+        {actualSellableValue !== null && (
+          <div className="text-xs text-gray-500 italic">
+            Based on bonding curve sell price for full balance
+          </div>
+        )}
 
         {/* Average Cost (if we have transactions) */}
         {transactions.length > 0 && averageCost > 0 && (
