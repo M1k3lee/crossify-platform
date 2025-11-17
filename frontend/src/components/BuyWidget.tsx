@@ -1107,7 +1107,6 @@ export default function BuyWidget({
                 // Use currentPrice * amount as absolute last resort
                 if (currentPriceWei) {
                   const safeEstimate = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
-                  const safeEstimateEth = parseFloat(ethers.formatEther(safeEstimate));
                   
                   // Add 50% buffer for bonding curve
                   const bufferedEstimate = safeEstimate * BigInt(150) / BigInt(100);
