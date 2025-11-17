@@ -860,6 +860,33 @@ export default function BuyWidget({
             if (gradCheckErr.message?.includes('graduated')) throw gradCheckErr;
           }
           
+          // Diagnostic: Check contract state before calling price function
+          try {
+            const [totalSupply, basePrice, slopeValue, useGlobalSupply] = await Promise.all([
+              curveContract.totalSupplySold().catch(() => null),
+              curveContract.basePrice().catch(() => null),
+              curveContract.slope().catch(() => null),
+              curveContract.useGlobalSupply().catch(() => null),
+            ]);
+            
+            console.log('🔍 Contract state before price calculation:', {
+              totalSupply: totalSupply?.toString(),
+              basePrice: basePrice?.toString(),
+              slope: slopeValue?.toString(),
+              useGlobalSupply,
+              tokenAmount: tokenAmount.toString(),
+              amountInTokens: (tokenAmount / BigInt(1e18)).toString(),
+            });
+            
+            // Check if amount is reasonable
+            const amountInTokens = Number(tokenAmount) / 1e18;
+            if (amountInTokens > 1e9) {
+              throw new Error('Amount is too large. Maximum is 1 billion tokens.');
+            }
+          } catch (diagErr: any) {
+            console.warn('⚠️ Could not get contract diagnostics:', diagErr.message);
+          }
+          
           priceFromContract = await curveContract.getPriceForAmountLocal(tokenAmount);
         } catch (err: any) {
           console.error('Error calling getPriceForAmountLocal:', {
@@ -925,10 +952,49 @@ export default function BuyWidget({
             try {
               priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
             } catch (fallbackErr: any) {
-              throw new Error(
-                `Failed to get price estimate: ${decodedReason || err.message || 'Contract call reverted'}. ` +
-                `This might indicate the token has graduated, the amount is too large, or there's an issue with the contract.`
-              );
+              console.warn('⚠️ getPriceForAmount() also failed, trying manual calculation');
+              
+              // Last resort: Calculate price manually using basePrice and slope
+              // This matches the contract's calculation: price = basePrice + (slope * supply)
+              try {
+                const [basePriceWei, slopeWei, localSupplyWei] = await Promise.all([
+                  curveContract.basePrice().catch(() => null),
+                  curveContract.slope().catch(() => null),
+                  curveContract.totalSupplySold().catch(() => null),
+                ]);
+                
+                if (basePriceWei && slopeWei !== null && localSupplyWei !== null) {
+                  // Manual calculation matching contract logic
+                  const supplyInTokens = Number(localSupplyWei) / 1e18;
+                  const amountInTokens = Number(tokenAmount) / 1e18;
+                  const supplyForAvgPrice = supplyInTokens + (amountInTokens / 2);
+                  
+                  // Price per token = basePrice + (slope * supplyForAvgPrice)
+                  const pricePerTokenWei = Number(basePriceWei) + (Number(slopeWei) * supplyForAvgPrice);
+                  
+                  // Total price = pricePerToken * amountInTokens
+                  const totalPriceWei = BigInt(Math.floor(pricePerTokenWei * amountInTokens));
+                  
+                  console.log('📊 Manual price calculation:', {
+                    basePrice: ethers.formatEther(basePriceWei),
+                    slope: ethers.formatEther(slopeWei),
+                    supply: supplyInTokens,
+                    amount: amountInTokens,
+                    pricePerToken: ethers.formatEther(BigInt(Math.floor(pricePerTokenWei))),
+                    totalPrice: ethers.formatEther(totalPriceWei),
+                  });
+                  
+                  priceFromContract = totalPriceWei;
+                } else {
+                  throw new Error('Could not get contract parameters for manual calculation');
+                }
+              } catch (manualErr: any) {
+                throw new Error(
+                  `Failed to get price estimate: ${decodedReason || err.message || 'Contract call reverted'}. ` +
+                  `Both contract functions and manual calculation failed. ` +
+                  `This might indicate the token has graduated, the amount is too large, or there's an issue with the contract.`
+                );
+              }
             }
           } else {
             throw err;
