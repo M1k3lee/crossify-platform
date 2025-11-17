@@ -78,49 +78,9 @@ export const config = getDefaultConfig({
   projectId: hasValidProjectId ? projectId : '0000000000000000000000000000000000000000',
   chains: [sepolia, baseSepolia, bscTestnet, hederaTestnet],
   ssr: false,
-  // Add custom wallets - HashPack for Hedera
-  wallets: [
-    {
-      groupName: 'Hedera Wallets',
-      wallets: [
-        {
-          id: 'hashpack',
-          name: 'HashPack',
-          iconUrl: 'https://www.hashpack.app/favicon.ico',
-          iconBackground: '#1a1a1a',
-          downloadUrls: {
-            chrome: 'https://chrome.google.com/webstore/detail/hashpack/kpfopkelmapcoecmlbdfiehjdjonljen',
-            browserExtension: 'https://www.hashpack.app/',
-          },
-          createConnector: () => {
-            const provider = getHashPackProvider();
-            
-            // Create a custom connector for HashPack
-            return createConnector((config) => {
-              // If provider is found, use it directly
-              if (provider) {
-                return {
-                  ...injected({
-                    target: () => ({
-                      id: 'hashpack',
-                      name: 'HashPack',
-                      provider: provider as any,
-                    }),
-                  })(config),
-                };
-              }
-              
-              // If provider not found, use a generic injected connector
-              // This will show install prompt
-              return {
-                ...injected()(config),
-              };
-            });
-          },
-        },
-      ],
-    },
-  ],
+  // Note: HashPack custom wallet removed due to RainbowKit v2 API limitations
+  // HashPack connection is handled via the fallback button in BuyWidget
+  // Users can connect HashPack using the "Connect HashPack" button on Hedera token pages
   // Only enable WalletConnect if we have a valid project ID
   // This prevents API errors and unwanted redirects
   ...(hasValidProjectId ? {} : {
