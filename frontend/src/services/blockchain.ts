@@ -120,16 +120,27 @@ export function isHashPackInstalled(): boolean {
   return false;
 }
 
+// Type declaration for Chrome extension API
+declare global {
+  interface Window {
+    chrome?: {
+      runtime?: {
+        sendMessage: (extensionId: string, message: any, options?: any) => Promise<any>;
+      };
+    };
+  }
+}
+
 // Helper to check if HashPack extension is installed (Chrome extension ID)
-async function checkHashPackExtensionInstalled(): Promise<boolean> {
-  if (typeof window === 'undefined' || typeof chrome === 'undefined' || !chrome.runtime) {
+export async function checkHashPackExtensionInstalled(): Promise<boolean> {
+  if (typeof window === 'undefined' || !window.chrome?.runtime) {
     return false;
   }
   
   try {
     // HashPack Chrome extension ID
     const hashpackExtensionId = 'kpfopkelmapcoecmlbdfiehjdjonljen';
-    await chrome.runtime.sendMessage(hashpackExtensionId, { method: 'ping' });
+    await window.chrome.runtime.sendMessage(hashpackExtensionId, { method: 'ping' });
     console.log('✅ HashPack extension detected via Chrome extension API');
     return true;
   } catch (e: any) {

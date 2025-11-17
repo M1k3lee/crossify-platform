@@ -5,7 +5,7 @@ import { useAccount, useConnect } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import { getTestnetInfo, getPreferredEVMProvider, switchNetwork, getHederaWalletRecommendation, getHashPackProvider } from '../services/blockchain';
+import { getTestnetInfo, getPreferredEVMProvider, switchNetwork, getHederaWalletRecommendation, getHashPackProvider, checkHashPackExtensionInstalled } from '../services/blockchain';
 import { API_BASE } from '../config/api';
 import { trackTokenTransaction, trackButtonClick } from './GoogleAnalytics';
 
@@ -2031,88 +2031,138 @@ export default function BuyWidget({
                                 });
                                 
                                 const connectionPromise = (async () => {
-                                  // First, try to connect to HashPack directly if available
-                                  const hashpackKeys = ['hashpack', 'HashPack', 'Hashpack', 'HASHPACK'];
-                                  let hashpackFound = false;
+                                  // First, check if HashPack extension is installed via Chrome API
+                                  const isExtensionInstalled = await checkHashPackExtensionInstalled();
+                                  console.log(`🔍 HashPack extension check: ${isExtensionInstalled ? '✅ Installed' : '❌ Not found'}`);
                                   
-                                  for (const key of hashpackKeys) {
-                                    if ((window as any)[key]) {
-                                      console.log(`🔍 Found window.${key}, attempting direct connection...`);
-                                      const hashpack = (window as any)[key];
-                                      
-                                      // Try to get the provider from hashpack
-                                      let hashpackProvider = hashpack.provider || hashpack.ethereum || hashpack;
-                                      
-                                      // If hashpack has a connect method, use it
-                                      if (typeof hashpack.connect === 'function') {
-                                        console.log('   Using hashpack.connect()');
-                                        await hashpack.connect();
-                                      }
-                                      
+                                  // Try to get HashPack provider using our helper
+                                  const hashpackProvider = getHashPackProvider();
+                                  if (hashpackProvider) {
+                                    console.log('✅ Found HashPack provider, attempting connection...');
+                                    try {
                                       // Request accounts from HashPack provider
-                                      if (hashpackProvider && typeof hashpackProvider.request === 'function') {
-                                        console.log('   Requesting accounts from HashPack provider...');
-                                        const accounts = await hashpackProvider.request({ method: 'eth_requestAccounts' });
-                                        console.log('✅ HashPack accounts:', accounts);
-                                        
-                                        // Temporarily set as window.ethereum to connect via wagmi
-                                        const originalEthereum = window.ethereum;
-                                        (window as any).ethereum = hashpackProvider;
-                                        
-                                        try {
-                                          const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
-                                          if (injectedConnector) {
-                                            await connect({ connector: injectedConnector as any });
-                                            toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
-                                            hashpackFound = true;
-                                          }
-                                        } finally {
-                                          // Restore original
-                                          (window as any).ethereum = originalEthereum;
+                                      const accounts = await hashpackProvider.request({ method: 'eth_requestAccounts' });
+                                      console.log('✅ HashPack accounts:', accounts);
+                                      
+                                      // Temporarily set as window.ethereum to connect via wagmi
+                                      const originalEthereum = window.ethereum;
+                                      (window as any).ethereum = hashpackProvider;
+                                      
+                                      try {
+                                        const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                                        if (injectedConnector) {
+                                          await connect({ connector: injectedConnector as any });
+                                          toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
+                                          return;
                                         }
-                                        break;
+                                      } finally {
+                                        // Restore original
+                                        (window as any).ethereum = originalEthereum;
                                       }
+                                    } catch (e: any) {
+                                      console.error('Error connecting to HashPack provider:', e);
+                                      // Continue to fallback methods
                                     }
                                   }
                                   
-                                  if (hashpackFound) return;
-                                  
-                                  // Check if HashPack might be in providers array but not detected
-                                  // Try to find a provider that supports Hedera chain
-                                  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
-                                    console.log('🔍 Checking providers for Hedera support...');
-                                    for (const provider of window.ethereum.providers) {
-                                      try {
-                                        // Try to get chain ID to see if it supports Hedera (with timeout)
-                                        const chainIdPromise = provider.request({ method: 'eth_chainId' });
-                                        const chainId = await Promise.race([chainIdPromise, new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))]) as string;
-                                        console.log(`   Provider chainId: ${chainId}`);
-                                        // Hedera Testnet chain ID is 0x128 (296)
-                                        if (chainId === '0x128' || chainId === '296') {
-                                          console.log('✅ Found provider on Hedera chain - might be HashPack');
-                                          // Temporarily set as window.ethereum
+                                  // If extension is installed but provider not found, HashPack might not be injecting
+                                  // Try to find it in providers array or trigger injection
+                                  if (isExtensionInstalled && !hashpackProvider) {
+                                    console.log('⚠️ HashPack extension detected but provider not found. Checking providers array...');
+                                    
+                                    // Check if HashPack is in providers array but not detected
+                                    if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+                                      console.log(`🔍 Checking ${window.ethereum.providers.length} providers for HashPack...`);
+                                      
+                                      // Try each provider to see if it supports Hedera
+                                      for (const provider of window.ethereum.providers) {
+                                        try {
+                                          // Check if this provider is NOT MetaMask/Phantom/Coinbase
+                                          const isMetaMask = provider.isMetaMask;
+                                          const isPhantom = !!(provider as any).isPhantom;
+                                          const isCoinbase = !!(provider as any).isCoinbaseWallet;
+                                          
+                                          if (!isMetaMask && !isPhantom && !isCoinbase) {
+                                            console.log('   Found non-MetaMask provider, checking if it supports Hedera...');
+                                            
+                                            // Try to get chain ID to see if it supports Hedera (with timeout)
+                                            const chainIdPromise = provider.request({ method: 'eth_chainId' });
+                                            const chainId = await Promise.race([
+                                              chainIdPromise, 
+                                              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+                                            ]) as string;
+                                            
+                                            console.log(`   Provider chainId: ${chainId}`);
+                                            // Hedera Testnet chain ID is 0x128 (296)
+                                            if (chainId === '0x128' || chainId === '296') {
+                                              console.log('✅ Found provider on Hedera chain - likely HashPack');
+                                              // Temporarily set as window.ethereum
+                                              const originalEthereum = window.ethereum;
+                                              (window as any).ethereum = provider;
+                                              
+                                              try {
+                                                const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                                                if (injectedConnector) {
+                                                  await connect({ connector: injectedConnector as any });
+                                                  toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
+                                                  return;
+                                                }
+                                              } finally {
+                                                // Restore original
+                                                (window as any).ethereum = originalEthereum;
+                                              }
+                                            }
+                                          }
+                                        } catch (e) {
+                                          // Provider might not support this method, continue
+                                          console.log(`   Provider check failed:`, e);
+                                        }
+                                      }
+                                    }
+                                    
+                                    // If we still haven't found it, try to trigger HashPack by checking window.hashpack directly
+                                    const hashpackKeys = ['hashpack', 'HashPack', 'Hashpack', 'HASHPACK'];
+                                    for (const key of hashpackKeys) {
+                                      if ((window as any)[key]) {
+                                        console.log(`🔍 Found window.${key}, attempting direct connection...`);
+                                        const hashpack = (window as any)[key];
+                                        
+                                        // Try to get the provider from hashpack
+                                        let hpProvider = hashpack.provider || hashpack.ethereum || hashpack;
+                                        
+                                        // If hashpack has a connect method, use it
+                                        if (typeof hashpack.connect === 'function') {
+                                          console.log('   Using hashpack.connect()');
+                                          await hashpack.connect();
+                                        }
+                                        
+                                        // Request accounts from HashPack provider
+                                        if (hpProvider && typeof hpProvider.request === 'function') {
+                                          console.log('   Requesting accounts from HashPack provider...');
+                                          const accounts = await hpProvider.request({ method: 'eth_requestAccounts' });
+                                          console.log('✅ HashPack accounts:', accounts);
+                                          
+                                          // Temporarily set as window.ethereum to connect via wagmi
                                           const originalEthereum = window.ethereum;
-                                          (window as any).ethereum = provider;
+                                          (window as any).ethereum = hpProvider;
                                           
                                           try {
                                             const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
                                             if (injectedConnector) {
                                               await connect({ connector: injectedConnector as any });
-                                              toast.success('Wallet connected!', { id: 'connect-hashpack' });
+                                              toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
                                               return;
                                             }
                                           } finally {
+                                            // Restore original
                                             (window as any).ethereum = originalEthereum;
                                           }
                                         }
-                                      } catch (e) {
-                                        // Provider might not support this method, continue
-                                        console.log(`   Provider doesn't support chainId check:`, e);
                                       }
                                     }
                                   }
                                   
-                                  // Fallback: Try to connect via wagmi's injected connector
+                                  // Final fallback: Try to connect via wagmi's injected connector
                                   // This will show the wallet selection dialog if multiple wallets are available
                                   console.log('⚠️ HashPack not found directly, trying wallet selection dialog...');
                                   const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
