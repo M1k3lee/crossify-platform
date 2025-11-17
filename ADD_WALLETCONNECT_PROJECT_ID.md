@@ -74,3 +74,4 @@ After redeploy:
 - Try refreshing the page
 - Check that WalletConnect API calls are not being blocked
 
+

@@ -73,3 +73,4 @@ YOUR_WALLETCONNECT_PROJECT_ID
 2. **Test** HashPack connection on a Hedera token page
 3. **Verify** in browser console - no "WalletConnect Project ID not set" warnings
 
+
