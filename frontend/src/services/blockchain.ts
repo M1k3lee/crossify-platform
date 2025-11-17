@@ -238,7 +238,6 @@ export function getHashPackProvider(): any | null {
       // Last resort: if there's only one provider and it's not explicitly MetaMask, it might be HashPack
       // This is risky but might work if HashPack is masquerading as MetaMask
       if (window.ethereum.providers.length === 1) {
-        const singleProvider = window.ethereum.providers[0];
         console.log('   ⚠️ Only one provider found - might be HashPack masquerading as MetaMask');
         console.log('   💡 You may need to connect HashPack explicitly via the wallet connection button');
       }
