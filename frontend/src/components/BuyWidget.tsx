@@ -5,7 +5,7 @@ import { useAccount, useConnect } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import { getTestnetInfo, getPreferredEVMProvider, switchNetwork, getHederaWalletRecommendation } from '../services/blockchain';
+import { getTestnetInfo, getPreferredEVMProvider, switchNetwork, getHederaWalletRecommendation, getHashPackProvider } from '../services/blockchain';
 import { API_BASE } from '../config/api';
 import { trackTokenTransaction, trackButtonClick } from './GoogleAnalytics';
 
@@ -1872,7 +1872,6 @@ export default function BuyWidget({
               {/* HashPack connection button for Hedera - Always show if on Hedera */}
               {chain.toLowerCase().includes('hedera') && (() => {
                 try {
-                  const { getHashPackProvider } = require('../services/blockchain');
                   const hashpackProvider = getHashPackProvider();
                   
                   // Also check for any non-MetaMask providers in the array
