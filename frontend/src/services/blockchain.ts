@@ -120,6 +120,27 @@ export function isHashPackInstalled(): boolean {
   return false;
 }
 
+// Helper to check if HashPack extension is installed (Chrome extension ID)
+async function checkHashPackExtensionInstalled(): Promise<boolean> {
+  if (typeof window === 'undefined' || typeof chrome === 'undefined' || !chrome.runtime) {
+    return false;
+  }
+  
+  try {
+    // HashPack Chrome extension ID
+    const hashpackExtensionId = 'kpfopkelmapcoecmlbdfiehjdjonljen';
+    await chrome.runtime.sendMessage(hashpackExtensionId, { method: 'ping' });
+    console.log('✅ HashPack extension detected via Chrome extension API');
+    return true;
+  } catch (e: any) {
+    // Extension not found or not responding
+    if (e.message?.includes('Could not establish connection')) {
+      console.log('⚠️ HashPack extension may be installed but not responding');
+    }
+    return false;
+  }
+}
+
 // Helper to get HashPack provider from window.ethereum.providers
 export function getHashPackProvider(): any | null {
   if (typeof window === 'undefined') return null;

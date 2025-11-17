@@ -1994,11 +1994,25 @@ export default function BuyWidget({
                         </button>
                       ) : (
                         <div className="space-y-2">
-                          <div className="text-xs text-yellow-300/80">
-                            HashPack not detected. Install from{' '}
-                            <a href="https://www.hashpack.app/" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">
-                              hashpack.app
-                            </a>
+                          <div className="text-xs text-yellow-300/80 space-y-1">
+                            <p>
+                              HashPack not detected. If HashPack is installed:
+                            </p>
+                            <ul className="list-disc list-inside ml-2 space-y-0.5">
+                              <li>Make sure HashPack extension is unlocked</li>
+                              <li>Try refreshing the page</li>
+                              <li>If MetaMask is also installed, HashPack may not inject. Try:
+                                <ul className="list-disc list-inside ml-4 mt-0.5">
+                                  <li>Disabling MetaMask temporarily, or</li>
+                                  <li>Using a different browser profile</li>
+                                </ul>
+                              </li>
+                              <li>Install from{' '}
+                                <a href="https://www.hashpack.app/" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">
+                                  hashpack.app
+                                </a>
+                              </li>
+                            </ul>
                           </div>
                           {/* Try connecting to HashPack directly or via wallet selection */}
                           <button
