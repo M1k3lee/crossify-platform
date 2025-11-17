@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
 import { useAccount, useConnect, useWalletClient } from 'wagmi';
 import { ethers } from 'ethers';
-import { encodeFunctionData, parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getTestnetInfo, getPreferredEVMProvider, switchNetwork, getHederaWalletRecommendation, getHashPackProvider, checkHashPackExtensionInstalled } from '../services/blockchain';
