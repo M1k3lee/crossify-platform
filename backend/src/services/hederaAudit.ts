@@ -247,7 +247,7 @@ export class HederaAuditService {
         throw new Error(`Mirror Node API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as { messages?: any[] };
       const messages = data.messages || [];
 
       // Parse and filter messages
