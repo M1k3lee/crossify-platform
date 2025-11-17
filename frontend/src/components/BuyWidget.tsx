@@ -1731,14 +1731,16 @@ export default function BuyWidget({
         'function isGraduated() external view returns (bool)',
       ];
 
-      // Check if contracts are deployed
-      const ethersProvider = new ethers.BrowserProvider(getPreferredEVMProvider());
-      const curveCode = await ethersProvider.getCode(curveAddress);
+      // Check if contracts are deployed using RPC provider for the specific chain
+      // This ensures we check the contract on the correct chain, not the connected wallet's chain
+      const rpcUrl = getRpcUrlForChain(chain);
+      const rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+      const curveCode = await rpcProvider.getCode(curveAddress);
       if (!curveCode || curveCode === '0x') {
         throw new Error('Bonding curve contract is not deployed.');
       }
 
-      const tokenCode = await ethersProvider.getCode(tokenAddress);
+      const tokenCode = await rpcProvider.getCode(tokenAddress);
       if (!tokenCode || tokenCode === '0x') {
         throw new Error('Token contract is not deployed.');
       }
