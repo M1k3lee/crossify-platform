@@ -49,6 +49,8 @@ interface AuditTrailWidgetProps {
 
 export default function AuditTrailWidget({ tokenId, chain }: AuditTrailWidgetProps) {
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+  
+  // Force rebuild - all TypeScript errors fixed
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['audit-logs', tokenId, chain],
