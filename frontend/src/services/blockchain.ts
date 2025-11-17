@@ -150,6 +150,22 @@ export function getHashPackProvider(): any | null {
   if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
     console.log(`🔍 Checking ${window.ethereum.providers.length} providers for HashPack...`);
     
+    // Log ALL providers with detailed information
+    window.ethereum.providers.forEach((p: any, idx: number) => {
+      console.log(`   Provider ${idx} details:`, {
+        isMetaMask: p.isMetaMask,
+        isPhantom: (p as any).isPhantom,
+        isCoinbase: (p as any).isCoinbaseWallet,
+        isHashPack: p.isHashPack,
+        hasHashPackFlag: !!(p as any).__hashpack,
+        constructor: p.constructor?.name,
+        allKeys: Object.keys(p).slice(0, 20), // Show first 20 keys
+        hasRequest: typeof p.request === 'function',
+        hasSend: typeof p.send === 'function',
+        hasSendAsync: typeof p.sendAsync === 'function',
+      });
+    });
+    
     // First, look for explicit HashPack identifiers
     const hashpack = window.ethereum.providers.find((p: any) => {
       if (p.isHashPack) return true;
@@ -178,9 +194,15 @@ export function getHashPackProvider(): any | null {
       console.log('   Provider details:', {
         constructor: nonMetaMaskProviders[0].constructor?.name,
         hasRequest: typeof nonMetaMaskProviders[0].request === 'function',
-        keys: Object.keys(nonMetaMaskProviders[0]).slice(0, 10),
+        keys: Object.keys(nonMetaMaskProviders[0]).slice(0, 20),
+        isMetaMask: nonMetaMaskProviders[0].isMetaMask,
+        isPhantom: (nonMetaMaskProviders[0] as any).isPhantom,
+        isCoinbase: (nonMetaMaskProviders[0] as any).isCoinbaseWallet,
       });
+      console.log('   ✅ Using this provider as potential HashPack');
       return nonMetaMaskProviders[0];
+    } else {
+      console.log('   ⚠️ All providers are MetaMask/Phantom/Coinbase - HashPack not found in array');
     }
   }
   
