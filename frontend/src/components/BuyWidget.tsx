@@ -265,17 +265,59 @@ export default function BuyWidget({
           // Calculate ETH/BNB needed for token amount
           // CRITICAL: Use getPriceForAmountLocal() which matches EXACTLY what buy() uses
           // This ensures the estimate matches the transaction price perfectly
-          // Fallback to getPriceForAmount() for older contracts
+          // Fallback to getPriceForAmount() for older contracts, then manual calculation
           let priceFromContract: bigint;
           try {
             priceFromContract = await curveContract.getPriceForAmountLocal(tokenAmount);
           } catch (err: any) {
-            // Fallback for older contracts that don't have getPriceForAmountLocal()
-            if (err.message?.includes('getPriceForAmountLocal')) {
-              console.warn('⚠️ Contract does not have getPriceForAmountLocal(), using getPriceForAmount() (may be less accurate)');
+            console.warn('⚠️ getPriceForAmountLocal() failed, trying fallbacks:', err.message);
+            
+            // Fallback 1: Try getPriceForAmount()
+            try {
               priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
-            } else {
-              throw err;
+              console.log('✅ Using getPriceForAmount() as fallback');
+            } catch (fallbackErr: any) {
+              console.warn('⚠️ getPriceForAmount() also failed, trying manual calculation');
+              
+              // Fallback 2: Manual calculation using basePrice and slope
+              try {
+                const [basePriceWei, slopeWei, localSupplyWei] = await Promise.all([
+                  curveContract.basePrice().catch(() => null),
+                  curveContract.slope().catch(() => null),
+                  curveContract.totalSupplySold().catch(() => null),
+                ]);
+                
+                if (basePriceWei && slopeWei !== null && localSupplyWei !== null) {
+                  // Manual calculation matching contract logic
+                  const supplyInTokens = Number(localSupplyWei) / 1e18;
+                  const amountInTokens = Number(tokenAmount) / 1e18;
+                  const supplyForAvgPrice = supplyInTokens + (amountInTokens / 2);
+                  
+                  // Price per token = basePrice + (slope * supplyForAvgPrice)
+                  const pricePerTokenWei = Number(basePriceWei) + (Number(slopeWei) * supplyForAvgPrice);
+                  
+                  // Total price = pricePerToken * amountInTokens
+                  const totalPriceWei = BigInt(Math.floor(pricePerTokenWei * amountInTokens));
+                  
+                  console.log('📊 Using manual price calculation for estimate:', {
+                    basePrice: ethers.formatEther(basePriceWei),
+                    slope: ethers.formatEther(slopeWei),
+                    supply: supplyInTokens,
+                    amount: amountInTokens,
+                    totalPrice: ethers.formatEther(totalPriceWei),
+                  });
+                  
+                  priceFromContract = totalPriceWei;
+                } else {
+                  // If we can't get contract params, use currentPrice * amount as last resort
+                  console.warn('⚠️ Could not get contract parameters, using currentPrice * amount as estimate');
+                  priceFromContract = BigInt(Math.floor(currentPriceEth * parseFloat(amount) * 1e18));
+                }
+              } catch (manualErr: any) {
+                // Last resort: use currentPrice * amount
+                console.warn('⚠️ Manual calculation failed, using currentPrice * amount:', manualErr.message);
+                priceFromContract = BigInt(Math.floor(currentPriceEth * parseFloat(amount) * 1e18));
+              }
             }
           }
           
