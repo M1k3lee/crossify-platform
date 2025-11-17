@@ -1328,19 +1328,45 @@ export default function BuyWidget({
             account: walletClient.account.address,
           });
           
-          const txHash = await walletClient.sendTransaction({
+          // Prepare transaction parameters
+          const txParams: any = {
             to: curveAddress as `0x${string}`,
             data: encodedData as `0x${string}`,
             value: totalCostWei,
             gas: BigInt(txOptions.gasLimit || 1000000),
-            ...(txOptions.gasPrice ? { gasPrice: txOptions.gasPrice } : {}),
+          };
+          
+          // For Hedera, prefer gasPrice over maxFeePerGas
+          if (txOptions.gasPrice) {
+            txParams.gasPrice = BigInt(txOptions.gasPrice);
+          }
+          
+          console.log('📋 Final transaction params:', {
+            ...txParams,
+            data: txParams.data.substring(0, 50) + '...',
+            value: txParams.value.toString(),
+            gas: txParams.gas.toString(),
+            gasPrice: txParams.gasPrice?.toString() || 'auto',
           });
+          
+          let txHash: `0x${string}` | null = null;
+          try {
+            txHash = await walletClient.sendTransaction(txParams);
+          } catch (sendError: any) {
+            console.error('❌ sendTransaction error:', sendError);
+            // Check for user rejection
+            if (sendError?.code === 4001 || sendError?.message?.toLowerCase().includes('reject')) {
+              throw new Error('Transaction was rejected. Please approve the transaction in your HashPack wallet.');
+            }
+            // Check for other errors
+            throw new Error(`Transaction failed: ${sendError?.message || 'Unknown error'}. Make sure you're on Hedera Testnet and have sufficient HBAR balance.`);
+          }
           
           console.log('✅ Transaction sent via viem walletClient:', txHash);
           
           // Validate transaction hash
           if (!txHash || txHash === null || txHash === undefined) {
-            throw new Error('Transaction was rejected or failed. Please approve the transaction in your HashPack wallet.');
+            throw new Error('Transaction was rejected or failed. The transaction hash is null. Please try again and make sure to approve the transaction in your HashPack wallet.');
           }
           
           // Convert viem transaction hash to ethers-compatible format
