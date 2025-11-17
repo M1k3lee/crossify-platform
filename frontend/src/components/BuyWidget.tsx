@@ -1035,10 +1035,15 @@ export default function BuyWidget({
           }
           
           // Fallback for older contracts that don't have getPriceForAmountLocal()
-          if (err.message?.includes('getPriceForAmountLocal') || err.message?.includes('execution reverted')) {
-            console.warn('⚠️ Contract does not have getPriceForAmountLocal() or call reverted, trying getPriceForAmount()');
+          // Also catch "missing revert data" errors which indicate a silent revert
+          if (err.message?.includes('getPriceForAmountLocal') || 
+              err.message?.includes('execution reverted') || 
+              err.message?.includes('missing revert data') ||
+              err.code === 'CALL_EXCEPTION') {
+            console.warn('⚠️ getPriceForAmountLocal() failed, trying getPriceForAmount()');
             try {
               priceFromContract = await curveContract.getPriceForAmount(tokenAmount);
+              console.log('✅ Using getPriceForAmount() as fallback');
             } catch (fallbackErr: any) {
               console.warn('⚠️ getPriceForAmount() also failed, trying manual calculation');
               
@@ -1098,11 +1103,35 @@ export default function BuyWidget({
                 }
               } catch (manualErr: any) {
                 console.error('❌ Manual calculation failed:', manualErr.message);
-                throw new Error(
-                  `Failed to get price estimate: ${decodedReason || err.message || 'Contract call reverted'}. ` +
-                  `Manual calculation also failed: ${manualErr.message}. ` +
-                  `This might indicate the token has graduated, the amount is too large, or there's an issue with the contract.`
-                );
+                // Even if manual calculation fails, try to proceed with a safe estimate
+                // Use currentPrice * amount as absolute last resort
+                if (currentPriceWei) {
+                  const safeEstimate = (currentPriceWei * tokenAmount) / ethers.parseEther('1');
+                  const safeEstimateEth = parseFloat(ethers.formatEther(safeEstimate));
+                  
+                  // Add 50% buffer for bonding curve
+                  const bufferedEstimate = safeEstimate * BigInt(150) / BigInt(100);
+                  const bufferedEstimateEth = parseFloat(ethers.formatEther(bufferedEstimate));
+                  
+                  console.warn(`⚠️ Using emergency fallback price: ${bufferedEstimateEth} ETH (currentPrice * amount * 1.5)`);
+                  
+                  // Only use if reasonable (< 10 ETH)
+                  if (bufferedEstimateEth < 10) {
+                    priceFromContract = bufferedEstimate;
+                  } else {
+                    throw new Error(
+                      `Failed to get price estimate: ${decodedReason || err.message || 'Contract call reverted'}. ` +
+                      `Emergency fallback also too high (${bufferedEstimateEth} ETH). ` +
+                      `This might indicate the token has graduated, the amount is too large, or there's an issue with the contract.`
+                    );
+                  }
+                } else {
+                  throw new Error(
+                    `Failed to get price estimate: ${decodedReason || err.message || 'Contract call reverted'}. ` +
+                    `Manual calculation also failed: ${manualErr.message}. ` +
+                    `This might indicate the token has graduated, the amount is too large, or there's an issue with the contract.`
+                  );
+                }
               }
             }
           } else {
