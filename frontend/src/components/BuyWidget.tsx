@@ -1344,15 +1344,9 @@ export default function BuyWidget({
           tx = {
             hash: txHash,
             wait: async () => {
-              // Use viem's waitForTransactionReceipt with wagmi's public client
+              // Use wagmi's waitForTransactionReceipt
               const { waitForTransactionReceipt } = await import('wagmi/actions');
               const { config } = await import('../config/wagmi');
-              const { getPublicClient } = await import('wagmi');
-              
-              const publicClient = getPublicClient(config);
-              if (!publicClient) {
-                throw new Error('Public client not available');
-              }
               
               const receipt = await waitForTransactionReceipt(config, {
                 hash: txHash,
