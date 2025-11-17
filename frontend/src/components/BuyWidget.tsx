@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
-import { useAccount, useConnect } from 'wagmi';
+import { useAccount, useConnect, useWalletClient } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 import axios from 'axios';
@@ -28,8 +28,9 @@ export default function BuyWidget({
   currentPrice,
   onSuccess,
 }: BuyWidgetProps) {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address, connector } = useAccount();
   const { connect, connectors } = useConnect();
+  const { data: walletClient } = useWalletClient();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [realCurrentPrice, setRealCurrentPrice] = useState<number | null>(null);
@@ -500,122 +501,131 @@ export default function BuyWidget({
       
       // For Hedera, check if user has recommended wallet (HashPack)
       const chainLower = chain.toLowerCase();
+      const isWalletConnect = connector?.id === 'walletConnect' || connector?.id === 'walletConnectLegacy' || connector?.name?.toLowerCase().includes('walletconnect');
+      
       if (chainLower.includes('hedera')) {
-        const recommendation = getHederaWalletRecommendation();
-        
-        // Debug: Log detection details with full provider information
-        const detectionDetails = {
-          hasRecommended: recommendation.hasRecommended,
-          windowHashpack: !!(window as any).hashpack,
-          windowEthereum: !!window.ethereum,
-          ethereumIsHashPack: !!(window.ethereum as any)?.isHashPack,
-          ethereumIsMetaMask: window.ethereum?.isMetaMask,
-          ethereumIsPhantom: !!(window.ethereum as any)?.isPhantom,
-          providers: window.ethereum?.providers?.length || 0,
-          providerDetails: window.ethereum?.providers?.map((p: any, idx: number) => ({
-            index: idx,
-            isMetaMask: p.isMetaMask,
-            isHashPack: p.isHashPack,
-            isPhantom: (p as any).isPhantom,
-            isCoinbase: (p as any).isCoinbaseWallet,
-            constructor: p.constructor?.name,
-            keys: Object.keys(p).filter(k => k.includes('hash') || k.includes('Hash') || k.includes('pack') || k.includes('Pack')).slice(0, 5),
-          })) || [],
-        };
-        console.log('🔍 HashPack detection check:', JSON.stringify(detectionDetails, null, 2));
-        
-        // Also log the raw providers array for debugging
-        if (window.ethereum?.providers) {
-          console.log('🔍 Raw providers array:', window.ethereum.providers);
-          window.ethereum.providers.forEach((p: any, idx: number) => {
-            console.log(`   Provider ${idx}:`, {
+        // If connected via WalletConnect, allow the transaction (HashPack can connect via WalletConnect)
+        if (isWalletConnect) {
+          console.log('✅ Connected via WalletConnect - HashPack may be connected through WalletConnect');
+          console.log('   Allowing transaction to proceed...');
+        } else {
+          const recommendation = getHederaWalletRecommendation();
+          
+          // Debug: Log detection details with full provider information
+          const detectionDetails = {
+            hasRecommended: recommendation.hasRecommended,
+            windowHashpack: !!(window as any).hashpack,
+            windowEthereum: !!window.ethereum,
+            ethereumIsHashPack: !!(window.ethereum as any)?.isHashPack,
+            ethereumIsMetaMask: window.ethereum?.isMetaMask,
+            ethereumIsPhantom: !!(window.ethereum as any)?.isPhantom,
+            providers: window.ethereum?.providers?.length || 0,
+            providerDetails: window.ethereum?.providers?.map((p: any, idx: number) => ({
+              index: idx,
               isMetaMask: p.isMetaMask,
               isHashPack: p.isHashPack,
               isPhantom: (p as any).isPhantom,
+              isCoinbase: (p as any).isCoinbaseWallet,
               constructor: p.constructor?.name,
-              allKeys: Object.keys(p).slice(0, 10), // First 10 keys
+              keys: Object.keys(p).filter(k => k.includes('hash') || k.includes('Hash') || k.includes('pack') || k.includes('Pack')).slice(0, 5),
+            })) || [],
+          };
+          console.log('🔍 HashPack detection check:', JSON.stringify(detectionDetails, null, 2));
+          
+          // Also log the raw providers array for debugging
+          if (window.ethereum?.providers) {
+            console.log('🔍 Raw providers array:', window.ethereum.providers);
+            window.ethereum.providers.forEach((p: any, idx: number) => {
+              console.log(`   Provider ${idx}:`, {
+                isMetaMask: p.isMetaMask,
+                isHashPack: p.isHashPack,
+                isPhantom: (p as any).isPhantom,
+                constructor: p.constructor?.name,
+                allKeys: Object.keys(p).slice(0, 10), // First 10 keys
+              });
             });
-          });
-        }
-        
-        // Try to manually find HashPack in providers array
-        if (!recommendation.hasRecommended && window.ethereum?.providers) {
-          const { getHashPackProvider } = await import('../services/blockchain');
-          const hashpackProvider = getHashPackProvider();
-          if (hashpackProvider) {
-            console.log('✅ HashPack found manually in providers array!');
-            // Update window.ethereum to use HashPack provider
-            // This is a workaround - we'll use the HashPack provider directly
-            console.log('   HashPack will be used for this transaction');
-            // Don't show warning since we found it
-          } else {
-            // HashPack not found - show helpful message
-            if (window.ethereum.isMetaMask) {
-              console.warn('⚠️ MetaMask detected, but HashPack is recommended for Hedera');
-              toast(
-                'HashPack is recommended for Hedera transactions.\n\n' +
-                'If you have HashPack installed, you may need to:\n' +
-                '1. Disable MetaMask temporarily, or\n' +
-                '2. Use HashPack directly by connecting it first\n\n' +
-                'Proceeding with MetaMask, but HashPack provides better Hedera support.',
-                { 
-                  id: 'hedera-wallet-warning',
-                  duration: 12000,
-                  icon: '⚠️',
-                }
-              );
-            } else {
-              console.warn('⚠️ HashPack not detected. Proceeding with current wallet...');
-              toast(
-                'HashPack not detected. If you have HashPack installed, make sure it\'s enabled. Proceeding with current wallet...',
-                { 
-                  id: 'hedera-wallet-warning',
-                  duration: 8000,
-                  icon: '⚠️',
-                }
-              );
-            }
           }
-        } else if (!recommendation.hasRecommended) {
-          // No providers array or HashPack not found
-          if (window.ethereum) {
-            const isMetaMask = window.ethereum.isMetaMask;
-            if (isMetaMask) {
-              console.warn('⚠️ MetaMask detected, but HashPack is recommended for Hedera');
-              toast(
-                'HashPack is recommended for Hedera. MetaMask will work, but HashPack provides better support.\n\n' +
-                'Install HashPack: https://www.hashpack.app/',
-                { 
-                  id: 'hedera-wallet-warning',
-                  duration: 10000,
-                  icon: '⚠️',
-                }
-              );
+          
+          // Try to manually find HashPack in providers array
+          if (!recommendation.hasRecommended && window.ethereum?.providers) {
+            const { getHashPackProvider } = await import('../services/blockchain');
+            const hashpackProvider = getHashPackProvider();
+            if (hashpackProvider) {
+              console.log('✅ HashPack found manually in providers array!');
+              // Update window.ethereum to use HashPack provider
+              // This is a workaround - we'll use the HashPack provider directly
+              console.log('   HashPack will be used for this transaction');
+              // Don't show warning since we found it
             } else {
-              console.warn('⚠️ HashPack not detected, but wallet exists. Proceeding...');
+              // HashPack not found - show helpful message
+              if (window.ethereum.isMetaMask) {
+                console.warn('⚠️ MetaMask detected, but HashPack is recommended for Hedera');
+                toast(
+                  'HashPack is recommended for Hedera transactions.\n\n' +
+                  'If you have HashPack installed, you may need to:\n' +
+                  '1. Disable MetaMask temporarily, or\n' +
+                  '2. Use HashPack directly by connecting it first\n\n' +
+                  'Proceeding with MetaMask, but HashPack provides better Hedera support.',
+                  { 
+                    id: 'hedera-wallet-warning',
+                    duration: 12000,
+                    icon: '⚠️',
+                  }
+                );
+              } else {
+                console.warn('⚠️ HashPack not detected. Proceeding with current wallet...');
+                toast(
+                  'HashPack not detected. If you have HashPack installed, make sure it\'s enabled. Proceeding with current wallet...',
+                  { 
+                    id: 'hedera-wallet-warning',
+                    duration: 8000,
+                    icon: '⚠️',
+                  }
+                );
+              }
+            }
+          } else if (!recommendation.hasRecommended) {
+            // No providers array or HashPack not found
+            if (window.ethereum) {
+              const isMetaMask = window.ethereum.isMetaMask;
+              if (isMetaMask) {
+                console.warn('⚠️ MetaMask detected, but HashPack is recommended for Hedera');
+                toast(
+                  'HashPack is recommended for Hedera. MetaMask will work, but HashPack provides better support.\n\n' +
+                  'Install HashPack: https://www.hashpack.app/',
+                  { 
+                    id: 'hedera-wallet-warning',
+                    duration: 10000,
+                    icon: '⚠️',
+                  }
+                );
+              } else {
+                console.warn('⚠️ HashPack not detected, but wallet exists. Proceeding...');
+              }
+            } else {
+              // No wallet at all - show full error
+              const errorMessage = 
+                `HashPack wallet is recommended for Hedera transactions.\n\n` +
+                `HashPack provides native Hedera support and better compatibility than MetaMask.\n\n` +
+                `Installation:\n${recommendation.instructions.join('\n')}\n\n` +
+                `Alternatively, you can use MetaMask with Hedera Wallet Snap, but HashPack is recommended for the best experience.`;
+              
+              toast.error(errorMessage, { 
+                id: 'hedera-wallet',
+                duration: 15000,
+              });
+              
+              setLoading(false);
+              throw new Error('HashPack wallet is recommended for Hedera. Please install HashPack or use MetaMask with Hedera Wallet Snap configured for testnet.');
             }
           } else {
-            // No wallet at all - show full error
-            const errorMessage = 
-              `HashPack wallet is recommended for Hedera transactions.\n\n` +
-              `HashPack provides native Hedera support and better compatibility than MetaMask.\n\n` +
-              `Installation:\n${recommendation.instructions.join('\n')}\n\n` +
-              `Alternatively, you can use MetaMask with Hedera Wallet Snap, but HashPack is recommended for the best experience.`;
-            
-            toast.error(errorMessage, { 
-              id: 'hedera-wallet',
-              duration: 15000,
-            });
-            
-            setLoading(false);
-            throw new Error('HashPack wallet is recommended for Hedera. Please install HashPack or use MetaMask with Hedera Wallet Snap configured for testnet.');
+            console.log('✅ HashPack detected - recommended wallet for Hedera');
           }
-        } else {
-          console.log('✅ HashPack detected - recommended wallet for Hedera');
         }
       }
 
-      if (typeof window.ethereum === 'undefined') {
+      // Check for window.ethereum - but allow WalletConnect connections even if it doesn't exist
+      if (typeof window.ethereum === 'undefined' && !isWalletConnect) {
         if (chainLower.includes('hedera')) {
           throw new Error('No Hedera wallet detected. Please install HashPack wallet (recommended) or MetaMask with Hedera Wallet Snap.');
         }
@@ -623,7 +633,28 @@ export default function BuyWidget({
       }
 
       // Check current network first
-      const ethereumProvider = getPreferredEVMProvider(chain);
+      // When connected via WalletConnect, use wagmi's walletClient instead of window.ethereum
+      let ethereumProvider: any;
+      if (isWalletConnect && walletClient) {
+        console.log('✅ Using WalletConnect provider from wagmi');
+        // Convert viem walletClient to EIP-1193 provider
+        ethereumProvider = {
+          request: async (args: { method: string; params?: any[] }) => {
+            if (args.method === 'eth_chainId') {
+              const chainId = await walletClient.getChainId();
+              return `0x${chainId.toString(16)}`;
+            }
+            if (args.method === 'eth_requestAccounts') {
+              return [address];
+            }
+            // For other methods, use walletClient
+            return await walletClient.request(args as any);
+          },
+        };
+      } else {
+        ethereumProvider = getPreferredEVMProvider(chain);
+      }
+      
       const currentChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
       
       // Map chain name to chain ID (handle testnet variants)
@@ -656,28 +687,77 @@ export default function BuyWidget({
       console.log(`🔍 Current chain ID: ${currentChainIdHex} (${currentChainId}), Expected: ${expectedChainIdHex} (${expectedChainId})`);
       
       // Only switch if we're on a different network
+      // Note: WalletConnect handles network switching differently, so we skip it for WalletConnect
       if (currentChainId !== expectedChainId) {
-        console.log(`🔄 Switching to ${switchChainName} network before buy...`);
-        await switchNetwork(switchChainName);
-        
-        // Wait a moment for network switch to complete
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Verify we're on the correct network after switch
-        const newChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
-        const newChainId = parseInt(newChainIdHex.toLowerCase(), 16);
-        
-        if (newChainId !== expectedChainId) {
-          throw new Error(`Please switch to ${chain} network in MetaMask and try again. Current: ${newChainIdHex}, Expected: ${expectedChainIdHex}`);
+        if (isWalletConnect) {
+          console.log(`⚠️ WalletConnect: Network mismatch detected (current: ${currentChainIdHex}, expected: ${expectedChainIdHex})`);
+          console.log('   WalletConnect users should switch networks in their wallet app');
+          toast.error(
+            `Please switch to ${chain} network in your HashPack wallet. ` +
+            `Current network: ${currentChainIdHex}, Required: ${expectedChainIdHex}`,
+            { duration: 8000 }
+          );
+          setLoading(false);
+          throw new Error(`Please switch to ${chain} network in your wallet. Current: ${currentChainIdHex}, Expected: ${expectedChainIdHex}`);
+        } else {
+          console.log(`🔄 Switching to ${switchChainName} network before buy...`);
+          await switchNetwork(switchChainName);
+          
+          // Wait a moment for network switch to complete
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Verify we're on the correct network after switch
+          const newChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
+          const newChainId = parseInt(newChainIdHex.toLowerCase(), 16);
+          
+          if (newChainId !== expectedChainId) {
+            throw new Error(`Please switch to ${chain} network in MetaMask and try again. Current: ${newChainIdHex}, Expected: ${expectedChainIdHex}`);
+          }
+          
+          console.log(`✅ Successfully switched to ${chain} network (chainId: ${newChainIdHex})`);
         }
-        
-        console.log(`✅ Successfully switched to ${chain} network (chainId: ${newChainIdHex})`);
       } else {
         console.log(`✅ Already on ${chain} network (chainId: ${currentChainIdHex})`);
       }
 
-      const provider = new ethers.BrowserProvider(ethereumProvider);
-      const signer = await provider.getSigner();
+      // Use wagmi walletClient when connected via WalletConnect, otherwise use BrowserProvider
+      let provider: ethers.BrowserProvider;
+      let signer: ethers.JsonRpcSigner;
+      
+      if (isWalletConnect && walletClient) {
+        console.log('✅ Using WalletConnect walletClient for transaction');
+        // For WalletConnect, we need to use the walletClient's account and chain
+        // Create an EIP-1193 compatible provider from walletClient
+        const wcProvider = {
+          request: async (args: { method: string; params?: any[] }) => {
+            try {
+              // Map common methods to walletClient methods
+              if (args.method === 'eth_sendTransaction') {
+                const txHash = await walletClient.sendTransaction(args.params?.[0] as any);
+                return txHash;
+              }
+              if (args.method === 'eth_signTransaction') {
+                return await walletClient.signTransaction(args.params?.[0] as any);
+              }
+              if (args.method === 'personal_sign') {
+                return await walletClient.signMessage({ message: args.params?.[0] as string });
+              }
+              // For other methods, try to use walletClient's request
+              return await (walletClient as any).request(args);
+            } catch (error: any) {
+              console.error('WalletConnect provider request error:', error);
+              throw error;
+            }
+          },
+          on: () => {},
+          removeListener: () => {},
+        };
+        provider = new ethers.BrowserProvider(wcProvider as any);
+        signer = await provider.getSigner();
+      } else {
+        provider = new ethers.BrowserProvider(ethereumProvider);
+        signer = await provider.getSigner();
+      }
       
       const bondingCurveABI = [
         'function buy(uint256 tokenAmount) external payable',
