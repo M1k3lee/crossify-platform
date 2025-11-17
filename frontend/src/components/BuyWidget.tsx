@@ -415,8 +415,14 @@ export default function BuyWidget({
             setTokensEstimate(parseFloat(amount));
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error calculating estimate:', error);
+        console.error('Estimate error details:', {
+          message: error?.message,
+          code: error?.code,
+          data: error?.data,
+          reason: error?.reason
+        });
         setPriceEstimate(null);
         setTokensEstimate(null);
       }
@@ -1776,6 +1782,17 @@ export default function BuyWidget({
       }
       
       toast.loading('Selling tokens...', { id: 'sell-tx' });
+      
+      // Log sell parameters for debugging
+      console.log('📊 Selling tokens:', {
+        tokenAmount: amount,
+        tokenAmountWei: tokenAmount.toString(),
+        curveAddress,
+        tokenAddress,
+        userAddress: address,
+        chain
+      });
+      
       const tx = await curveContract.sell(tokenAmount, {
         gasLimit: 500000,
       });
@@ -1843,6 +1860,8 @@ export default function BuyWidget({
         error: error.error,
         fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
       });
+      // Also log the full error object for inspection
+      console.dir(error, { depth: null });
       
       // Try to decode error message if it's a contract error
       let errorMessage = error.message || 'Failed to sell tokens';
