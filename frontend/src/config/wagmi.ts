@@ -1,7 +1,6 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { sepolia, baseSepolia, bscTestnet } from 'wagmi/chains';
 import type { Chain } from 'wagmi/chains';
-import { createConnector } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 // Use environment variable or get a real project ID from https://cloud.walletconnect.com
@@ -96,27 +95,19 @@ export const config = getDefaultConfig({
             const provider = getHashPackProvider();
             if (!provider) {
               // Return a connector that will show install prompt
-              return createConnector((config) => 
-                injected({
-                  target: () => ({
-                    id: 'hashpack',
-                    name: 'HashPack',
-                    provider: null as any, // Will trigger install prompt
-                  }),
-                })(config)
-              );
+              return injected({
+                target: 'hashpack',
+              });
             }
             
             // Return connector with HashPack provider
-            return createConnector((config) => 
-              injected({
-                target: () => ({
-                  id: 'hashpack',
-                  name: 'HashPack',
-                  provider: provider as any,
-                }),
-              })(config)
-            );
+            return injected({
+              target: () => ({
+                id: 'hashpack',
+                name: 'HashPack',
+                provider: provider as any,
+              }),
+            });
           },
         },
       ],
