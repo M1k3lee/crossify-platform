@@ -96,31 +96,27 @@ export const config = getDefaultConfig({
             const provider = getHashPackProvider();
             if (!provider) {
               // Return a connector that will show install prompt
-              return createConnector((config) => ({
-                ...injected({
+              return createConnector((config) => 
+                injected({
                   target: () => ({
                     id: 'hashpack',
                     name: 'HashPack',
                     provider: null as any, // Will trigger install prompt
                   }),
-                })(config),
-                id: 'hashpack',
-                name: 'HashPack',
-              }));
+                })(config)
+              );
             }
             
             // Return connector with HashPack provider
-            return createConnector((config) => ({
-              ...injected({
+            return createConnector((config) => 
+              injected({
                 target: () => ({
                   id: 'hashpack',
                   name: 'HashPack',
                   provider: provider as any,
                 }),
-              })(config),
-              id: 'hashpack',
-              name: 'HashPack',
-            }));
+              })(config)
+            );
           },
         },
       ],
