@@ -1751,12 +1751,16 @@ export default function BuyWidget({
         throw new Error('Token contract is not deployed.');
       }
 
-      const tokenContract = new ethers.Contract(tokenAddress, tokenABI, signer);
-      const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, signer);
+      // Create contract instances: use RPC provider for reads, signer for writes
+      // This ensures we read from the correct chain even if wallet is on different chain
+      const tokenContractRead = new ethers.Contract(tokenAddress, tokenABI, rpcProvider);
+      const tokenContractWrite = new ethers.Contract(tokenAddress, tokenABI, signer);
+      const curveContractRead = new ethers.Contract(curveAddress, bondingCurveABI, rpcProvider);
+      const curveContractWrite = new ethers.Contract(curveAddress, bondingCurveABI, signer);
 
-      // Check if graduated
+      // Check if graduated (use RPC provider for read)
       try {
-        const graduated = await curveContract.isGraduated();
+        const graduated = await curveContractRead.isGraduated();
         if (graduated) {
           throw new Error('Token has graduated to DEX. Please use a DEX to sell.');
         }
@@ -1766,17 +1770,17 @@ export default function BuyWidget({
       
       const tokenAmount = ethers.parseUnits(amount, 18);
       
-      // Check balance
-      const balance = await tokenContract.balanceOf(address);
+      // Check balance (use RPC provider for read)
+      const balance = await tokenContractRead.balanceOf(address);
       if (balance < tokenAmount) {
         throw new Error('Insufficient token balance');
       }
       
-      // Check and approve if needed
-      const allowance = await tokenContract.allowance(address, curveAddress);
+      // Check and approve if needed (use RPC provider for read, signer for write)
+      const allowance = await tokenContractRead.allowance(address, curveAddress);
       if (allowance < tokenAmount) {
         toast.loading('Approving tokens...', { id: 'approve' });
-        const approveTx = await tokenContract.approve(curveAddress, ethers.MaxUint256);
+        const approveTx = await tokenContractWrite.approve(curveAddress, ethers.MaxUint256);
         await approveTx.wait();
         toast.success('Tokens approved', { id: 'approve' });
       }
@@ -1790,10 +1794,12 @@ export default function BuyWidget({
         curveAddress,
         tokenAddress,
         userAddress: address,
-        chain
+        chain,
+        balance: balance.toString(),
+        allowance: allowance.toString()
       });
       
-      const tx = await curveContract.sell(tokenAmount, {
+      const tx = await curveContractWrite.sell(tokenAmount, {
         gasLimit: 500000,
       });
 
@@ -1801,10 +1807,10 @@ export default function BuyWidget({
       
       const receipt = await tx.wait();
       
-      // Get price per token from contract for sell transaction
+      // Get price per token from contract for sell transaction (use RPC provider for read)
       let pricePerToken = currentPrice;
       try {
-        const currentPriceWei = await curveContract.getCurrentPrice();
+        const currentPriceWei = await curveContractRead.getCurrentPrice();
         pricePerToken = parseFloat(ethers.formatEther(currentPriceWei));
       } catch (err) {
         console.warn('Could not get current price for sell transaction, using prop value');
