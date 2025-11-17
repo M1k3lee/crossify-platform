@@ -2000,14 +2000,53 @@ export default function BuyWidget({
                               hashpack.app
                             </a>
                           </div>
-                          {/* Try connecting anyway - HashPack might need user interaction to become available */}
+                          {/* Try connecting to HashPack directly or via wallet selection */}
                           <button
                             onClick={async () => {
                               try {
-                                toast.loading('Attempting to connect wallet...', { id: 'connect-hashpack' });
+                                toast.loading('Attempting to connect HashPack...', { id: 'connect-hashpack' });
                                 
-                                // Try to connect via wagmi's injected connector
+                                // First, try to connect to HashPack directly if available
+                                if ((window as any).hashpack) {
+                                  console.log('🔍 Found window.hashpack, attempting direct connection...');
+                                  const hashpack = (window as any).hashpack;
+                                  
+                                  // Try to get the provider from hashpack
+                                  let hashpackProvider = hashpack.provider || hashpack.ethereum || hashpack;
+                                  
+                                  // If hashpack has a connect method, use it
+                                  if (typeof hashpack.connect === 'function') {
+                                    console.log('   Using hashpack.connect()');
+                                    await hashpack.connect();
+                                  }
+                                  
+                                  // Request accounts from HashPack provider
+                                  if (hashpackProvider && typeof hashpackProvider.request === 'function') {
+                                    console.log('   Requesting accounts from HashPack provider...');
+                                    const accounts = await hashpackProvider.request({ method: 'eth_requestAccounts' });
+                                    console.log('✅ HashPack accounts:', accounts);
+                                    
+                                    // Temporarily set as window.ethereum to connect via wagmi
+                                    const originalEthereum = window.ethereum;
+                                    (window as any).ethereum = hashpackProvider;
+                                    
+                                    try {
+                                      const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                                      if (injectedConnector) {
+                                        await connect({ connector: injectedConnector as any });
+                                        toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
+                                      }
+                                    } finally {
+                                      // Restore original
+                                      (window as any).ethereum = originalEthereum;
+                                    }
+                                    return;
+                                  }
+                                }
+                                
+                                // Fallback: Try to connect via wagmi's injected connector
                                 // This will show the wallet selection dialog if multiple wallets are available
+                                console.log('⚠️ HashPack not found directly, trying wallet selection dialog...');
                                 const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
                                 if (injectedConnector) {
                                   await connect({ connector: injectedConnector as any });
@@ -2017,12 +2056,12 @@ export default function BuyWidget({
                                 }
                               } catch (error: any) {
                                 console.error('Error connecting wallet:', error);
-                                toast.error(error?.message || 'Failed to connect wallet. Make sure HashPack is installed and unlocked.', { id: 'connect-hashpack' });
+                                toast.error(error?.message || 'Failed to connect wallet. Make sure HashPack is installed, unlocked, and try refreshing the page.', { id: 'connect-hashpack' });
                               }
                             }}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors w-full"
                           >
-                            Try Connect Wallet
+                            Connect HashPack
                           </button>
                         </div>
                       )}

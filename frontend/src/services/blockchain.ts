@@ -126,10 +126,23 @@ export function getHashPackProvider(): any | null {
   
   console.log('🔍 Getting HashPack provider...');
   
-  // Check window.hashpack first
+  // Check window.hashpack first (most direct method)
   if ((window as any).hashpack) {
     console.log('✅ Found HashPack via window.hashpack');
-    return (window as any).hashpack;
+    // HashPack might expose an ethereum provider via hashpack.provider or hashpack.ethereum
+    if ((window as any).hashpack.provider) {
+      console.log('   Using hashpack.provider');
+      return (window as any).hashpack.provider;
+    }
+    if ((window as any).hashpack.ethereum) {
+      console.log('   Using hashpack.ethereum');
+      return (window as any).hashpack.ethereum;
+    }
+    // If hashpack itself is a provider
+    if (typeof (window as any).hashpack.request === 'function') {
+      console.log('   Using hashpack directly as provider');
+      return (window as any).hashpack;
+    }
   }
   
   // Check if window.ethereum is HashPack
@@ -142,7 +155,16 @@ export function getHashPackProvider(): any | null {
   for (const key in window) {
     if (key.toLowerCase().includes('hashpack')) {
       console.log(`✅ Found HashPack via window.${key}`);
-      return (window as any)[key];
+      const hashpackObj = (window as any)[key];
+      // Check if it has a provider property
+      if (hashpackObj?.provider) {
+        return hashpackObj.provider;
+      }
+      // Check if it's a provider itself
+      if (typeof hashpackObj?.request === 'function') {
+        return hashpackObj;
+      }
+      return hashpackObj;
     }
   }
   
@@ -159,12 +181,22 @@ export function getHashPackProvider(): any | null {
       console.log(`      isHashPack: ${p.isHashPack}`);
       console.log(`      __hashpack: ${(p as any).__hashpack}`);
       console.log(`      constructor.name: ${p.constructor?.name}`);
-      console.log(`      First 20 keys:`, Object.keys(p).slice(0, 20));
+      const allKeys = Object.keys(p).slice(0, 20);
+      console.log(`      First 20 keys:`, allKeys);
       
       // Check for HashPack-specific properties
       const hashpackKeys = Object.keys(p).filter(k => k.toLowerCase().includes('hashpack'));
       if (hashpackKeys.length > 0) {
         console.log(`      ⚠️ Found HashPack-related keys:`, hashpackKeys);
+      }
+      
+      // Log some key properties that might help identify the provider
+      if (allKeys.length > 0) {
+        console.log(`      Sample property values:`, {
+          selectedAddress: (p as any).selectedAddress,
+          chainId: (p as any).chainId,
+          networkVersion: (p as any).networkVersion,
+        });
       }
       
       // Check if provider has Hedera-specific methods
