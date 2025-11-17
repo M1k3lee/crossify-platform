@@ -1993,11 +1993,37 @@ export default function BuyWidget({
                           Try Connect HashPack
                         </button>
                       ) : (
-                        <div className="text-xs text-yellow-300/80">
-                          HashPack not detected. Install from{' '}
-                          <a href="https://www.hashpack.app/" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">
-                            hashpack.app
-                          </a>
+                        <div className="space-y-2">
+                          <div className="text-xs text-yellow-300/80">
+                            HashPack not detected. Install from{' '}
+                            <a href="https://www.hashpack.app/" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">
+                              hashpack.app
+                            </a>
+                          </div>
+                          {/* Try connecting anyway - HashPack might need user interaction to become available */}
+                          <button
+                            onClick={async () => {
+                              try {
+                                toast.loading('Attempting to connect wallet...', { id: 'connect-hashpack' });
+                                
+                                // Try to connect via wagmi's injected connector
+                                // This will show the wallet selection dialog if multiple wallets are available
+                                const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                                if (injectedConnector) {
+                                  await connect({ connector: injectedConnector as any });
+                                  toast.success('Wallet connected!', { id: 'connect-hashpack' });
+                                } else {
+                                  toast.error('No injected wallet connector found', { id: 'connect-hashpack' });
+                                }
+                              } catch (error: any) {
+                                console.error('Error connecting wallet:', error);
+                                toast.error(error?.message || 'Failed to connect wallet. Make sure HashPack is installed and unlocked.', { id: 'connect-hashpack' });
+                              }
+                            }}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors w-full"
+                          >
+                            Try Connect Wallet
+                          </button>
                         </div>
                       )}
                     </div>
