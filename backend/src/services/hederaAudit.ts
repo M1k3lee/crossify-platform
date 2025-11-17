@@ -192,17 +192,31 @@ export class HederaAuditService {
    */
   async logBondingCurveTransaction(event: BondingCurveTransaction): Promise<void> {
     if (!this.initialized || !this.client || !this.topicId) {
+      console.warn('⚠️  Hedera HCS not initialized - cannot log transaction. Check HEDERA_HCS_TOPIC_ID configuration.');
       return; // Silently fail if not initialized
     }
 
     try {
+      // Normalize tokenAddress to lowercase for consistent querying
+      const normalizedEvent = {
+        ...event,
+        tokenAddress: event.tokenAddress?.toLowerCase() || '',
+      };
+      
       const message = JSON.stringify({
         type: "BONDING_CURVE_TX",
         version: "1.0",
-        ...event,
+        ...normalizedEvent,
         verified: true,
         timestamp: new Date().toISOString(),
         poweredBy: "Hedera Consensus Service",
+      });
+
+      console.log(`📝 Submitting transaction to HCS topic ${this.topicId.toString()}:`, {
+        transactionType: normalizedEvent.transactionType,
+        tokenAddress: normalizedEvent.tokenAddress,
+        chain: normalizedEvent.chain,
+        amount: normalizedEvent.amount,
       });
 
       const transaction = new TopicMessageSubmitTransaction()
@@ -212,9 +226,20 @@ export class HederaAuditService {
       const response = await transaction.execute(this.client);
       const receipt = await response.getReceipt(this.client);
       
-      console.log(`📝 Logged bonding curve transaction to HCS (Powered by Hedera): ${receipt.status}`);
-    } catch (error) {
+      console.log(`✅ Logged bonding curve transaction to HCS (Powered by Hedera):`, {
+        status: receipt.status,
+        topicId: this.topicId.toString(),
+        transactionType: normalizedEvent.transactionType,
+        tokenAddress: normalizedEvent.tokenAddress,
+      });
+    } catch (error: any) {
       console.error("❌ Error logging bonding curve transaction to HCS:", error);
+      if (error.message) {
+        console.error("   Error message:", error.message);
+      }
+      if (error.stack) {
+        console.error("   Stack trace:", error.stack);
+      }
       // Don't throw - audit logging failure shouldn't break main flow
     }
   }
@@ -278,10 +303,10 @@ export class HederaAuditService {
           const messageText = messageBytes.toString('utf-8');
           const logData = JSON.parse(messageText);
 
-          // Filter by token address if provided
+          // Filter by token address if provided (normalize both to lowercase for comparison)
           if (tokenAddress) {
-            const logTokenAddress = logData.tokenAddress?.toLowerCase();
-            const filterTokenAddress = tokenAddress.toLowerCase();
+            const logTokenAddress = (logData.tokenAddress || '').toLowerCase().trim();
+            const filterTokenAddress = tokenAddress.toLowerCase().trim();
             
             if (logTokenAddress !== filterTokenAddress) {
               continue; // Skip messages not for this token

@@ -134,20 +134,39 @@ router.post('/', async (req: Request, res: Response) => {
               const { getHederaAuditService } = await import('../services/hederaAudit');
               const auditService = getHederaAuditService();
               
-              await auditService.logBondingCurveTransaction({
-                tokenAddress: deployment.token_address || '',
-                chain: chain,
-                transactionType: type.toUpperCase() as "BUY" | "SELL",
-                amount: amount || '0',
-                price: price || '0',
-                newSupply: newSupply.toString(),
-                txHash: txHash || '',
-                userAddress: fromAddress || '',
-                timestamp: Date.now(),
-              });
+              const tokenAddress = deployment.token_address || '';
+              if (!tokenAddress) {
+                console.warn('⚠️  Cannot log to HCS: tokenAddress is missing for token', tokenId, 'on chain', chain);
+              } else {
+                console.log(`📝 Logging ${type} transaction to Hedera HCS:`, {
+                  tokenId,
+                  tokenAddress,
+                  chain,
+                  amount,
+                  price,
+                  txHash
+                });
+                
+                await auditService.logBondingCurveTransaction({
+                  tokenAddress: tokenAddress.toLowerCase(), // Normalize to lowercase for consistency
+                  chain: chain,
+                  transactionType: type.toUpperCase() as "BUY" | "SELL",
+                  amount: amount || '0',
+                  price: price || '0',
+                  newSupply: newSupply.toString(),
+                  txHash: txHash || '',
+                  userAddress: fromAddress || '',
+                  timestamp: Date.now(),
+                });
+                
+                console.log(`✅ Successfully logged ${type} transaction to Hedera HCS`);
+              }
             } catch (auditError) {
               // Non-critical - don't fail if audit logging fails
-              console.warn('⚠️  Could not log to Hedera HCS (non-critical):', auditError instanceof Error ? auditError.message : auditError);
+              console.error('❌ Error logging to Hedera HCS:', auditError instanceof Error ? auditError.message : auditError);
+              if (auditError instanceof Error && auditError.stack) {
+                console.error('Stack trace:', auditError.stack);
+              }
             }
           } catch (syncError) {
             console.error('⚠️ Error syncing prices (non-critical):', syncError);
