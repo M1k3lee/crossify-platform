@@ -1835,13 +1835,52 @@ export default function BuyWidget({
       }
     } catch (error: any) {
       console.error('Sell error:', error);
+      console.error('Sell error details:', {
+        message: error.message,
+        code: error.code,
+        data: error.data,
+        reason: error.reason,
+        error: error.error,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
+      });
+      
+      // Try to decode error message if it's a contract error
+      let errorMessage = error.message || 'Failed to sell tokens';
+      
+      if (error.data) {
+        try {
+          // Try to decode revert reason from error data
+          const errorData = error.data;
+          if (typeof errorData === 'string' && errorData.startsWith('0x')) {
+            // Remove 0x prefix and decode hex to ASCII
+            const hexString = errorData.slice(2);
+            let decoded = '';
+            for (let i = 0; i < hexString.length; i += 2) {
+              const charCode = parseInt(hexString.substr(i, 2), 16);
+              if (charCode >= 32 && charCode <= 126) { // Printable ASCII range
+                decoded += String.fromCharCode(charCode);
+              } else {
+                break; // Stop at first non-printable character
+              }
+            }
+            if (decoded.length > 0) {
+              console.log(`📝 Decoded error message: ${decoded}`);
+              errorMessage = decoded;
+            }
+          }
+        } catch (decodeErr) {
+          console.warn('Could not decode error message:', decodeErr);
+        }
+      }
       
       if (error.code === 4001) {
         toast.error('Transaction rejected by user', { id: 'sell-tx' });
-      } else if (error.message?.includes('Insufficient')) {
+      } else if (error.message?.includes('Insufficient') || errorMessage?.includes('Insufficient')) {
         toast.error('Insufficient balance', { id: 'sell-tx' });
+      } else if (error.message?.includes('not deployed') || errorMessage?.includes('not deployed')) {
+        toast.error('Bonding curve contract is not deployed on this chain', { id: 'sell-tx' });
       } else {
-        toast.error(error.message || 'Failed to sell tokens', { id: 'sell-tx' });
+        toast.error(errorMessage, { id: 'sell-tx' });
       }
     } finally {
       setLoading(false);
