@@ -503,7 +503,7 @@ export default function BuyWidget({
       if (chainLower.includes('hedera')) {
         const recommendation = getHederaWalletRecommendation();
         
-        // Debug: Log detection details
+        // Debug: Log detection details with full provider information
         const detectionDetails = {
           hasRecommended: recommendation.hasRecommended,
           windowHashpack: !!(window as any).hashpack,
@@ -512,13 +512,31 @@ export default function BuyWidget({
           ethereumIsMetaMask: window.ethereum?.isMetaMask,
           ethereumIsPhantom: !!(window.ethereum as any)?.isPhantom,
           providers: window.ethereum?.providers?.length || 0,
-          providerDetails: window.ethereum?.providers?.map((p: any) => ({
+          providerDetails: window.ethereum?.providers?.map((p: any, idx: number) => ({
+            index: idx,
             isMetaMask: p.isMetaMask,
             isHashPack: p.isHashPack,
+            isPhantom: (p as any).isPhantom,
+            isCoinbase: (p as any).isCoinbaseWallet,
             constructor: p.constructor?.name,
+            keys: Object.keys(p).filter(k => k.includes('hash') || k.includes('Hash') || k.includes('pack') || k.includes('Pack')).slice(0, 5),
           })) || [],
         };
-        console.log('🔍 HashPack detection check:', detectionDetails);
+        console.log('🔍 HashPack detection check:', JSON.stringify(detectionDetails, null, 2));
+        
+        // Also log the raw providers array for debugging
+        if (window.ethereum?.providers) {
+          console.log('🔍 Raw providers array:', window.ethereum.providers);
+          window.ethereum.providers.forEach((p: any, idx: number) => {
+            console.log(`   Provider ${idx}:`, {
+              isMetaMask: p.isMetaMask,
+              isHashPack: p.isHashPack,
+              isPhantom: (p as any).isPhantom,
+              constructor: p.constructor?.name,
+              allKeys: Object.keys(p).slice(0, 10), // First 10 keys
+            });
+          });
+        }
         
         // Try to manually find HashPack in providers array
         if (!recommendation.hasRecommended && window.ethereum?.providers) {
@@ -1851,7 +1869,7 @@ export default function BuyWidget({
             <div className="flex-1">
               <p className="text-sm font-semibold text-yellow-300 mb-1">Wallet Not Connected</p>
               <p className="text-sm text-yellow-200/80 mb-3">Please connect your wallet to trade</p>
-              {/* HashPack connection button for Hedera */}
+              {/* HashPack connection button for Hedera - Always show if on Hedera */}
               {chain.toLowerCase().includes('hedera') && (() => {
                 try {
                   const { getHashPackProvider } = require('../services/blockchain');
@@ -1874,73 +1892,131 @@ export default function BuyWidget({
                   }
                   
                   const providerToUse = hashpackProvider || alternativeProvider;
+                  const hasMultipleProviders = window.ethereum?.providers && window.ethereum.providers.length > 1;
                   
-                  if (providerToUse) {
-                    return (
-                      <button
-                        onClick={async () => {
-                          try {
-                            toast.loading('Connecting HashPack...', { id: 'connect-hashpack' });
-                            
-                            // Request accounts from the provider
-                            if (providerToUse.request) {
-                              const accounts = await providerToUse.request({ method: 'eth_requestAccounts' });
-                              console.log('✅ Accounts requested:', accounts);
+                  // Always show button on Hedera, even if HashPack not detected
+                  return (
+                    <div className="space-y-2">
+                      {providerToUse ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              toast.loading('Connecting HashPack...', { id: 'connect-hashpack' });
                               
-                              // Connect via wagmi using injected connector
-                              const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
-                              if (injectedConnector) {
-                                // Temporarily set the provider as window.ethereum
-                                const originalEthereum = window.ethereum;
-                                (window as any).ethereum = providerToUse;
+                              // Request accounts from the provider
+                              if (providerToUse.request) {
+                                const accounts = await providerToUse.request({ method: 'eth_requestAccounts' });
+                                console.log('✅ Accounts requested:', accounts);
                                 
-                                try {
-                                  await connect({ connector: injectedConnector as any });
-                                  toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
+                                // Connect via wagmi using injected connector
+                                const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                                if (injectedConnector) {
+                                  // Temporarily set the provider as window.ethereum
+                                  const originalEthereum = window.ethereum;
+                                  (window as any).ethereum = providerToUse;
                                   
-                                  // Switch to Hedera network
                                   try {
-                                    await switchNetwork('hedera');
-                                  } catch (switchError) {
-                                    console.warn('Could not switch to Hedera network:', switchError);
+                                    await connect({ connector: injectedConnector as any });
+                                    toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
+                                    
+                                    // Switch to Hedera network
+                                    try {
+                                      await switchNetwork('hedera');
+                                    } catch (switchError) {
+                                      console.warn('Could not switch to Hedera network:', switchError);
+                                    }
+                                  } catch (connectError: any) {
+                                    console.error('Connection error:', connectError);
+                                    toast.error(`Connection failed: ${connectError.message || 'Unknown error'}`, { id: 'connect-hashpack' });
+                                    // Restore original
+                                    (window as any).ethereum = originalEthereum;
                                   }
-                                } catch (connectError: any) {
-                                  console.error('Connection error:', connectError);
-                                  toast.error(`Connection failed: ${connectError.message || 'Unknown error'}`, { id: 'connect-hashpack' });
-                                  // Restore original
-                                  (window as any).ethereum = originalEthereum;
+                                } else {
+                                  toast.error('Injected connector not found', { id: 'connect-hashpack' });
                                 }
                               } else {
-                                toast.error('Injected connector not found', { id: 'connect-hashpack' });
+                                toast.error('Provider does not support request method', { id: 'connect-hashpack' });
                               }
-                            } else {
-                              toast.error('Provider does not support request method', { id: 'connect-hashpack' });
+                            } catch (error: any) {
+                              console.error('Failed to connect HashPack:', error);
+                              toast.error(`Failed to connect: ${error.message || 'Unknown error'}`, { id: 'connect-hashpack' });
                             }
-                          } catch (error: any) {
-                            console.error('Failed to connect HashPack:', error);
-                            toast.error(`Failed to connect: ${error.message || 'Unknown error'}`, { id: 'connect-hashpack' });
-                          }
-                        }}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
-                      >
-                        {hashpackProvider ? 'Connect HashPack' : 'Try Alternative Wallet (HashPack?)'}
-                      </button>
-                    );
-                  }
-                  
-                  // If no provider found, show instructions
-                  if (window.ethereum?.providers && window.ethereum.providers.length > 1) {
-                    console.log('🔍 Available providers:', window.ethereum.providers.map((p: any) => ({
-                      isMetaMask: p.isMetaMask,
-                      isPhantom: (p as any).isPhantom,
-                      isCoinbase: (p as any).isCoinbaseWallet,
-                      constructor: p.constructor?.name,
-                    })));
-                  }
+                          }}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors w-full"
+                        >
+                          {hashpackProvider ? 'Connect HashPack' : 'Try Alternative Wallet (HashPack?)'}
+                        </button>
+                      ) : hasMultipleProviders ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              toast.loading('Trying to connect alternative wallet...', { id: 'connect-hashpack' });
+                              
+                              // Try each non-MetaMask provider
+                              const providers = window.ethereum?.providers || [];
+                              const nonMetaMaskProviders = providers.filter((p: any) => 
+                                !p.isMetaMask && !(p as any).isPhantom && !(p as any).isCoinbaseWallet
+                              );
+                              
+                              if (nonMetaMaskProviders.length > 0) {
+                                const provider = nonMetaMaskProviders[0];
+                                console.log('🔍 Trying to connect provider:', {
+                                  constructor: provider.constructor?.name,
+                                  keys: Object.keys(provider).slice(0, 5),
+                                });
+                                
+                                if (provider.request) {
+                                  await provider.request({ method: 'eth_requestAccounts' });
+                                  const injectedConnector = connectors.find((c: any) => c.id === 'injected');
+                                  if (injectedConnector) {
+                                    const originalEthereum = window.ethereum;
+                                    (window as any).ethereum = provider;
+                                    try {
+                                      await connect({ connector: injectedConnector as any });
+                                      toast.success('Wallet connected!', { id: 'connect-hashpack' });
+                                      await switchNetwork('hedera');
+                                    } catch (e: any) {
+                                      (window as any).ethereum = originalEthereum;
+                                      throw e;
+                                    }
+                                  }
+                                }
+                              } else {
+                                toast.error('No alternative wallet found. Please install HashPack.', { id: 'connect-hashpack' });
+                              }
+                            } catch (error: any) {
+                              console.error('Failed to connect:', error);
+                              toast.error(`Connection failed: ${error.message || 'Unknown error'}`, { id: 'connect-hashpack' });
+                            }
+                          }}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors w-full"
+                        >
+                          Try Connect HashPack
+                        </button>
+                      ) : (
+                        <div className="text-xs text-yellow-300/80">
+                          HashPack not detected. Install from{' '}
+                          <a href="https://www.hashpack.app/" target="_blank" rel="noopener noreferrer" className="underline hover:text-yellow-200">
+                            hashpack.app
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
                 } catch (e) {
                   console.error('Error checking for HashPack:', e);
+                  // Still show a button to try connecting
+                  return (
+                    <button
+                      onClick={async () => {
+                        toast.error('HashPack not detected. Please install HashPack from hashpack.app', { id: 'connect-hashpack' });
+                      }}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors w-full"
+                    >
+                      HashPack Not Found
+                    </button>
+                  );
                 }
-                return null;
               })()}
             </div>
           </div>
