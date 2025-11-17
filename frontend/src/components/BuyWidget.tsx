@@ -30,6 +30,7 @@ export default function BuyWidget({
   onSuccess,
 }: BuyWidgetProps) {
   const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [realCurrentPrice, setRealCurrentPrice] = useState<number | null>(null);
@@ -1848,9 +1849,60 @@ export default function BuyWidget({
         {!isConnected && (
           <div className="p-4 bg-yellow-900/20 border border-yellow-700 rounded-xl flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-semibold text-yellow-300 mb-1">Wallet Not Connected</p>
-              <p className="text-sm text-yellow-200/80">Please connect your wallet to trade</p>
+              <p className="text-sm text-yellow-200/80 mb-3">Please connect your wallet to trade</p>
+              {/* HashPack connection button for Hedera */}
+              {chain.toLowerCase().includes('hedera') && (() => {
+                try {
+                  const { getHashPackProvider } = require('../services/blockchain');
+                  const hashpackProvider = getHashPackProvider();
+                  if (hashpackProvider) {
+                    return (
+                      <button
+                        onClick={async () => {
+                          try {
+                            // Request accounts from HashPack
+                            if (hashpackProvider.request) {
+                              await hashpackProvider.request({ method: 'eth_requestAccounts' });
+                              // Connect via wagmi using injected connector
+                              const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                              if (injectedConnector) {
+                                // Temporarily set HashPack as the provider
+                                const originalEthereum = window.ethereum;
+                                (window as any).ethereum = hashpackProvider;
+                                try {
+                                  await connect({ connector: injectedConnector as any });
+                                  toast.success('HashPack connected successfully!');
+                                } catch (connectError: any) {
+                                  console.error('Connection error:', connectError);
+                                  toast.error(`Connection failed: ${connectError.message || 'Unknown error'}`);
+                                } finally {
+                                  // Restore original if still not connected
+                                  setTimeout(() => {
+                                    if (!isConnected) {
+                                      (window as any).ethereum = originalEthereum;
+                                    }
+                                  }, 1000);
+                                }
+                              }
+                            }
+                          } catch (error: any) {
+                            console.error('Failed to connect HashPack:', error);
+                            toast.error(`Failed to connect HashPack: ${error.message || 'Unknown error'}`);
+                          }
+                        }}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Connect HashPack
+                      </button>
+                    );
+                  }
+                } catch (e) {
+                  // HashPack not available
+                }
+                return null;
+              })()}
             </div>
           </div>
         )}
