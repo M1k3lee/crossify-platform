@@ -548,7 +548,6 @@ export default function BuyWidget({
           
           // Try to manually find HashPack in providers array
           if (!recommendation.hasRecommended && window.ethereum?.providers) {
-            const { getHashPackProvider } = await import('../services/blockchain');
             const hashpackProvider = getHashPackProvider();
             if (hashpackProvider) {
               console.log('✅ HashPack found manually in providers array!');
@@ -1338,6 +1337,11 @@ export default function BuyWidget({
           });
           
           console.log('✅ Transaction sent via viem walletClient:', txHash);
+          
+          // Validate transaction hash
+          if (!txHash || txHash === null || txHash === undefined) {
+            throw new Error('Transaction was rejected or failed. Please approve the transaction in your HashPack wallet.');
+          }
           
           // Convert viem transaction hash to ethers-compatible format
           tx = {
