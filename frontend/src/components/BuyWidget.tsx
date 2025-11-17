@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
 import { useAccount, useConnect, useWalletClient } from 'wagmi';
 import { ethers } from 'ethers';
+import { encodeFunctionData, parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getTestnetInfo, getPreferredEVMProvider, switchNetwork, getHederaWalletRecommendation, getHashPackProvider, checkHashPackExtensionInstalled } from '../services/blockchain';
@@ -1306,7 +1307,71 @@ export default function BuyWidget({
       // For Hedera, we need to use manual transaction construction
       // because MetaMask/Hedera RPC may strip data from contract method calls
       let tx: any;
-      if (chainLower.includes('hedera')) {
+      
+      // Use viem directly for WalletConnect connections (more reliable)
+      if (isWalletConnect && walletClient && chainLower.includes('hedera')) {
+        console.log('⚡ Hedera transaction via WalletConnect - using viem walletClient directly');
+        console.log('📋 Encoded data length:', encodedData.length);
+        console.log('📋 Encoded data (first 100 chars):', encodedData.substring(0, 100));
+        
+        // Use viem's sendTransaction directly - this is more reliable for WalletConnect
+        try {
+          // Ensure we have the account from walletClient
+          if (!walletClient.account) {
+            throw new Error('Wallet account not available. Please reconnect your wallet.');
+          }
+          
+          console.log('📋 WalletConnect transaction params:', {
+            to: curveAddress,
+            data: encodedData.substring(0, 50) + '...',
+            dataLength: encodedData.length,
+            value: totalCostWei.toString(),
+            gas: (txOptions.gasLimit || 1000000).toString(),
+            account: walletClient.account.address,
+          });
+          
+          const txHash = await walletClient.sendTransaction({
+            to: curveAddress as `0x${string}`,
+            data: encodedData as `0x${string}`,
+            value: totalCostWei,
+            gas: BigInt(txOptions.gasLimit || 1000000),
+            ...(txOptions.gasPrice ? { gasPrice: txOptions.gasPrice } : {}),
+          });
+          
+          console.log('✅ Transaction sent via viem walletClient:', txHash);
+          
+          // Convert viem transaction hash to ethers-compatible format
+          tx = {
+            hash: txHash,
+            wait: async () => {
+              // Use viem's waitForTransactionReceipt with wagmi's public client
+              const { waitForTransactionReceipt } = await import('wagmi/actions');
+              const { config } = await import('../config/wagmi');
+              const { getPublicClient } = await import('wagmi');
+              
+              const publicClient = getPublicClient(config);
+              if (!publicClient) {
+                throw new Error('Public client not available');
+              }
+              
+              const receipt = await waitForTransactionReceipt(config, {
+                hash: txHash,
+              });
+              
+              // Convert to ethers-compatible format
+              return {
+                hash: receipt.transactionHash,
+                status: receipt.status === 'success' ? 1 : 0,
+                gasUsed: BigInt(receipt.gasUsed.toString()),
+                blockNumber: Number(receipt.blockNumber),
+              };
+            },
+          };
+        } catch (wcError: any) {
+          console.error('❌ WalletConnect transaction failed:', wcError);
+          throw new Error(`Transaction failed: ${wcError.message || 'Unknown error'}. Make sure you're on Hedera Testnet in your HashPack wallet.`);
+        }
+      } else if (chainLower.includes('hedera')) {
         console.log('⚡ Hedera transaction - using manual construction with explicit data');
         console.log('📋 Encoded data length:', encodedData.length);
         console.log('📋 Encoded data (first 100 chars):', encodedData.substring(0, 100));
