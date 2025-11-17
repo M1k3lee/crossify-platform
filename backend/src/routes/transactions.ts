@@ -129,6 +129,29 @@ router.post('/', async (req: Request, res: Response) => {
             await syncPriceAcrossChains(tokenId);
             console.log(`✅ Triggered price sync for ${tokenId} across all chains`);
             
+            // Attempt to send cross-chain messages via smart contracts
+            try {
+              const { sendCrossChainSupplyUpdate } = await import('../services/crossChainMessaging');
+              const crossChainResult = await sendCrossChainSupplyUpdate(
+                tokenId,
+                chain,
+                newSupply.toString(),
+                deployment.token_address || ''
+              );
+              
+              if (crossChainResult.success) {
+                console.log(`✅ Cross-chain messages sent: ${crossChainResult.message}`);
+                if (crossChainResult.txHashes) {
+                  console.log(`   Transaction hashes: ${crossChainResult.txHashes.join(', ')}`);
+                }
+              } else {
+                console.warn(`⚠️  Cross-chain messaging failed (non-critical): ${crossChainResult.message}`);
+              }
+            } catch (crossChainError) {
+              // Non-critical - cross-chain messaging might not be configured
+              console.warn('⚠️  Cross-chain messaging error (non-critical):', crossChainError instanceof Error ? crossChainError.message : crossChainError);
+            }
+            
             // Log bonding curve transaction to Hedera HCS for immutable audit trail
             try {
               const { getHederaAuditService } = await import('../services/hederaAudit');
