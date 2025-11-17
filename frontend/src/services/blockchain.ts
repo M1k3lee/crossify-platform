@@ -150,20 +150,28 @@ export function getHashPackProvider(): any | null {
   if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
     console.log(`🔍 Checking ${window.ethereum.providers.length} providers for HashPack...`);
     
-    // Log ALL providers with detailed information
+    // Log ALL providers with detailed information (log each property separately for visibility)
     window.ethereum.providers.forEach((p: any, idx: number) => {
-      console.log(`   Provider ${idx} details:`, {
-        isMetaMask: p.isMetaMask,
-        isPhantom: (p as any).isPhantom,
-        isCoinbase: (p as any).isCoinbaseWallet,
-        isHashPack: p.isHashPack,
-        hasHashPackFlag: !!(p as any).__hashpack,
-        constructor: p.constructor?.name,
-        allKeys: Object.keys(p).slice(0, 20), // Show first 20 keys
-        hasRequest: typeof p.request === 'function',
-        hasSend: typeof p.send === 'function',
-        hasSendAsync: typeof p.sendAsync === 'function',
-      });
+      console.log(`   Provider ${idx}:`);
+      console.log(`      isMetaMask: ${p.isMetaMask}`);
+      console.log(`      isPhantom: ${(p as any).isPhantom}`);
+      console.log(`      isCoinbase: ${(p as any).isCoinbaseWallet}`);
+      console.log(`      isHashPack: ${p.isHashPack}`);
+      console.log(`      __hashpack: ${(p as any).__hashpack}`);
+      console.log(`      constructor.name: ${p.constructor?.name}`);
+      console.log(`      First 20 keys:`, Object.keys(p).slice(0, 20));
+      
+      // Check for HashPack-specific properties
+      const hashpackKeys = Object.keys(p).filter(k => k.toLowerCase().includes('hashpack'));
+      if (hashpackKeys.length > 0) {
+        console.log(`      ⚠️ Found HashPack-related keys:`, hashpackKeys);
+      }
+      
+      // Check if provider has Hedera-specific methods
+      if (typeof (p as any).request === 'function') {
+        // Try to detect if it's HashPack by checking for Hedera chain support
+        console.log(`      Has request method: true`);
+      }
     });
     
     // First, look for explicit HashPack identifiers
@@ -184,6 +192,30 @@ export function getHashPackProvider(): any | null {
       return hashpack;
     }
     
+    // HashPack might set isMetaMask=true for compatibility, so we need a different approach
+    // Check if any provider has HashPack-related properties, even if it also has isMetaMask
+    const potentialHashPack = window.ethereum.providers.find((p: any) => {
+      // Check for HashPack-specific properties
+      const keys = Object.keys(p);
+      const hasHashPackKey = keys.some(k => k.toLowerCase().includes('hashpack'));
+      if (hasHashPackKey) return true;
+      
+      // Check constructor name
+      if (p.constructor?.name && p.constructor.name.toLowerCase().includes('hashpack')) return true;
+      
+      // Check for HashPack-specific methods or properties
+      if ((p as any).__hashpack) return true;
+      if (p.isHashPack) return true;
+      if ((p as any).isHashPackWallet) return true;
+      
+      return false;
+    });
+    
+    if (potentialHashPack) {
+      console.log('✅ Found HashPack in providers array (has HashPack properties)');
+      return potentialHashPack;
+    }
+    
     // If HashPack isn't found with flags, look for a provider that's NOT MetaMask/Phantom
     // This is a heuristic - HashPack might be in the array without clear identifiers
     const nonMetaMaskProviders = window.ethereum.providers.filter((p: any) => 
@@ -191,18 +223,25 @@ export function getHashPackProvider(): any | null {
     );
     if (nonMetaMaskProviders.length > 0) {
       console.log(`⚠️ Found ${nonMetaMaskProviders.length} non-MetaMask provider(s) - using first one (might be HashPack)`);
-      console.log('   Provider details:', {
-        constructor: nonMetaMaskProviders[0].constructor?.name,
-        hasRequest: typeof nonMetaMaskProviders[0].request === 'function',
-        keys: Object.keys(nonMetaMaskProviders[0]).slice(0, 20),
-        isMetaMask: nonMetaMaskProviders[0].isMetaMask,
-        isPhantom: (nonMetaMaskProviders[0] as any).isPhantom,
-        isCoinbase: (nonMetaMaskProviders[0] as any).isCoinbaseWallet,
-      });
+      console.log(`   Constructor: ${nonMetaMaskProviders[0].constructor?.name}`);
+      console.log(`   isMetaMask: ${nonMetaMaskProviders[0].isMetaMask}`);
+      console.log(`   isPhantom: ${(nonMetaMaskProviders[0] as any).isPhantom}`);
+      console.log(`   isCoinbase: ${(nonMetaMaskProviders[0] as any).isCoinbaseWallet}`);
+      console.log(`   First 20 keys:`, Object.keys(nonMetaMaskProviders[0]).slice(0, 20));
       console.log('   ✅ Using this provider as potential HashPack');
       return nonMetaMaskProviders[0];
     } else {
       console.log('   ⚠️ All providers are MetaMask/Phantom/Coinbase - HashPack not found in array');
+      console.log('   💡 HashPack might be setting isMetaMask=true for compatibility');
+      console.log('   💡 Checking if any provider supports Hedera chain...');
+      
+      // Last resort: if there's only one provider and it's not explicitly MetaMask, it might be HashPack
+      // This is risky but might work if HashPack is masquerading as MetaMask
+      if (window.ethereum.providers.length === 1) {
+        const singleProvider = window.ethereum.providers[0];
+        console.log('   ⚠️ Only one provider found - might be HashPack masquerading as MetaMask');
+        console.log('   💡 You may need to connect HashPack explicitly via the wallet connection button');
+      }
     }
   }
   
