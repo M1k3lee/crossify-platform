@@ -1,6 +1,8 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { sepolia, baseSepolia, bscTestnet } from 'wagmi/chains';
 import type { Chain } from 'wagmi/chains';
+import { createConnector } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 
 // Use environment variable or get a real project ID from https://cloud.walletconnect.com
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
@@ -40,12 +42,94 @@ const hederaTestnet: Chain = {
   testnet: true,
 } as Chain;
 
+// Helper to get HashPack provider
+function getHashPackProvider() {
+  if (typeof window === 'undefined') return null;
+  
+  // Check window.hashpack
+  if ((window as any).hashpack) {
+    const hashpack = (window as any).hashpack;
+    if (hashpack.provider) return hashpack.provider;
+    if (hashpack.ethereum) return hashpack.ethereum;
+    if (typeof hashpack.request === 'function') return hashpack;
+  }
+  
+  // Check providers array for HashPack
+  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+    for (const provider of window.ethereum.providers) {
+      const keys = Object.keys(provider);
+      if (keys.some(k => k.toLowerCase().includes('hashpack'))) {
+        return provider;
+      }
+      // Check if provider is on Hedera chain (likely HashPack)
+      if (!provider.isMetaMask && !(provider as any).isPhantom && !(provider as any).isCoinbaseWallet) {
+        // This might be HashPack
+        return provider;
+      }
+    }
+  }
+  
+  return null;
+}
+
 // Configure RainbowKit with wallet options that prioritize injected providers
 export const config = getDefaultConfig({
   appName: 'Crossify.io',
   projectId: hasValidProjectId ? projectId : '0000000000000000000000000000000000000000',
   chains: [sepolia, baseSepolia, bscTestnet, hederaTestnet],
   ssr: false,
+  // Add custom wallets - HashPack for Hedera
+  wallets: [
+    {
+      groupName: 'Hedera Wallets',
+      wallets: [
+        {
+          id: 'hashpack',
+          name: 'HashPack',
+          iconUrl: 'https://www.hashpack.app/favicon.ico',
+          iconBackground: '#1a1a1a',
+          downloadUrls: {
+            chrome: 'https://chrome.google.com/webstore/detail/hashpack/kpfopkelmapcoecmlbdfiehjdjonljen',
+            browserExtension: 'https://www.hashpack.app/',
+          },
+          createConnector: () => {
+            const provider = getHashPackProvider();
+            if (!provider) {
+              // Return a connector that will show install prompt
+              return {
+                connector: createConnector((config) => ({
+                  ...injected({
+                    target: () => ({
+                      id: 'hashpack',
+                      name: 'HashPack',
+                      provider: null as any, // Will trigger install prompt
+                    }),
+                  })(config),
+                  id: 'hashpack',
+                  name: 'HashPack',
+                })),
+              };
+            }
+            
+            // Return connector with HashPack provider
+            return {
+              connector: createConnector((config) => ({
+                ...injected({
+                  target: () => ({
+                    id: 'hashpack',
+                    name: 'HashPack',
+                    provider: provider as any,
+                  }),
+                })(config),
+                id: 'hashpack',
+                name: 'HashPack',
+              })),
+            };
+          },
+        },
+      ],
+    },
+  ],
   // Only enable WalletConnect if we have a valid project ID
   // This prevents API errors and unwanted redirects
   ...(hasValidProjectId ? {} : {
