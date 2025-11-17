@@ -145,6 +145,32 @@ export function getHashPackProvider(): any | null {
     }
   }
   
+  // Check for HashPack via other possible global variables
+  const possibleHashPackKeys = ['HashPack', 'hashpack', 'Hashpack', 'HASHPACK'];
+  for (const key of possibleHashPackKeys) {
+    if ((window as any)[key]) {
+      console.log(`✅ Found potential HashPack via window.${key}`);
+      const obj = (window as any)[key];
+      if (obj.provider) return obj.provider;
+      if (obj.ethereum) return obj.ethereum;
+      if (typeof obj.request === 'function') return obj;
+    }
+  }
+  
+  // Check if HashPack is in the providers array but not detected
+  // Some wallets inject but don't set clear flags
+  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+    // Check if any provider has HashPack-like properties
+    for (const provider of window.ethereum.providers) {
+      const keys = Object.keys(provider);
+      // Look for HashPack-specific keys
+      if (keys.some(k => k.toLowerCase().includes('hashpack'))) {
+        console.log('✅ Found HashPack in providers (has hashpack-related keys)');
+        return provider;
+      }
+    }
+  }
+  
   // Check if window.ethereum is HashPack
   if (window.ethereum && (window.ethereum as any).isHashPack) {
     console.log('✅ Found HashPack via window.ethereum.isHashPack');

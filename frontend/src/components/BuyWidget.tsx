@@ -2007,40 +2007,82 @@ export default function BuyWidget({
                                 toast.loading('Attempting to connect HashPack...', { id: 'connect-hashpack' });
                                 
                                 // First, try to connect to HashPack directly if available
-                                if ((window as any).hashpack) {
-                                  console.log('🔍 Found window.hashpack, attempting direct connection...');
-                                  const hashpack = (window as any).hashpack;
-                                  
-                                  // Try to get the provider from hashpack
-                                  let hashpackProvider = hashpack.provider || hashpack.ethereum || hashpack;
-                                  
-                                  // If hashpack has a connect method, use it
-                                  if (typeof hashpack.connect === 'function') {
-                                    console.log('   Using hashpack.connect()');
-                                    await hashpack.connect();
-                                  }
-                                  
-                                  // Request accounts from HashPack provider
-                                  if (hashpackProvider && typeof hashpackProvider.request === 'function') {
-                                    console.log('   Requesting accounts from HashPack provider...');
-                                    const accounts = await hashpackProvider.request({ method: 'eth_requestAccounts' });
-                                    console.log('✅ HashPack accounts:', accounts);
+                                const hashpackKeys = ['hashpack', 'HashPack', 'Hashpack', 'HASHPACK'];
+                                let hashpackFound = false;
+                                
+                                for (const key of hashpackKeys) {
+                                  if ((window as any)[key]) {
+                                    console.log(`🔍 Found window.${key}, attempting direct connection...`);
+                                    const hashpack = (window as any)[key];
                                     
-                                    // Temporarily set as window.ethereum to connect via wagmi
-                                    const originalEthereum = window.ethereum;
-                                    (window as any).ethereum = hashpackProvider;
+                                    // Try to get the provider from hashpack
+                                    let hashpackProvider = hashpack.provider || hashpack.ethereum || hashpack;
                                     
-                                    try {
-                                      const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
-                                      if (injectedConnector) {
-                                        await connect({ connector: injectedConnector as any });
-                                        toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
-                                      }
-                                    } finally {
-                                      // Restore original
-                                      (window as any).ethereum = originalEthereum;
+                                    // If hashpack has a connect method, use it
+                                    if (typeof hashpack.connect === 'function') {
+                                      console.log('   Using hashpack.connect()');
+                                      await hashpack.connect();
                                     }
-                                    return;
+                                    
+                                    // Request accounts from HashPack provider
+                                    if (hashpackProvider && typeof hashpackProvider.request === 'function') {
+                                      console.log('   Requesting accounts from HashPack provider...');
+                                      const accounts = await hashpackProvider.request({ method: 'eth_requestAccounts' });
+                                      console.log('✅ HashPack accounts:', accounts);
+                                      
+                                      // Temporarily set as window.ethereum to connect via wagmi
+                                      const originalEthereum = window.ethereum;
+                                      (window as any).ethereum = hashpackProvider;
+                                      
+                                      try {
+                                        const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                                        if (injectedConnector) {
+                                          await connect({ connector: injectedConnector as any });
+                                          toast.success('HashPack connected successfully!', { id: 'connect-hashpack' });
+                                          hashpackFound = true;
+                                        }
+                                      } finally {
+                                        // Restore original
+                                        (window as any).ethereum = originalEthereum;
+                                      }
+                                      break;
+                                    }
+                                  }
+                                }
+                                
+                                if (hashpackFound) return;
+                                
+                                // Check if HashPack might be in providers array but not detected
+                                // Try to find a provider that supports Hedera chain
+                                if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+                                  console.log('🔍 Checking providers for Hedera support...');
+                                  for (const provider of window.ethereum.providers) {
+                                    try {
+                                      // Try to get chain ID to see if it supports Hedera
+                                      const chainId = await provider.request({ method: 'eth_chainId' });
+                                      console.log(`   Provider chainId: ${chainId}`);
+                                      // Hedera Testnet chain ID is 0x128 (296)
+                                      if (chainId === '0x128' || chainId === '296') {
+                                        console.log('✅ Found provider on Hedera chain - might be HashPack');
+                                        // Temporarily set as window.ethereum
+                                        const originalEthereum = window.ethereum;
+                                        (window as any).ethereum = provider;
+                                        
+                                        try {
+                                          const injectedConnector = connectors.find((c: any) => c.id === 'injected' || c.name === 'MetaMask');
+                                          if (injectedConnector) {
+                                            await connect({ connector: injectedConnector as any });
+                                            toast.success('Wallet connected!', { id: 'connect-hashpack' });
+                                            return;
+                                          }
+                                        } finally {
+                                          (window as any).ethereum = originalEthereum;
+                                        }
+                                      }
+                                    } catch (e) {
+                                      // Provider might not support this method, continue
+                                      console.log(`   Provider doesn't support chainId check:`, e);
+                                    }
                                   }
                                 }
                                 
