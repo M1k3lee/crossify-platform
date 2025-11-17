@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { useAccount, useConnect } from 'wagmi';
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 import axios from 'axios';
