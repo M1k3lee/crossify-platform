@@ -19,6 +19,7 @@ import MarketDepthChart from '../components/MarketDepthChart';
 import GraduationProgress from '../components/GraduationProgress';
 import GraduationCelebration from '../components/GraduationCelebration';
 import GraduationConfetti from '../components/GraduationConfetti';
+import AuditTrailWidget from '../components/AuditTrailWidget';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import SEO, { generateTokenSchema } from '../components/SEO';
@@ -1870,6 +1871,9 @@ export default function TokenDetail() {
             </div>
           </div>
         )}
+
+        {/* Immutable Audit Trail */}
+        <AuditTrailWidget tokenId={id || ''} chain={selectedChain as string} />
 
         {/* Token Details & Statistics Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

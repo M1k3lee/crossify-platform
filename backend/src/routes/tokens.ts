@@ -1117,6 +1117,94 @@ router.get('/:id/graduation-status', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/:id/audit-logs - Get Hedera HCS audit logs for a token
+router.get('/:id/audit-logs', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { limit = '50', chain } = req.query;
+
+    // Get token deployments to find token addresses
+    const deployments = await dbAll(
+      'SELECT token_address, chain FROM token_deployments WHERE token_id = ? AND token_address IS NOT NULL',
+      [id]
+    ) as any[];
+
+    if (deployments.length === 0) {
+      return res.json({
+        auditLogs: [],
+        message: 'No token deployments found',
+        hcsConfigured: false,
+      });
+    }
+
+    // Try to get audit logs from Hedera HCS
+    try {
+      const { getHederaAuditService } = await import('../services/hederaAudit');
+      const auditService = getHederaAuditService();
+
+      // If chain is specified, only query for that chain's token address
+      // Otherwise, query for all token addresses
+      const tokenAddresses = chain 
+        ? deployments.filter(d => d.chain === chain).map(d => d.token_address)
+        : deployments.map(d => d.token_address);
+
+      // Query audit logs for each token address
+      const allLogs: any[] = [];
+      
+      for (const tokenAddress of tokenAddresses) {
+        if (!tokenAddress) continue;
+        
+        const logs = await auditService.queryAuditLogs(
+          tokenAddress,
+          undefined, // startTimestamp
+          undefined, // endTimestamp
+          parseInt(limit as string)
+        );
+        
+        // Add chain info to each log
+        const deployment = deployments.find(d => d.token_address === tokenAddress);
+        logs.forEach((log: any) => {
+          log.chain = deployment?.chain || 'unknown';
+        });
+        
+        allLogs.push(...logs);
+      }
+
+      // Sort by timestamp (most recent first)
+      allLogs.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.hcsTimestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || b.hcsTimestamp || 0).getTime();
+        return timeB - timeA;
+      });
+
+      // Limit results
+      const limitedLogs = allLogs.slice(0, parseInt(limit as string));
+
+      return res.json({
+        auditLogs: limitedLogs,
+        total: allLogs.length,
+        hcsConfigured: true,
+        topicId: process.env.HEDERA_HCS_TOPIC_ID || null,
+      });
+    } catch (hcsError: any) {
+      // HCS might not be configured - return empty but indicate it's available
+      console.warn('HCS audit logs not available:', hcsError.message);
+      return res.json({
+        auditLogs: [],
+        message: 'Hedera HCS not configured or unavailable',
+        hcsConfigured: false,
+        error: hcsError.message,
+      });
+    }
+  } catch (error: any) {
+    console.error('Error fetching audit logs:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch audit logs',
+      message: error.message 
+    });
+  }
+});
+
 // GET /tokens/analytics/graduation - Get graduation analytics
 router.get('/analytics/graduation', async (req: Request, res: Response) => {
   try {

@@ -1131,7 +1131,23 @@ export function getTestnetInfo(chain: string) {
       explorer: 'https://explorer.solana.com/?cluster=devnet',
       rpc: 'https://api.devnet.solana.com',
     },
+    hedera: {
+      name: 'Hedera Testnet',
+      explorer: 'https://hashscan.io/testnet',
+      rpc: 'https://testnet.hashio.io/api',
+    },
+    'hedera-testnet': {
+      name: 'Hedera Testnet',
+      explorer: 'https://hashscan.io/testnet',
+      rpc: 'https://testnet.hashio.io/api',
+    },
   };
+
+  // Handle chain name variations
+  const normalizedChain = chain.toLowerCase().replace(/-/g, '');
+  if (normalizedChain.includes('hedera')) {
+    return testnets.hedera;
+  }
 
   return testnets[chain as keyof typeof testnets] || testnets.ethereum;
 }

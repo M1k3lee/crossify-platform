@@ -186,11 +186,15 @@ async function start() {
 
     // Initialize Hedera Audit Service (HCS) for immutable audit logging
     try {
+      console.log('🔍 Attempting to initialize Hedera Audit Service...');
       const { initializeHederaAudit } = await import('./services/hederaAudit');
       await initializeHederaAudit();
-      console.log('✅ Hedera Audit Service initialized (Powered by Hedera)');
+      // Note: initializeHederaAudit() logs its own success/failure messages
     } catch (error) {
-      console.warn('⚠️  Hedera Audit Service not available (optional):', error instanceof Error ? error.message : error);
+      console.error('❌ Error importing or initializing Hedera Audit Service:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error && error.stack) {
+        console.error('Stack trace:', error.stack);
+      }
       console.log('ℹ️  Continuing without Hedera HCS - audit logging will be disabled');
     }
 

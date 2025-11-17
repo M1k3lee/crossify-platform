@@ -57,13 +57,20 @@ export class HederaAuditService {
    */
   async initialize(): Promise<void> {
     if (this.initialized) {
+      console.log("ℹ️  Hedera Audit Service already initialized");
       return;
     }
 
+    console.log("🔍 Initializing Hedera Audit Service (HCS)...");
+    
     try {
       // Get Hedera account credentials from environment
       const accountId = process.env.HEDERA_ACCOUNT_ID;
       const privateKeyStr = process.env.HEDERA_PRIVATE_KEY;
+
+      console.log(`🔍 Checking Hedera credentials...`);
+      console.log(`   HEDERA_ACCOUNT_ID: ${accountId ? '✅ Set' : '❌ Not set'}`);
+      console.log(`   HEDERA_PRIVATE_KEY: ${privateKeyStr ? '✅ Set' : '❌ Not set'}`);
 
       if (!accountId || !privateKeyStr) {
         console.warn("⚠️  Hedera credentials not configured. HCS audit logging disabled.");
@@ -97,8 +104,19 @@ export class HederaAuditService {
         this.topicId = receipt.topicId;
         
         if (this.topicId) {
-          console.log(`✅ Created HCS topic: ${this.topicId.toString()}`);
-          console.log(`   Add this to your .env: HEDERA_HCS_TOPIC_ID=${this.topicId.toString()}`);
+          const topicIdStr = this.topicId.toString();
+          console.log(`\n${'='.repeat(70)}`);
+          console.log(`✅ HEDERA HCS TOPIC CREATED`);
+          console.log(`${'='.repeat(70)}`);
+          console.log(`📋 Topic ID: ${topicIdStr}`);
+          console.log(`\n🔧 ADD THIS TO RAILWAY ENVIRONMENT VARIABLES:`);
+          console.log(`   HEDERA_HCS_TOPIC_ID=${topicIdStr}`);
+          console.log(`\n📍 View on HashScan:`);
+          const hashscanUrl = isMainnet 
+            ? `https://hashscan.io/topic/${topicIdStr}`
+            : `https://hashscan.io/testnet/topic/${topicIdStr}`;
+          console.log(`   ${hashscanUrl}`);
+          console.log(`${'='.repeat(70)}\n`);
         } else {
           throw new Error('Topic creation failed - no topic ID returned');
         }
@@ -184,19 +202,103 @@ export class HederaAuditService {
   }
 
   /**
-   * Query HCS topic for audit logs
-   * This can be used to retrieve historical events for verification
+   * Query HCS topic for audit logs via Hedera Mirror Node API
+   * This retrieves historical events for verification
    */
   async queryAuditLogs(
+    tokenAddress?: string,
     startTimestamp?: number,
     endTimestamp?: number,
     limit: number = 100
   ): Promise<any[]> {
-    // TODO: Implement HCS topic query
-    // This requires subscribing to the topic and filtering messages
-    // For now, return empty array
-    console.warn("⚠️  HCS query not yet implemented");
-    return [];
+    if (!this.topicId) {
+      console.warn("⚠️  HCS topic not configured");
+      return [];
+    }
+
+    try {
+      const isMainnet = process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true';
+      const mirrorNodeBase = isMainnet 
+        ? 'https://mainnet-public.mirrornode.hedera.com'
+        : 'https://testnet.mirrornode.hedera.com';
+      
+      const topicIdStr = this.topicId.toString();
+      
+      // Build query parameters
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        order: 'desc', // Most recent first
+      });
+
+      if (startTimestamp) {
+        params.append('timestamp', `gte:${startTimestamp}`);
+      }
+      if (endTimestamp) {
+        params.append('timestamp', `lte:${endTimestamp}`);
+      }
+
+      // Query Mirror Node API for topic messages
+      const url = `${mirrorNodeBase}/api/v1/topics/${topicIdStr}/messages?${params.toString()}`;
+      
+      console.log(`📡 Querying HCS topic messages: ${url}`);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Mirror Node API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const messages = data.messages || [];
+
+      // Parse and filter messages
+      const auditLogs: any[] = [];
+      
+      for (const message of messages) {
+        try {
+          // Decode message (base64 encoded)
+          const messageBytes = Buffer.from(message.message, 'base64');
+          const messageText = messageBytes.toString('utf-8');
+          const logData = JSON.parse(messageText);
+
+          // Filter by token address if provided
+          if (tokenAddress) {
+            const logTokenAddress = logData.tokenAddress?.toLowerCase();
+            const filterTokenAddress = tokenAddress.toLowerCase();
+            
+            if (logTokenAddress !== filterTokenAddress) {
+              continue; // Skip messages not for this token
+            }
+          }
+
+          // Add metadata from HCS message
+          auditLogs.push({
+            ...logData,
+            hcsMessageId: message.sequence_number,
+            hcsTimestamp: message.consensus_timestamp,
+            hcsTopicId: topicIdStr,
+            hashscanUrl: this.getHashScanUrl(message.sequence_number, topicIdStr),
+          });
+        } catch (parseError) {
+          console.warn(`⚠️  Failed to parse HCS message ${message.sequence_number}:`, parseError);
+          // Continue with other messages
+        }
+      }
+
+      console.log(`✅ Retrieved ${auditLogs.length} audit logs from HCS`);
+      return auditLogs;
+    } catch (error) {
+      console.error("❌ Error querying HCS audit logs:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get HashScan URL for a specific HCS message
+   */
+  private getHashScanUrl(sequenceNumber: number, topicId: string): string {
+    const isMainnet = process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true';
+    const base = isMainnet ? 'https://hashscan.io' : 'https://hashscan.io/testnet';
+    return `${base}/topic/${topicId}?sequence=${sequenceNumber}`;
   }
 }
 
