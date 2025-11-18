@@ -1813,7 +1813,7 @@ export default function TokenDetail() {
                 Recent Transactions
               </h2>
             </div>
-            <div className="space-y-2">
+            <div className="max-h-[600px] overflow-y-auto pr-2 space-y-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#4B5563 #1F2937' }}>
               {transactionsData.transactions.slice(0, 10).map((tx: any) => (
                 <div
                   key={tx.id}

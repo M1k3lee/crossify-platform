@@ -1110,8 +1110,13 @@ export async function deployTokenOnEVM(
 }
 
 export function getTestnetInfo(chain: string) {
-  const testnets = {
+  const testnets: Record<string, { name: string; explorer: string; rpc: string }> = {
     ethereum: {
+      name: 'Sepolia',
+      explorer: 'https://sepolia.etherscan.io',
+      rpc: 'https://ethereum-sepolia-rpc.publicnode.com',
+    },
+    sepolia: {
       name: 'Sepolia',
       explorer: 'https://sepolia.etherscan.io',
       rpc: 'https://ethereum-sepolia-rpc.publicnode.com',
@@ -1121,7 +1126,27 @@ export function getTestnetInfo(chain: string) {
       explorer: 'https://testnet.bscscan.com',
       rpc: 'https://bsc-testnet.publicnode.com',
     },
+    'bsc-testnet': {
+      name: 'BSC Testnet',
+      explorer: 'https://testnet.bscscan.com',
+      rpc: 'https://bsc-testnet.publicnode.com',
+    },
+    'bsctestnet': {
+      name: 'BSC Testnet',
+      explorer: 'https://testnet.bscscan.com',
+      rpc: 'https://bsc-testnet.publicnode.com',
+    },
     base: {
+      name: 'Base Sepolia',
+      explorer: 'https://sepolia-explorer.base.org',
+      rpc: 'https://base-sepolia-rpc.publicnode.com',
+    },
+    'base-sepolia': {
+      name: 'Base Sepolia',
+      explorer: 'https://sepolia-explorer.base.org',
+      rpc: 'https://base-sepolia-rpc.publicnode.com',
+    },
+    'basesepolia': {
       name: 'Base Sepolia',
       explorer: 'https://sepolia-explorer.base.org',
       rpc: 'https://base-sepolia-rpc.publicnode.com',
@@ -1143,13 +1168,44 @@ export function getTestnetInfo(chain: string) {
     },
   };
 
-  // Handle chain name variations
-  const normalizedChain = chain.toLowerCase().replace(/-/g, '');
+  if (!chain) {
+    return testnets.ethereum;
+  }
+
+  // Normalize chain name: lowercase and handle variations
+  const normalizedChain = chain.toLowerCase().trim();
+  
+  // Direct match first
+  if (testnets[normalizedChain]) {
+    return testnets[normalizedChain];
+  }
+
+  // Handle chain name variations with pattern matching
   if (normalizedChain.includes('hedera')) {
     return testnets.hedera;
   }
+  
+  if (normalizedChain.includes('base') && (normalizedChain.includes('sepolia') || normalizedChain.includes('testnet'))) {
+    return testnets['base-sepolia'];
+  }
+  
+  if (normalizedChain.includes('bsc') || normalizedChain.includes('binance')) {
+    if (normalizedChain.includes('testnet') || normalizedChain.includes('test')) {
+      return testnets['bsc-testnet'];
+    }
+    return testnets.bsc;
+  }
+  
+  if (normalizedChain.includes('sepolia') && !normalizedChain.includes('base')) {
+    return testnets.sepolia;
+  }
+  
+  if (normalizedChain.includes('ethereum') || normalizedChain.includes('eth')) {
+    return testnets.ethereum;
+  }
 
-  return testnets[chain as keyof typeof testnets] || testnets.ethereum;
+  // Default fallback
+  return testnets.ethereum;
 }
 
 // Declare window.ethereum for TypeScript
