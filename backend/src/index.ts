@@ -92,12 +92,19 @@ app.use(express.urlencoded({ extended: true }));
 // Increased limits to prevent 429 errors during normal usage
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // limit each IP to 500 requests per windowMs (increased from 100)
+  max: 1000, // limit each IP to 1000 requests per windowMs (increased from 500)
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  // Skip rate limiting for health checks
-  skip: (req) => req.path === '/api/health' || req.path === '/api/health-check',
+  // Skip rate limiting for all health check endpoints
+  skip: (req) => req.path.startsWith('/api/health'),
+  // Use a key generator that considers both IP and user-agent to better differentiate users behind Railway proxy
+  keyGenerator: (req) => {
+    // Combine IP and user-agent for better differentiation when behind proxy
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.get('user-agent') || 'unknown';
+    return `${ip}-${userAgent}`;
+  },
 });
 app.use('/api/', limiter);
 
