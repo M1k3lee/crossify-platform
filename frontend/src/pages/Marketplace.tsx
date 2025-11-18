@@ -10,11 +10,19 @@ import SEO from '../components/SEO';
 import { API_BASE } from '../config/api';
 import { useDebounce } from '../hooks/useDebounce';
 
-// Helper to construct image URL from filename or CID
+// Helper to construct image URL from filename, CID, or Hedera File ID
 const getImageUrl = (imageId: string | null | undefined): string | null => {
   if (!imageId) return null;
   if (imageId.startsWith('http')) return imageId;
   if (imageId.startsWith('mock_')) return null; // Mock CIDs don't work
+  // If it's a Hedera File ID (format: 0.0.xxxxx), construct Hedera Mirror Node URL
+  if (/^0\.0\.\d+$/.test(imageId)) {
+    const isMainnet = process.env.NODE_ENV === 'production';
+    const mirrorNodeBase = isMainnet 
+      ? 'https://mainnet-public.mirrornode.hedera.com'
+      : 'https://testnet.mirrornode.hedera.com';
+    return `${mirrorNodeBase}/api/v1/files/${imageId}`;
+  }
   // It's a filename, construct API URL
   // API_BASE already includes /api, so we can use it directly
   // Route is: /api/upload/file/:filename

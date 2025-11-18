@@ -159,3 +159,5 @@ The frontend will automatically:
 - Display variance percentage
 - Highlight chains that need to sync
 
+
+

@@ -50,3 +50,4 @@ cd contracts
 npx ts-node --project tsconfig.json scripts/verify-all-tokens-standalone.ts
 ```
 
+

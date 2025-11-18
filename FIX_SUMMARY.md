@@ -39,3 +39,4 @@ Or redeploy TokenFactory with `useGlobalSupply = true` in the constructor.
 
 In a production app, each token creator would have their own private key. For existing tokens, only the token creator can enable `useGlobalSupply` on their bonding curves. For new tokens, we should ensure the TokenFactory defaults to `useGlobalSupply = true`.
 
+

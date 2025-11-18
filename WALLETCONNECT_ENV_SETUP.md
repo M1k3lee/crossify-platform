@@ -74,3 +74,5 @@ YOUR_WALLETCONNECT_PROJECT_ID
 3. **Verify** in browser console - no "WalletConnect Project ID not set" warnings
 
 
+
+

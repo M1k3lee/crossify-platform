@@ -112,3 +112,5 @@ If you find **nothing**, the service might not have restarted with the new code 
 **Action**: Scroll to the **very beginning** of the Railway logs (startup sequence) and search for "Hedera" to find the initialization messages.
 
 
+
+

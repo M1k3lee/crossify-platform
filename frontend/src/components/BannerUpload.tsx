@@ -12,12 +12,20 @@ interface BannerUploadProps {
 
 export default function BannerUpload({ value, onChange, label = 'Banner Image (Optional)' }: BannerUploadProps) {
   const [uploading, setUploading] = useState(false);
-  // Construct preview URL - if value starts with http (Cloudinary URL), use it; if it's a filename, use API; if mock, skip
+  // Construct preview URL - handles Hedera File IDs, Cloudinary URLs, and local filenames
   const getPreviewUrl = (val: string | undefined | null): string | null => {
     if (!val) return null;
-    // If it's already a full URL (Cloudinary or other), return it directly
+    // If it's already a full URL (Hedera Mirror Node, Cloudinary, or other), return it directly
     if (val.startsWith('http')) return val;
     if (val.startsWith('mock_')) return null; // Mock CIDs don't work
+    // If it's a Hedera File ID (format: 0.0.xxxxx), construct Hedera Mirror Node URL
+    if (/^0\.0\.\d+$/.test(val)) {
+      const isMainnet = process.env.NODE_ENV === 'production';
+      const mirrorNodeBase = isMainnet 
+        ? 'https://mainnet-public.mirrornode.hedera.com'
+        : 'https://testnet.mirrornode.hedera.com';
+      return `${mirrorNodeBase}/api/v1/files/${val}`;
+    }
     // It's a filename, construct API URL using /upload/file/:filename endpoint
     // API_BASE already includes /api, so we can use it directly
     // Route is: /api/upload/file/:filename
@@ -61,24 +69,32 @@ export default function BannerUpload({ value, onChange, label = 'Banner Image (O
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      // Handle response - Cloudinary returns full URL, local storage returns filename
+      // Handle response - Hedera/Cloudinary returns full URL, local storage returns filename
       const fileId = response.data.url || response.data.filename || response.data.cid;
       onChange(fileId);
       
-      // If it's a Cloudinary URL (full URL), use it directly
+      // Show appropriate success message based on storage
+      const storage = response.data.storage || 'local';
+      const successMessage = storage === 'hedera' 
+        ? 'Banner uploaded to Hedera File Service (decentralized, permanent)'
+        : storage === 'cloudinary'
+        ? 'Banner uploaded successfully to Cloudinary'
+        : 'Banner uploaded successfully';
+      
+      // If it's a full URL (Hedera Mirror Node, Cloudinary, or other), use it directly
       if (fileId && fileId.startsWith('http')) {
-        // Test if the Cloudinary URL loads successfully
+        // Test if the URL loads successfully
         const img = new Image();
         img.onload = () => {
-          setPreview(fileId); // Use Cloudinary URL directly
-          toast.success('Banner uploaded successfully to Cloudinary');
+          setPreview(fileId); // Use URL directly
+          toast.success(successMessage);
         };
         img.onerror = () => {
-          console.warn('Failed to load image from Cloudinary, keeping data URL preview');
+          console.warn('Failed to load image, keeping data URL preview');
           if (dataUrl) {
             setPreview(dataUrl);
           }
-          toast.success('Banner uploaded (preview may take a moment)');
+          toast.success(successMessage + ' (preview may take a moment)');
         };
         img.src = fileId;
       } else if (fileId) {

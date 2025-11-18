@@ -46,6 +46,18 @@ export default function BuyWidget({
   const [tokensEstimate, setTokensEstimate] = useState<number | null>(null);
   const [isValidAddress, setIsValidAddress] = useState(false);
 
+  // Allow overriding RPC URLs via VITE_*_RPC_URL env vars (e.g. VITE_BSC_TESTNET_RPC_URL)
+  const getEnvRpcUrl = (keys: string[]): { url: string; source: string } | null => {
+    const env = import.meta.env as Record<string, string | undefined>;
+    for (const key of keys) {
+      const value = env[key];
+      if (typeof value === 'string' && value.trim()) {
+        return { url: value.trim(), source: key };
+      }
+    }
+    return null;
+  };
+
   // Get RPC URL for a specific chain
   const getRpcUrlForChain = (chainName: string): string => {
     const chainLower = chainName.toLowerCase().trim();
@@ -60,8 +72,14 @@ export default function BuyWidget({
     
     // Handle BSC Testnet (check before "bsc" alone)
     if (chainLower === 'bsc-testnet' || (chainLower.includes('bsc') && chainLower.includes('testnet'))) {
-      console.log(`   → Using BSC Testnet RPC`);
-      return 'https://bsc-testnet.publicnode.com';
+      const envOverride = getEnvRpcUrl(['VITE_BSC_TESTNET_RPC_URL', 'VITE_BSC_RPC_URL']);
+      if (envOverride) {
+        console.log(`   → Using BSC Testnet RPC override from ${envOverride.source}`);
+        return envOverride.url;
+      }
+      // Default to Thirdweb aggregator which is CORS-friendly for browser requests
+      console.log(`   → Using BSC Testnet RPC (thirdweb)`);
+      return 'https://bsc-testnet.rpc.thirdweb.com';
     }
     
     // Handle Ethereum/Sepolia testnet (check after base-sepolia to avoid false matches)
@@ -77,8 +95,13 @@ export default function BuyWidget({
     }
     
     if (chainLower === 'bsc' || chainLower === 'binance') {
-      console.log(`   → Using BSC Testnet RPC (defaulting to testnet)`);
-      return 'https://bsc-testnet.publicnode.com';
+      const envOverride = getEnvRpcUrl(['VITE_BSC_RPC_URL']);
+      if (envOverride) {
+        console.log(`   → Using BSC RPC override from ${envOverride.source}`);
+        return envOverride.url;
+      }
+      console.log(`   → Using BSC RPC (defaulting to BSC Testnet thirdweb endpoint)`);
+      return 'https://bsc-testnet.rpc.thirdweb.com';
     }
     
     if (chainLower === 'ethereum' || chainLower === 'eth') {

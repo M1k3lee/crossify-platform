@@ -356,10 +356,18 @@ export default function TokenDetail() {
   const getImageUrl = useMemo(() => {
     return (imageId: string | null | undefined): string | null => {
       if (!imageId) return null;
-      // If it's already a full URL (Cloudinary or other), return it
+      // If it's already a full URL (Cloudinary, Hedera Mirror Node, or other), return it
       if (imageId.startsWith('http')) return imageId;
       // If it's a mock CID (old format), skip it
       if (imageId.startsWith('mock_')) return null;
+      // If it's a Hedera File ID (format: 0.0.xxxxx), construct Hedera Mirror Node URL
+      if (/^0\.0\.\d+$/.test(imageId)) {
+        const isMainnet = process.env.NODE_ENV === 'production';
+        const mirrorNodeBase = isMainnet 
+          ? 'https://mainnet-public.mirrornode.hedera.com'
+          : 'https://testnet.mirrornode.hedera.com';
+        return `${mirrorNodeBase}/api/v1/files/${imageId}`;
+      }
       // It's a filename, construct API URL
       // API_BASE already includes /api, so we can use it directly
       // Route is: /api/upload/file/:filename
@@ -500,10 +508,25 @@ export default function TokenDetail() {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (id) {
+        formData.append('tokenId', id);
+      }
       const response = await axios.post(`${API_BASE}/upload/logo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      return response.data.filename || response.data.cid;
+      // Prefer URL (Hedera Mirror Node URL or Cloudinary URL) over fileId/filename
+      const uploadedUrl = response.data.url || response.data.filename || response.data.cid;
+      
+      // Show appropriate success message based on storage
+      if (response.data.storage === 'hedera') {
+        toast.success('Logo uploaded to Hedera File Service (decentralized, permanent)');
+      } else if (response.data.storage === 'cloudinary') {
+        toast.success('Logo uploaded successfully');
+      } else {
+        toast.success('Logo uploaded successfully');
+      }
+      
+      return uploadedUrl;
     } catch (error) {
       console.error('Logo upload failed:', error);
       toast.error('Failed to upload logo');
