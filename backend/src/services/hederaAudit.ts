@@ -92,31 +92,49 @@ export class HederaAuditService {
         const privateKeyHex = privateKeyStr.replace(/^0x/, '').trim();
         
         // Try multiple parsing methods (in order of preference)
+        // Hedera supports both ECDSA and ED25519 keys
         if (privateKeyHex.length === 64) {
-          // 64 hex chars = 32 bytes (ED25519 private key)
-          // Use fromStringED25519() for hex strings (recommended by SDK)
+          // 64 hex chars = 32 bytes (could be ECDSA or ED25519)
+          // Try ECDSA first (common in HashPack), then ED25519
+          let parsed = false;
+          
+          // Try ECDSA first (HashPack often uses ECDSA)
           try {
-            privateKey = PrivateKey.fromStringED25519(privateKeyHex);
-            console.log('✅ Parsed Hedera private key using fromStringED25519() (64 hex chars)');
-          } catch (ed25519Error) {
-            // Fallback to fromBytes if fromStringED25519 fails
+            privateKey = PrivateKey.fromStringECDSA(privateKeyHex);
+            console.log('✅ Parsed Hedera private key using fromStringECDSA() (64 hex chars)');
+            parsed = true;
+          } catch (ecdsaError) {
+            // Try ED25519 next
             try {
-              const keyBytes = Buffer.from(privateKeyHex, 'hex');
-              if (keyBytes.length === 32) {
-                privateKey = PrivateKey.fromBytes(keyBytes);
-                console.log('✅ Parsed Hedera private key as hex bytes (32 bytes)');
-              } else {
-                throw new Error(`Invalid key length: ${keyBytes.length} bytes (expected 32)`);
-              }
-            } catch (bytesError) {
-              // Try as DER string format
+              privateKey = PrivateKey.fromStringED25519(privateKeyHex);
+              console.log('✅ Parsed Hedera private key using fromStringED25519() (64 hex chars)');
+              parsed = true;
+            } catch (ed25519Error) {
+              // Fallback to fromBytes if both fail
               try {
-                privateKey = PrivateKey.fromString(privateKeyStr);
-                console.log('✅ Parsed Hedera private key as DER string');
-              } catch (derError) {
-                throw new Error(`Failed to parse as ED25519: ${ed25519Error instanceof Error ? ed25519Error.message : ed25519Error}. Failed as bytes: ${bytesError instanceof Error ? bytesError.message : bytesError}. Failed as DER: ${derError instanceof Error ? derError.message : derError}`);
+                const keyBytes = Buffer.from(privateKeyHex, 'hex');
+                if (keyBytes.length === 32) {
+                  privateKey = PrivateKey.fromBytes(keyBytes);
+                  console.log('✅ Parsed Hedera private key as hex bytes (32 bytes)');
+                  parsed = true;
+                } else {
+                  throw new Error(`Invalid key length: ${keyBytes.length} bytes (expected 32)`);
+                }
+              } catch (bytesError) {
+                // Try as DER string format
+                try {
+                  privateKey = PrivateKey.fromString(privateKeyStr);
+                  console.log('✅ Parsed Hedera private key as DER string');
+                  parsed = true;
+                } catch (derError) {
+                  throw new Error(`Failed to parse as ECDSA: ${ecdsaError instanceof Error ? ecdsaError.message : ecdsaError}. Failed as ED25519: ${ed25519Error instanceof Error ? ed25519Error.message : ed25519Error}. Failed as bytes: ${bytesError instanceof Error ? bytesError.message : bytesError}. Failed as DER: ${derError instanceof Error ? derError.message : derError}`);
+                }
               }
             }
+          }
+          
+          if (!parsed) {
+            throw new Error('Failed to parse private key with any method');
           }
         } else if (privateKeyHex.length === 128) {
           // 128 hex chars = 64 bytes (ED25519 keypair - private + public)
