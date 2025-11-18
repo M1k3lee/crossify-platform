@@ -163,10 +163,11 @@ export class HederaAuditService {
           .setAccountId(accountId)
           .execute(this.client);
         
-        console.log(`✅ Private key verified! Account balance: ${accountInfo.balance.toString()} tinybars`);
+        const balanceTinybars = Number(accountInfo.balance.toTinybars());
+        console.log(`✅ Private key verified! Account balance: ${balanceTinybars} tinybars`);
         
-        if (accountInfo.balance < 100000000) { // Less than 0.1 HBAR
-          console.warn(`⚠️  Account has low balance: ${(Number(accountInfo.balance) / 100000000).toFixed(2)} HBAR`);
+        if (balanceTinybars < 100000000) { // Less than 0.1 HBAR
+          console.warn(`⚠️  Account has low balance: ${(balanceTinybars / 100000000).toFixed(2)} HBAR`);
           console.warn(`   Topic creation requires ~0.01 HBAR. Consider funding the account.`);
         }
       } catch (verifyError: any) {
