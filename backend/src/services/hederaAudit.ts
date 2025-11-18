@@ -18,7 +18,9 @@ import {
   TopicCreateTransaction, 
   TopicMessageSubmitTransaction, 
   TopicId,
-  PrivateKey 
+  PrivateKey,
+  AccountId,
+  AccountInfoQuery
 } from "@hashgraph/sdk";
 
 export interface PriceSyncEvent {
@@ -146,7 +148,34 @@ export class HederaAuditService {
         throw new Error(`Invalid Hedera private key format: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
       }
       
-      this.client.setOperator(accountId, privateKey);
+      // Verify the private key matches the account by checking the public key
+      try {
+        const publicKey = privateKey.publicKey;
+        const expectedAccountId = AccountId.fromString(accountId);
+        console.log(`🔍 Verifying private key matches account ${accountId}...`);
+        console.log(`   Public key: ${publicKey.toString()}`);
+        
+        // Set operator and verify it works
+        this.client.setOperator(accountId, privateKey);
+        
+        // Try a simple query to verify the key works
+        const accountInfo = await new AccountInfoQuery()
+          .setAccountId(accountId)
+          .execute(this.client);
+        
+        console.log(`✅ Private key verified! Account balance: ${accountInfo.balance.toString()} tinybars`);
+        
+        if (accountInfo.balance < 100000000) { // Less than 0.1 HBAR
+          console.warn(`⚠️  Account has low balance: ${(Number(accountInfo.balance) / 100000000).toFixed(2)} HBAR`);
+          console.warn(`   Topic creation requires ~0.01 HBAR. Consider funding the account.`);
+        }
+      } catch (verifyError: any) {
+        console.error('❌ Failed to verify private key with account:', verifyError.message);
+        if (verifyError.message?.includes('INVALID_SIGNATURE') || verifyError.message?.includes('INVALID_ACCOUNT_ID')) {
+          throw new Error(`Private key does not match account ${accountId}. Please verify the private key in HashPack and ensure it's for account ${accountId}. Error: ${verifyError.message}`);
+        }
+        throw verifyError;
+      }
 
       // Get or create HCS topic
       const topicIdEnv = process.env.HEDERA_HCS_TOPIC_ID;
