@@ -1890,13 +1890,13 @@ export default function TokenDetail() {
                       {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
-                  {tx.txHash && getTestnetInfo(selectedChain as any)?.explorer && (
+                  {tx.txHash && tx.chain && getTestnetInfo(tx.chain as any)?.explorer && (
                     <a
-                      href={`${getTestnetInfo(selectedChain as any)?.explorer}/tx/${tx.txHash}`}
+                      href={`${getTestnetInfo(tx.chain as any)?.explorer}/tx/${tx.txHash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-2 p-1 hover:bg-gray-600 rounded transition"
-                      title="View on explorer"
+                      title={`View on ${tx.chain} explorer`}
                     >
                       <ExternalLink className="w-4 h-4 text-gray-400" />
                     </a>
