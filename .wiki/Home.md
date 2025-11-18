@@ -19,6 +19,7 @@ Crossify.io is a complete multichain token launch platform that enables creators
 - 🎓 **Automatic DEX Graduation** - Tokens automatically migrate to DEX when market cap thresholds are reached
 - 🌉 **Cross-Chain Liquidity Bridge** - Shared liquidity pools that automatically rebalance across chains
 - 📊 **Real-Time Price Sync** - Prices stay synchronized across all chains (target: <0.5% variance)
+- 🔄 **Dual Cross-Chain Architecture** - LayerZero + Supra HyperNova support for redundancy and performance
 - ⚡ **Hedera Integration** - Ultra-fast (3-5s finality) and ultra-cheap (~$0.0001/tx) launches
 - 📝 **Immutable Audit Trails** - Powered by Hedera Consensus Service (HCS)
 - 💧 **Proactive Liquidity Management** - Automatic rebalancing every 30 seconds
@@ -32,6 +33,7 @@ This platform didn't happen overnight. It started with a simple idea: "What if l
 This wiki contains everything you need to understand Crossify:
 
 - **[Architecture Overview](Architecture)** - How the entire system works together
+- **[Dual Cross-Chain Architecture](Dual-Cross-Chain-Architecture)** - LayerZero + Supra parallel system
 - **[Smart Contracts](Contracts)** - Deep dive into every contract we built
 - **[Development Process](Development-Process)** - How we built and tested each component
 - **[Testing Strategy](Testing)** - Our comprehensive testing approach
@@ -62,5 +64,5 @@ Feel free to reach out! This is a living project, and I'm always happy to discus
 
 ---
 
-*Last Updated: November 2025*
+*Last Updated: December 2024*
 

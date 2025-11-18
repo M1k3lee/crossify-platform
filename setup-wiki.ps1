@@ -26,13 +26,18 @@ try {
         exit 1
     }
     
-    Write-Host "✓ Wiki repository cloned successfully" -ForegroundColor Green
+    Write-Host "Wiki repository cloned successfully" -ForegroundColor Green
     Write-Host ""
     
     Write-Host "Step 2: Copying wiki files..." -ForegroundColor Cyan
-    Copy-Item ".wiki\*.md" -Destination "$wikiDir\" -Exclude "README.md","SETUP_GITHUB_WIKI.md"
+    Copy-Item ".wiki\Architecture.md" -Destination "$wikiDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".wiki\Contracts.md" -Destination "$wikiDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".wiki\Development-Process.md" -Destination "$wikiDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".wiki\Integration.md" -Destination "$wikiDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".wiki\Roadmap.md" -Destination "$wikiDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".wiki\Testing.md" -Destination "$wikiDir\" -ErrorAction SilentlyContinue
     
-    Write-Host "✓ Files copied successfully" -ForegroundColor Green
+    Write-Host "Files copied successfully" -ForegroundColor Green
     Write-Host ""
     
     Write-Host "Step 3: Committing and pushing..." -ForegroundColor Cyan
@@ -43,7 +48,7 @@ try {
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✓ Wiki setup complete!" -ForegroundColor Green
+        Write-Host "Wiki setup complete!" -ForegroundColor Green
         Write-Host "Your wiki is now available at: https://github.com/M1k3lee/crossify-platform/wiki" -ForegroundColor Cyan
     } else {
         Write-Host "Error pushing to wiki repository" -ForegroundColor Red
@@ -56,6 +61,5 @@ try {
     Write-Host ""
     Write-Host "Manual setup instructions:" -ForegroundColor Yellow
     Write-Host "1. Go to: https://github.com/M1k3lee/crossify-platform/wiki" -ForegroundColor Yellow
-    Write-Host "2. Create each page manually and copy content from .wiki\*.md files" -ForegroundColor Yellow
+    Write-Host "2. Create each page manually and copy content from .wiki folder" -ForegroundColor Yellow
 }
-

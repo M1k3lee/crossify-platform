@@ -87,3 +87,5 @@ if (useGlobalSupply && address(globalSupplyTracker) != address(0)) {
 When `useGlobalSupply` is `false`, the bonding curve uses only `totalSupplySold` (local supply) for price calculation, which means prices won't sync across chains.
 
 
+
+

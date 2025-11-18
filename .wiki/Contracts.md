@@ -6,18 +6,20 @@ This page provides a comprehensive overview of every smart contract in the Cross
 
 ## Contract Overview
 
-The Crossify platform consists of 10 core smart contracts, each serving a specific purpose in the token launch and trading ecosystem:
+The Crossify platform consists of 12 core smart contracts, each serving a specific purpose in the token launch and trading ecosystem:
 
 1. **TokenFactory** - Entry point for token creation
 2. **BondingCurve** - Manages token sales with linear pricing
 3. **GlobalSupplyTracker** - Tracks supply across all chains
-4. **CrossChainSync** - Handles LayerZero messaging
-5. **CrossChainLiquidityBridge** - Manages liquidity across chains
-6. **CrossifyToken** - Standard ERC20 token implementation
-7. **Migration** - Handles DEX graduation
-8. **DEXDetector** - Identifies available DEXes
-9. **UnifiedLiquidityPool** - Shared liquidity management
-10. **CFY Contracts** - Platform token ecosystem (separate system)
+4. **CrossChainSync** - Handles LayerZero messaging (legacy, still supported)
+5. **UnifiedCrossChainSync** - Unified interface for multiple cross-chain protocols
+6. **SupraSync** - Supra HyperNova adapter for cross-chain messaging
+7. **CrossChainLiquidityBridge** - Manages liquidity across chains
+8. **CrossifyToken** - Standard ERC20 token implementation
+9. **Migration** - Handles DEX graduation
+10. **DEXDetector** - Identifies available DEXes
+11. **UnifiedLiquidityPool** - Shared liquidity management
+12. **CFY Contracts** - Platform token ecosystem (separate system)
 
 ## 1. TokenFactory
 
@@ -159,7 +161,7 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 
 ## 4. CrossChainSync
 
-**Purpose**: Handles LayerZero messaging for cross-chain communication.
+**Purpose**: Handles LayerZero messaging for cross-chain communication (legacy, still supported).
 
 **Key Features**:
 - Sends supply updates to other chains
@@ -180,7 +182,85 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 - Replay attack prevention
 - Rate limiting
 
-## 5. CrossChainLiquidityBridge
+**Status**: Legacy contract, still functional. New deployments should use UnifiedCrossChainSync.
+
+## 5. UnifiedCrossChainSync
+
+**Purpose**: Next-generation unified interface for multiple cross-chain protocols. Supports LayerZero and Supra HyperNova in parallel.
+
+**Key Innovation**: This contract provides a protocol-agnostic abstraction layer, allowing the platform to use multiple cross-chain protocols simultaneously for redundancy and performance optimization.
+
+**Key Features**:
+- **Protocol Abstraction**: Unified interface for LayerZero and Supra
+- **Dual Protocol Support**: Can route messages to LayerZero, Supra, or both
+- **Message Deduplication**: Prevents double-processing when both protocols deliver
+- **Metrics Tracking**: Performance comparison between protocols
+- **Automatic Failover**: If one protocol fails, the other handles it
+- **Protocol Selection**: Auto-selects best protocol based on metrics, or manual per-token
+- **Global Supply Management**: Maintains unified supply tracking across protocols
+
+**Deployed Addresses** (All Networks):
+- Sepolia: `0xa5B144683Db8fE4402B06dbb774cacD95FD1A93e`
+- BSC Testnet: `0xa5B144683Db8fE4402B06dbb774cacD95FD1A93e`
+- Base Sepolia: `0xa5B144683Db8fE4402B06dbb774cacD95FD1A93e`
+
+**Protocol Selection**:
+```solidity
+enum Protocol { LAYERZERO, SUPRA, BOTH, AUTO }
+```
+
+- `LAYERZERO`: Use only LayerZero (battle-tested, reliable)
+- `SUPRA`: Use only Supra HyperNova (when EVM support launches)
+- `BOTH`: Send via both protocols for maximum redundancy
+- `AUTO`: Automatically select best protocol based on metrics
+
+**Key Functions**:
+- `syncSupplyUpdate()` - Sync supply using selected protocol(s)
+- `setTokenProtocol()` - Set preferred protocol for a token
+- `receiveLayerZeroMessage()` - Handle LayerZero messages
+- `receiveSupraMessage()` - Handle Supra messages
+- `getProtocolMetrics()` - Get performance metrics per protocol
+- `authorizeToken()` - Authorize contracts to sync
+
+**Security**:
+- Message deduplication prevents double-processing
+- Idempotent state updates
+- Protocol failure isolation
+- Authorized sender verification
+
+**Why This Matters**: Provides redundancy, performance optimization, and future-proofing. LayerZero is proven and reliable, while Supra offers enhanced security with L1-to-L1 cryptographic consensus.
+
+## 6. SupraSync
+
+**Purpose**: Adapter contract for Supra HyperNova cross-chain messaging.
+
+**Key Features**:
+- Interface for Supra HyperNova integration
+- Message tracking and deduplication
+- Chain ID mapping for Supra networks
+- Enable/disable toggle
+- Forward messages to UnifiedCrossChainSync
+
+**Deployed Addresses** (All Networks):
+- Sepolia: `0x0D5f52088E30802DC8d5c67Bc5E2231f7ad36569`
+- BSC Testnet: `0x0D5f52088E30802DC8d5c67Bc5E2231f7ad36569`
+- Base Sepolia: `0x0D5f52088E30802DC8d5c67Bc5E2231f7ad36569`
+
+**Status**: Placeholder implementation. Will be fully integrated when Supra EVM support launches (expected Q1-Q2 2025).
+
+**Future Integration**:
+- Supra HyperNova provides L1-to-L1 cryptographic consensus
+- No bridge trust assumptions
+- Enhanced security model
+- Sub-second finality (600-900ms)
+
+**Key Functions**:
+- `syncSupplyUpdate()` - Sync via Supra (when available)
+- `receiveSupraMessage()` - Receive Supra messages
+- `setEnabled()` - Enable/disable Supra sync
+- `isReady()` - Check if Supra is configured and ready
+
+## 7. CrossChainLiquidityBridge
 
 **Purpose**: Manages liquidity across chains, ensuring all chains have sufficient reserves.
 
@@ -208,7 +288,7 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 - Confirmed liquidity transfers work correctly
 - Tested edge cases (all chains low, one chain very high)
 
-## 6. CrossifyToken
+## 8. CrossifyToken
 
 **Purpose**: Standard ERC20 token implementation with additional features.
 
@@ -221,7 +301,7 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 
 **Why Custom Token?**: We needed a token that integrates seamlessly with our bonding curve system and supports all our features.
 
-## 7. Migration
+## 9. Migration
 
 **Purpose**: Handles the migration from bonding curve to DEX when graduation threshold is reached.
 
@@ -238,7 +318,7 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 - BaseSwap (Base)
 - Raydium (Solana - planned)
 
-## 8. DEXDetector
+## 10. DEXDetector
 
 **Purpose**: Automatically detects available DEXes on each chain.
 
@@ -248,7 +328,7 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 - Factory address resolution
 - Pool creation parameters
 
-## 9. UnifiedLiquidityPool
+## 11. UnifiedLiquidityPool
 
 **Purpose**: Manages shared liquidity across chains (alternative to bridge approach).
 
@@ -260,16 +340,22 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 
 **Sepolia (Ethereum)**:
 - TokenFactory: `0x8eF1A74d477448630282EFC130ac9D17f495Bca4`
+- UnifiedCrossChainSync: `0xa5B144683Db8fE4402B06dbb774cacD95FD1A93e`
+- SupraSync: `0x0D5f52088E30802DC8d5c67Bc5E2231f7ad36569`
 - GlobalSupplyTracker: `[Address]`
 - CrossChainLiquidityBridge: `0x7005c0A2c9Cd108af213c717cA6d7232AcBD1b29`
 
 **BSC Testnet**:
 - TokenFactory: `0xFF8c690B5b65905da20D8de87Cd6298c223a40B6`
+- UnifiedCrossChainSync: `0xa5B144683Db8fE4402B06dbb774cacD95FD1A93e`
+- SupraSync: `0x0D5f52088E30802DC8d5c67Bc5E2231f7ad36569`
 - GlobalSupplyTracker: `[Address]`
 - CrossChainLiquidityBridge: `0x08BA4231c0843375714Ef89999C9F908735E0Ec2`
 
 **Base Sepolia**:
 - TokenFactory: `0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58`
+- UnifiedCrossChainSync: `0xa5B144683Db8fE4402B06dbb774cacD95FD1A93e`
+- SupraSync: `0x0D5f52088E30802DC8d5c67Bc5E2231f7ad36569`
 - GlobalSupplyTracker: `[Address]`
 - CrossChainLiquidityBridge: `0xDeFC8B749e68b5e21b3873928e68Aaf56031C6EA`
 

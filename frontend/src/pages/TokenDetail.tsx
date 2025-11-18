@@ -1,5 +1,5 @@
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   AlertCircle, Copy, CheckCircle, 
@@ -48,6 +48,45 @@ const CHAIN_NAMES: Record<string, string> = {
   base: 'Base',
   'base-sepolia': 'Base Sepolia',
 };
+
+// Sync Price Button Component
+function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => void }) {
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const response = await axios.post(`${API_BASE}/tokens/${tokenId}/sync-prices`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Price sync triggered! Refreshing...');
+      setTimeout(() => {
+        onSync();
+      }, 2000);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to sync prices');
+    },
+  });
+
+  return (
+    <button
+      onClick={() => syncMutation.mutate()}
+      disabled={syncMutation.isPending}
+      className="px-3 py-1.5 text-xs font-medium text-yellow-300 bg-yellow-900/30 border border-yellow-700/50 rounded-md hover:bg-yellow-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+    >
+      {syncMutation.isPending ? (
+        <>
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Syncing...
+        </>
+      ) : (
+        <>
+          <Zap className="w-3 h-3" />
+          Sync Now
+        </>
+      )}
+    </button>
+  );
+}
 
 export default function TokenDetail() {
   const { id } = useParams<{ id: string }>();
@@ -2186,12 +2225,17 @@ export default function TokenDetail() {
             </div>
             {priceSync.variance && priceSync.variance > 0.5 && (
               <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
-                <p className="text-sm text-yellow-300">
-                  ⚠️ Price variance detected across chains. Prices are syncing automatically via cross-chain messaging.
-                </p>
-                <p className="text-xs text-yellow-400 mt-1">
-                  This usually resolves within a few seconds after transactions complete.
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm text-yellow-300">
+                      ⚠️ Price variance detected across chains ({priceSync.variance.toFixed(2)}%).
+                    </p>
+                    <p className="text-xs text-yellow-400 mt-1">
+                      Prices are syncing automatically, but you can manually trigger a sync now.
+                    </p>
+                  </div>
+                  <SyncPriceButton tokenId={id || ''} onSync={() => refetchPriceSync()} />
+                </div>
               </div>
             )}
             {priceSync.inSync && priceSync.variance < 0.5 && (

@@ -270,18 +270,38 @@ export async function monitorAndSyncPrices(): Promise<void> {
           console.log(`  ${dev.chain}: ${dev.deviation.toFixed(2)}% deviation`);
         });
 
-        // Sync to the chain with the average price
-        const prices = await getAllChainPrices(token.id);
-        const avgPrice = prices.reduce((sum, p) => sum + p.price, 0) / prices.length;
-        
-        // Find chain closest to average
-        const targetChain = prices.reduce((closest, current) => {
-          const closestDiff = Math.abs(closest.price - avgPrice);
-          const currentDiff = Math.abs(current.price - avgPrice);
-          return currentDiff < closestDiff ? current : closest;
-        });
+        // Use active price sync to update GlobalSupplyTracker contracts
+        try {
+          const { syncTokenPrices } = await import('./activePriceSync');
+          const syncResult = await syncTokenPrices(token.id);
+          
+          if (syncResult.success) {
+            console.log(`✅ Successfully synced prices for ${token.name} (${token.symbol})`);
+            syncResult.results.forEach((result) => {
+              if (result.success) {
+                console.log(`  ✅ ${result.chain}: ${result.message}`);
+              } else {
+                console.log(`  ⚠️  ${result.chain}: ${result.message}`);
+              }
+            });
+          } else {
+            console.warn(`⚠️  Price sync partially failed for ${token.name} (${token.symbol}): ${syncResult.message}`);
+          }
+        } catch (syncError) {
+          console.error(`❌ Error in active price sync for ${token.name}:`, syncError);
+          // Fallback to database-only sync
+          const prices = await getAllChainPrices(token.id);
+          const avgPrice = prices.reduce((sum, p) => sum + p.price, 0) / prices.length;
+          
+          // Find chain closest to average
+          const targetChain = prices.reduce((closest, current) => {
+            const closestDiff = Math.abs(closest.price - avgPrice);
+            const currentDiff = Math.abs(current.price - avgPrice);
+            return currentDiff < closestDiff ? current : closest;
+          });
 
-        await syncPrices(token.id, targetChain.chain);
+          await syncPrices(token.id, targetChain.chain);
+        }
       }
     }
   } catch (error) {

@@ -113,22 +113,52 @@ Crossify is a living project. While we've achieved a lot, there's always more to
 
 ## Q4 2026: Advanced Features
 
+### Supra Integration (In Progress)
+
+**Goal**: Integrate Supra HyperNova for enhanced cross-chain security and performance.
+
+**Status**: ✅ Contracts deployed, ⏳ Waiting for Supra EVM support
+
+**Completed**:
+- [x] UnifiedCrossChainSync contract deployed to all testnets
+- [x] SupraSync adapter contract deployed
+- [x] Dual protocol architecture implemented
+- [x] Message deduplication system
+- [x] Metrics tracking infrastructure
+
+**Pending**:
+- [ ] Supra EVM support launch (expected Q1-Q2 2025)
+- [ ] Full Supra HyperNova integration
+- [ ] Performance comparison and optimization
+- [ ] Gradual migration based on metrics
+
+**Benefits**:
+- L1-to-L1 cryptographic consensus (no bridge trust)
+- Enhanced security model
+- Sub-second finality (600-900ms)
+- Redundancy with LayerZero
+- Performance optimization
+
+**Timeline**: Phase 1 complete, Phase 2 pending Supra EVM launch
+
 ### Oracle Integration
 
 **Goal**: Add price verification via oracles.
 
 **Implementation**:
-- [ ] Integrate Chainlink or Supra oracles
+- [ ] Integrate Supra DORA 2.0 oracles (Phase 1 - Recommended)
 - [ ] Price verification layer
 - [ ] Discrepancy detection
 - [ ] Automatic reconciliation
+- [ ] Real-time price feeds (600-900ms finality)
 
 **Benefits**:
 - Enhanced security
 - Price manipulation protection
 - Additional verification layer
+- Sub-second price updates
 
-**Timeline**: 6-8 weeks
+**Timeline**: 2-4 weeks for Phase 1 (Supra DORA integration)
 
 ### Layer 2 Optimization
 

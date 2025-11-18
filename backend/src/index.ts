@@ -179,6 +179,11 @@ async function start() {
     startPriceMonitoring(5 * 60 * 1000); // Check every 5 minutes
     console.log('✅ Unified liquidity pool monitoring started');
 
+    // Start active price sync service (updates GlobalSupplyTracker contracts)
+    const { startActivePriceSync } = await import('./services/activePriceSync');
+    startActivePriceSync(2 * 60 * 1000); // Sync every 2 minutes
+    console.log('✅ Active price sync service started');
+
     // Start cross-chain relayer service (for fee conversion)
     getCrossChainRelayer();
     console.log('✅ Cross-chain relayer service started');

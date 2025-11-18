@@ -83,9 +83,24 @@ The heart of our cross-chain synchronization. This contract:
 - Maintains a global supply counter for each token
 - Receives updates from all chains
 - Provides unified supply data to all BondingCurves
-- Uses LayerZero for cross-chain messaging
+- Integrates with UnifiedCrossChainSync for cross-chain messaging
 
 **Why This Matters**: Traditional bonding curves use local supply, meaning prices diverge across chains. Our global supply approach keeps prices synchronized within 0.5% variance.
+
+#### UnifiedCrossChainSync
+Our next-generation cross-chain synchronization layer that supports multiple protocols in parallel:
+- **Protocol Abstraction**: Unified interface for LayerZero and Supra HyperNova
+- **Dual Protocol Support**: Can use LayerZero, Supra, or both simultaneously
+- **Message Deduplication**: Prevents double-processing when both protocols deliver messages
+- **Metrics Tracking**: Performance comparison between protocols
+- **Automatic Failover**: If one protocol fails, the other handles it
+- **Protocol Selection**: Auto-selects best protocol based on metrics, or manual selection per token
+
+**Deployed Addresses** (All Networks):
+- UnifiedCrossChainSync: `0xa5B144683Db8fE4402B06dbb774cacD95FD1A93e`
+- SupraSync: `0x0D5f52088E30802DC8d5c67Bc5E2231f7ad36569`
+
+**Why This Matters**: Provides redundancy, performance optimization, and future-proofing. LayerZero is battle-tested and reliable, while Supra HyperNova offers enhanced security with L1-to-L1 cryptographic consensus. Running both in parallel gives us the best of both worlds.
 
 #### CrossChainLiquidityBridge
 Manages liquidity across chains. When a chain runs low on reserves:
@@ -152,18 +167,22 @@ Let's trace what happens when someone buys tokens:
    - Calls GlobalSupplyTracker to update global supply
 5. **GlobalSupplyTracker**:
    - Updates its global supply counter
-   - Sends LayerZero message to all other chains
-6. **Other Chains**:
-   - Receive LayerZero message
+   - Calls UnifiedCrossChainSync to sync across chains
+6. **UnifiedCrossChainSync**:
+   - Routes message to selected protocol(s) (LayerZero, Supra, or both)
+   - Tracks metrics for performance comparison
+   - Handles message deduplication if both protocols deliver
+7. **Other Chains**:
+   - Receive cross-chain message via selected protocol
    - Update their GlobalSupplyTracker instances
    - All BondingCurves now see the new global supply
    - Prices update on all chains
-7. **Backend**:
+8. **Backend**:
    - Monitors transaction via RPC
    - Records transaction in database
    - Logs to Hedera HCS
    - Updates frontend via WebSocket/polling
-8. **Frontend**:
+9. **Frontend**:
    - Shows transaction confirmation
    - Updates price display
    - Refreshes transaction history
@@ -181,10 +200,12 @@ Let's trace what happens when someone buys tokens:
    - Input validation on all parameters
 
 2. **Cross-Chain Security**:
-   - LayerZero authentication for all messages
+   - Dual protocol support (LayerZero + Supra) for redundancy
    - Message verification before state updates
+   - Message deduplication prevents double-processing
    - Rate limiting on cross-chain updates
    - Fallback to local pricing if cross-chain fails
+   - Automatic failover if one protocol fails
 
 3. **Backend Security**:
    - Rate limiting on API endpoints
@@ -218,7 +239,8 @@ Let's trace what happens when someone buys tokens:
 - **Solidity**: ^0.8.20
 - **Hardhat**: Development and testing framework
 - **OpenZeppelin**: Security libraries
-- **LayerZero**: Cross-chain messaging
+- **LayerZero**: Cross-chain messaging (primary)
+- **Supra HyperNova**: Cross-chain messaging (alternative, when EVM support launches)
 
 ### Backend
 - **Node.js**: Runtime

@@ -1917,6 +1917,12 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       ? Math.sqrt(priceValues.reduce((sum, p) => sum + Math.pow(p - avgPrice, 2), 0) / priceValues.length) / avgPrice * 100
       : 0;
     
+    // Check if sync is needed
+    const needsSync = variance > 0.5;
+    const syncSuggestion = needsSync 
+      ? `High variance detected (${variance.toFixed(2)}%). Consider calling POST /tokens/${id}/sync-prices to sync prices.`
+      : null;
+    
     res.json({
       tokenId: id,
       prices,
@@ -1924,12 +1930,45 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       globalSupply,
       supplyByChain,
       variance,
-      inSync: variance < 0.5, // In sync if variance < 0.5%
+      inSync: !needsSync,
+      needsSync,
+      syncSuggestion,
       lastSync: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Error fetching price sync:', error);
     res.status(500).json({ error: 'Failed to fetch price sync' });
+  }
+});
+
+// POST /tokens/:id/sync-prices - Manually trigger price sync for a token
+router.post('/:id/sync-prices', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const { syncTokenPrices } = await import('../services/activePriceSync');
+    const result = await syncTokenPrices(id);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        results: result.results,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message,
+        results: result.results,
+      });
+    }
+  } catch (error) {
+    console.error('Error syncing prices:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to sync prices',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
