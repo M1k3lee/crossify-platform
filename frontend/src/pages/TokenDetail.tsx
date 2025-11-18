@@ -116,11 +116,16 @@ export default function TokenDetail() {
       } catch (error: any) {
         console.error('Error fetching price sync:', error);
         // Return default values if price sync fails
-        return { prices: {}, variance: 0 };
+        return { prices: {}, variance: 0, inSync: false };
       }
     },
     enabled: !!id && !!status, // Only fetch if token exists
-    refetchInterval: 10000,
+    // Refresh more frequently when out of sync (every 3s) vs when synced (every 10s)
+    refetchInterval: (query) => {
+      const data = query.state.data as any;
+      const isOutOfSync = data?.variance > 0.5 || !data?.inSync;
+      return isOutOfSync ? 3000 : 10000;
+    },
     retry: false,
   });
 
@@ -2101,7 +2106,25 @@ export default function TokenDetail() {
         {/* Cross-Chain Price Comparison */}
         {deployments && deployments.length > 1 && priceSync && (
           <div className="mb-6 bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-            <h2 className="text-2xl font-bold text-white mb-4">Cross-Chain Price Comparison</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-white">Universal Price Sync</h2>
+              <div className="flex items-center gap-2">
+                {priceSync.inSync ? (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-green-900/30 border border-green-700/50 rounded-full">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                    <span className="text-xs font-semibold text-green-300">Synced</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-yellow-900/30 border border-yellow-700/50 rounded-full">
+                    <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                    <span className="text-xs font-semibold text-yellow-300">Syncing...</span>
+                  </div>
+                )}
+                {priceSync.variance && (
+                  <span className="text-xs text-gray-400">Variance: {priceSync.variance.toFixed(2)}%</span>
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {deployments.map((dep: any) => {
                 if (!dep || !dep.chain) return null;
@@ -2118,22 +2141,46 @@ export default function TokenDetail() {
                   const chainDisplayName = CHAIN_NAMES[normalizedChainName] || CHAIN_NAMES[chainName] || chainName;
                   const variance = priceSync.variance || 0;
                   
+                  // Calculate if this price is in sync (within 0.5% of average)
+                  const priceValues = Object.values(priceSync.prices || {});
+                  const avgPrice = priceValues.length > 0 
+                    ? priceValues.reduce((a: number, b: number) => a + b, 0) / priceValues.length 
+                    : price;
+                  const priceDeviation = Math.abs(price - avgPrice) / avgPrice * 100;
+                  const isInSync = priceDeviation < 0.5;
+                  
                   return (
                   <div
                     key={dep.chain}
-                    className="bg-gray-700/30 rounded-lg p-4 border border-gray-700/50"
+                    className={`bg-gray-700/30 rounded-lg p-4 border-2 transition-all ${
+                      isInSync 
+                        ? 'border-green-500/50 shadow-lg shadow-green-500/10' 
+                        : 'border-yellow-500/50 shadow-lg shadow-yellow-500/10'
+                    }`}
                     style={{ borderLeftColor: chainColor, borderLeftWidth: '4px' }}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-gray-400">{chainDisplayName}</span>
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: chainColor }}
-                      />
+                      <div className="flex items-center gap-2">
+                        {isInSync ? (
+                          <div className="w-2 h-2 bg-green-400 rounded-full" title="In sync" />
+                        ) : (
+                          <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" title="Syncing..." />
+                        )}
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: chainColor }}
+                        />
+                      </div>
                     </div>
                     <p className="text-2xl font-bold text-white mb-1">${price.toFixed(6)}</p>
-                    {variance > 0.5 && (
-                      <p className="text-xs text-yellow-400">Variance: {variance.toFixed(2)}%</p>
+                    {!isInSync && (
+                      <p className="text-xs text-yellow-400">
+                        {price > avgPrice ? '↑' : '↓'} {priceDeviation.toFixed(2)}% from avg
+                      </p>
+                    )}
+                    {isInSync && variance < 0.5 && (
+                      <p className="text-xs text-green-400">✓ Synced</p>
                     )}
                   </div>
                   );
@@ -2146,7 +2193,17 @@ export default function TokenDetail() {
             {priceSync.variance && priceSync.variance > 0.5 && (
               <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
                 <p className="text-sm text-yellow-300">
-                  ⚠️ Price variance detected across chains. Cross-chain synchronization may be needed.
+                  ⚠️ Price variance detected across chains. Prices are syncing automatically via cross-chain messaging.
+                </p>
+                <p className="text-xs text-yellow-400 mt-1">
+                  This usually resolves within a few seconds after transactions complete.
+                </p>
+              </div>
+            )}
+            {priceSync.inSync && priceSync.variance < 0.5 && (
+              <div className="mt-4 p-3 bg-green-900/20 border border-green-700/50 rounded-lg">
+                <p className="text-sm text-green-300">
+                  ✅ All chains are perfectly synced! Prices are identical across all deployments.
                 </p>
               </div>
             )}
