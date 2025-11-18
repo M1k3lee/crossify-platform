@@ -48,6 +48,10 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE: ${{ secrets.VITE_API_BASE || 'https://crossify-platform-production.up.railway.app/api' }}
+          VITE_BSC_TESTNET_RPC_URL: ${{ secrets.VITE_BSC_TESTNET_RPC_URL || 'https://bsc-testnet-rpc.publicnode.com' }}
+          VITE_BASE_SEPOLIA_RPC_URL: ${{ secrets.VITE_BASE_SEPOLIA_RPC_URL || 'https://base-sepolia-rpc.publicnode.com' }}
+          VITE_SEPOLIA_RPC_URL: ${{ secrets.VITE_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com' }}
+          VITE_BSC_RPC_URL: ${{ secrets.VITE_BSC_RPC_URL || 'https://bsc-dataseed.binance.org' }}
           VITE_BASE_PATH: /
           VITE_ETH_FACTORY: ${{ secrets.VITE_ETH_FACTORY || '0x8eF1A74d477448630282EFC130ac9D17f495Bca4' }}
           VITE_BSC_FACTORY: ${{ secrets.VITE_BSC_FACTORY || '0xFF8c690B5b65905da20D8de87Cd6298c223a40B6' }}

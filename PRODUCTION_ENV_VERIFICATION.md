@@ -171,6 +171,17 @@ This document lists **all environment variables** required for production deploy
 
 **Note:** Frontend uses these to display token creation options and connect to correct contracts.
 
+### RPC Overrides for Frontend Validation
+
+| Variable | Required | Description | Recommended Default |
+|----------|----------|-------------|---------------------|
+| `VITE_BSC_TESTNET_RPC_URL` | ⚠️ If supporting BSC testnet | Browser-friendly RPC for BSC testnet (used to detect contract deployment) | `https://bsc-testnet-rpc.publicnode.com` |
+| `VITE_BASE_SEPOLIA_RPC_URL` | ⚠️ If supporting Base Sepolia | Browser RPC for Base Sepolia | `https://base-sepolia-rpc.publicnode.com` |
+| `VITE_SEPOLIA_RPC_URL` | ⚠️ If supporting Sepolia | Browser RPC for Sepolia | `https://ethereum-sepolia-rpc.publicnode.com` |
+| `VITE_BSC_RPC_URL` | ⚠️ If supporting BSC mainnet | Browser RPC for BSC mainnet | `https://bsc-dataseed.binance.org` |
+
+**GitHub Actions:** Ensure `.github/workflows/deploy.yml` exports these env vars during the `npm run build` step so GitHub Pages builds bundle them.
+
 ### Platform Fee (Optional)
 
 | Variable | Required | Description | Example |
