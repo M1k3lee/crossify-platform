@@ -107,7 +107,7 @@ export default function TokenDetail() {
     retry: false, // Don't retry on 404 errors
   });
 
-  const { data: priceSync } = useQuery({
+  const { data: priceSync, refetch: refetchPriceSync } = useQuery({
     queryKey: ['price-sync', id],
     queryFn: async () => {
       try {
@@ -120,14 +120,24 @@ export default function TokenDetail() {
       }
     },
     enabled: !!id && !!status, // Only fetch if token exists
-    // Refresh more frequently when out of sync (every 3s) vs when synced (every 10s)
-    refetchInterval: (query) => {
-      const data = query.state.data as any;
-      const isOutOfSync = data?.variance > 0.5 || !data?.inSync;
-      return isOutOfSync ? 3000 : 10000;
-    },
+    // Disable default refetchInterval - we'll handle it dynamically with useEffect
+    refetchInterval: false,
     retry: false,
   });
+
+  // Dynamically adjust refresh interval based on sync status
+  useEffect(() => {
+    if (!priceSync || !id || !status) return;
+    
+    const isOutOfSync = (priceSync.variance ?? 0) > 0.5 || !priceSync.inSync;
+    const interval = isOutOfSync ? 3000 : 10000;
+    
+    const intervalId = setInterval(() => {
+      refetchPriceSync();
+    }, interval);
+    
+    return () => clearInterval(intervalId);
+  }, [priceSync, refetchPriceSync, id, status]);
 
   const { data: metadata } = useQuery({
     queryKey: ['token-metadata', id],
@@ -2136,15 +2146,15 @@ export default function TokenDetail() {
                                             chainName.includes('base') ? 'base' :
                                             chainName.includes('bsc') ? 'bsc' :
                                             chainName.includes('ethereum') ? 'ethereum' : chainName;
-                  const price = priceSync.prices?.[chainName] || (dep.marketCap ? dep.marketCap / 1000000 : 0.001);
+                  const price = priceSync?.prices?.[chainName] || (dep.marketCap ? dep.marketCap / 1000000 : 0.001);
                   const chainColor = CHAIN_COLORS[normalizedChainName] || CHAIN_COLORS[chainName] || '#FFFFFF';
                   const chainDisplayName = CHAIN_NAMES[normalizedChainName] || CHAIN_NAMES[chainName] || chainName;
-                  const variance = priceSync.variance || 0;
+                  const variance = priceSync?.variance || 0;
                   
                   // Calculate if this price is in sync (within 0.5% of average)
-                  const priceValues = Object.values(priceSync.prices || {});
+                  const priceValues = Object.values(priceSync?.prices || {}) as number[];
                   const avgPrice = priceValues.length > 0 
-                    ? priceValues.reduce((a: number, b: number) => a + b, 0) / priceValues.length 
+                    ? priceValues.reduce((a, b) => a + b, 0) / priceValues.length 
                     : price;
                   const priceDeviation = Math.abs(price - avgPrice) / avgPrice * 100;
                   const isInSync = priceDeviation < 0.5;
