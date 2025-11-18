@@ -216,16 +216,15 @@ export default function TokenDetail() {
     return deployments[0]?.chain?.toLowerCase() || 'ethereum';
   }, [status?.deployments, searchParams]);
 
-  // Fetch recent transactions
+  // Fetch recent transactions from all chains
   const { data: transactionsData } = useQuery({
-    queryKey: ['token-transactions', id, selectedChainForQueries],
+    queryKey: ['token-transactions', id],
     queryFn: async () => {
       try {
         const response = await axios.get(`${API_BASE}/transactions`, {
           params: {
             tokenId: id,
-            chain: selectedChainForQueries,
-            limit: 10,
+            limit: 20, // Increased limit since we're showing all chains
           },
         });
         return response.data;
@@ -234,7 +233,7 @@ export default function TokenDetail() {
         return { transactions: [], count: 0 };
       }
     },
-    enabled: !!id && !!selectedChainForQueries,
+    enabled: !!id,
     refetchInterval: 15000,
   });
 
@@ -1860,7 +1859,7 @@ export default function TokenDetail() {
               </h2>
             </div>
             <div className="space-y-2">
-              {transactionsData.transactions.slice(0, 5).map((tx: any) => (
+              {transactionsData.transactions.slice(0, 10).map((tx: any) => (
                 <div
                   key={tx.id}
                   className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition"
@@ -1876,7 +1875,14 @@ export default function TokenDetail() {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white capitalize">{tx.type}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-white capitalize">{tx.type}</p>
+                        {tx.chain && (
+                          <span className="text-xs px-1.5 py-0.5 bg-gray-600 rounded text-gray-300 capitalize">
+                            {tx.chain.replace('-', ' ')}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400">
                         {tx.amount ? `${parseFloat(tx.amount).toLocaleString()} ${tokenSymbol}` : 'N/A'}
                       </p>
