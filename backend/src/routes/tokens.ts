@@ -2285,7 +2285,7 @@ router.post('/:id/authorize-backend-wallet', async (req: Request, res: Response)
         ];
         
         // Try each key until we find the owner
-        let ownerWallet: ethers.Wallet | null = null;
+        let ownerWallet: any = null;
         let trackerOwner: string | null = null;
         
         for (const key of possibleKeys) {
