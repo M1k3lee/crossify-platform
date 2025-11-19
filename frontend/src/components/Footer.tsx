@@ -29,7 +29,7 @@ export default function Footer() {
                 <Twitter className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
               </a>
               <a
-                href="https://discord.gg/WQMevJek"
+                href="https://discord.gg/JSXq9cU2CH"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 bg-gray-800 hover:bg-indigo-600 rounded-lg transition-colors group"
