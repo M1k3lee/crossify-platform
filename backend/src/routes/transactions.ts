@@ -129,6 +129,22 @@ router.post('/', async (req: Request, res: Response) => {
             await syncPriceAcrossChains(tokenId);
             console.log(`✅ Triggered price sync for ${tokenId} across all chains`);
             
+            // CRITICAL: Also update GlobalSupplyTracker contracts so bonding curves use global supply
+            // This ensures prices sync across chains in real-time
+            try {
+              const { syncTokenPrices } = await import('../services/activePriceSync');
+              const syncResult = await syncTokenPrices(tokenId);
+              if (syncResult.success) {
+                console.log(`✅ Updated GlobalSupplyTracker contracts: ${syncResult.message}`);
+              } else {
+                console.warn(`⚠️  GlobalSupplyTracker update failed (non-critical): ${syncResult.message}`);
+                console.warn(`   Results:`, syncResult.results);
+              }
+            } catch (syncError) {
+              // Non-critical - GlobalSupplyTracker might not be configured
+              console.warn('⚠️  GlobalSupplyTracker sync error (non-critical):', syncError instanceof Error ? syncError.message : syncError);
+            }
+            
             // Attempt to send cross-chain messages via smart contracts
             try {
               const { sendCrossChainSupplyUpdate } = await import('../services/crossChainMessaging');
