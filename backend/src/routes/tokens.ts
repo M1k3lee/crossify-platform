@@ -2167,7 +2167,7 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
             }
             
             // Use expected price instead of actual price for consistent display
-            if (useExpectedPrice) {
+            if (USE_EXPECTED_PRICE) {
               actualPrice = expectedPrice;
               console.log(`   Using expected price for display: ${expectedPrice} ETH (actual from contract: ${fetchedActualPrice} ETH)`);
             } else {
@@ -2190,7 +2190,7 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       
       // Always use expected price for display consistency (even if we fetched actual price)
       // This ensures all chains show the same price based on global supply
-      if (useExpectedPrice) {
+      if (USE_EXPECTED_PRICE) {
         actualPrice = expectedPrice;
       }
       
@@ -2247,7 +2247,7 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       : 0;
     
     // Prices are in sync if we're using expected prices (variance should be 0)
-    const pricesInSync = displayedVariance < 0.1 || useExpectedPrice;
+    const pricesInSync = displayedVariance < 0.1 || USE_EXPECTED_PRICE;
     
     res.json({
       tokenId: id,
@@ -2261,7 +2261,7 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       syncSuggestion: null,
       parameterMismatch: parameterMismatch.length > 0 ? parameterMismatch : undefined,
       expectedPrice: expectedPriceUSD,
-      usingExpectedPrice: useExpectedPrice, // Flag to indicate we're using expected prices
+      usingExpectedPrice: USE_EXPECTED_PRICE, // Flag to indicate we're using expected prices
       lastSync: new Date().toISOString(),
     });
   } catch (error) {
