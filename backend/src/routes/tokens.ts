@@ -2147,9 +2147,10 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
               curveContract.slope().catch(() => null),
             ]);
             
+            let fetchedActualPrice = 0;
             if (currentPriceWei) {
-              actualPrice = parseFloat(ethers.formatEther(currentPriceWei));
-              console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${actualPrice} ETH`);
+              fetchedActualPrice = parseFloat(ethers.formatEther(currentPriceWei));
+              console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${fetchedActualPrice} ETH`);
             }
             
             // Store parameters for mismatch detection (but we'll use expected price for display)
@@ -2161,14 +2162,16 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
               }
               curveParameters[dep.chain].basePrice = curveBasePrice;
               curveParameters[dep.chain].slope = curveSlope;
-              curveParameters[dep.chain].actualPrice = actualPrice;
+              curveParameters[dep.chain].actualPrice = fetchedActualPrice;
               console.log(`   Base Price: ${curveBasePrice.toFixed(8)} ETH, Slope: ${curveSlope.toFixed(12)} ETH/token`);
             }
             
             // Use expected price instead of actual price for consistent display
             if (useExpectedPrice) {
               actualPrice = expectedPrice;
-              console.log(`   Using expected price for display: ${expectedPrice} ETH (actual: ${actualPrice} ETH)`);
+              console.log(`   Using expected price for display: ${expectedPrice} ETH (actual from contract: ${fetchedActualPrice} ETH)`);
+            } else {
+              actualPrice = fetchedActualPrice || expectedPrice;
             }
           } else {
             console.warn(`⚠️ No RPC URL for chain ${dep.chain}, using expected price calculation`);
