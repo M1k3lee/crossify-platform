@@ -249,6 +249,7 @@ export default function TokenDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const queryClient = useQueryClient();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [liquidityModal, setLiquidityModal] = useState<{
