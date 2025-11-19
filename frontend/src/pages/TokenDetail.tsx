@@ -1,5 +1,6 @@
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   AlertCircle, Copy, CheckCircle, 
@@ -249,8 +250,7 @@ export default function TokenDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const { address, isConnected } = useAccount();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient(); // Used for invalidating queries after mutations
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [liquidityModal, setLiquidityModal] = useState<{
     chain: string;
