@@ -81,7 +81,7 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
       } else if (syncSuccess) {
         toast.success('✅ Prices synced! Some curves may need configuration.');
       } else {
-        toast.warning('⚠️ Sync completed with some issues. Check console for details.');
+        toast.error('⚠️ Sync completed with some issues. Check console for details.');
       }
       
       // Log detailed results
