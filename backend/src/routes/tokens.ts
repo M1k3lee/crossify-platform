@@ -2478,15 +2478,16 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     
     try {
       // Get volume by day
+      // Use CAST(created_at AS DATE) for better PostgreSQL compatibility
       volumeByDay = await dbAll(`
         SELECT 
-          DATE(created_at) as date,
+          CAST(created_at AS DATE) as date,
           type,
           COUNT(*) as count,
           SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as volume
         FROM transactions
         WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
-        GROUP BY DATE(created_at), type
+        GROUP BY CAST(created_at AS DATE), type
         ORDER BY date DESC
       `, params) as any[];
     } catch (error: any) {

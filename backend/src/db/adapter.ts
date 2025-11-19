@@ -142,10 +142,15 @@ function convertToPostgreSQL(sql: string): string {
     return converted;
   });
 
-  // Handle SQLite DATE() function -> PostgreSQL DATE_TRUNC('day', ...) or ::date
+  // Handle SQLite DATE() function -> PostgreSQL ::date
   // DATE(column) -> column::date
+  // But also handle CAST(column AS DATE) which is already PostgreSQL-compatible
   pgSQL = pgSQL.replace(/DATE\s*\(\s*([^)]+)\s*\)/gi, (match, column) => {
     const col = column.trim();
+    // If it's already a CAST expression, don't double-convert
+    if (col.toUpperCase().includes('CAST') && col.toUpperCase().includes('AS DATE')) {
+      return match; // Already PostgreSQL-compatible
+    }
     const converted = `${col}::date`;
     if (process.env.NODE_ENV === 'development') {
       console.log(`🔄 Converted: ${match} → ${converted}`);
