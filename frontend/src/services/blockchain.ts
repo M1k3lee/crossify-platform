@@ -828,6 +828,7 @@ export async function deployTokenOnEVM(
     
     // Try to decode the revert reason
     let errorMessage = 'Transaction will revert';
+    let decodedReason = '';
     
     if (estimateError.data) {
       try {
@@ -835,6 +836,7 @@ export async function deployTokenOnEVM(
         const reason = factory.interface.parseError(estimateError.data);
         if (reason) {
           errorMessage = `Transaction will revert: ${reason.name}`;
+          decodedReason = reason.name;
           console.error(`Decoded error:`, reason);
         }
       } catch (parseError) {
@@ -842,19 +844,49 @@ export async function deployTokenOnEVM(
         try {
           const decoded = ethers.AbiCoder.defaultAbiCoder().decode(['string'], '0x' + estimateError.data.slice(10));
           errorMessage = `Transaction reverted: ${decoded[0]}`;
+          decodedReason = decoded[0];
         } catch {
-          // If it's a standard error, try to extract the selector
-          const errorSelector = estimateError.data.slice(0, 10);
-          console.error(`Error selector: ${errorSelector}`);
-          
-          // Common error selectors
-          const errorMap: Record<string, string> = {
-            '0x08c379a0': 'Error(string)',
-            '0x4e487b71': 'Panic(uint256)',
-          };
-          
-          if (errorMap[errorSelector]) {
-            errorMessage = `Transaction reverted with ${errorMap[errorSelector]}`;
+          // Try to decode as hex-encoded ASCII (common in Hedera)
+          try {
+            // Remove 0x prefix and decode hex to ASCII
+            const hexData = estimateError.data.startsWith('0x') ? estimateError.data.slice(2) : estimateError.data;
+            // Check if it's valid hex and looks like ASCII
+            if (/^[0-9a-fA-F]+$/.test(hexData)) {
+              let asciiString = '';
+              for (let i = 0; i < hexData.length; i += 2) {
+                const hexByte = hexData.substr(i, 2);
+                const charCode = parseInt(hexByte, 16);
+                if (charCode >= 32 && charCode <= 126) { // Printable ASCII range
+                  asciiString += String.fromCharCode(charCode);
+                } else {
+                  break; // Not ASCII, stop decoding
+                }
+              }
+              if (asciiString.length > 0) {
+                decodedReason = asciiString;
+                // Map common Hedera errors to user-friendly messages
+                if (asciiString === 'INSUFFICIENT_PAYER_BALANCE') {
+                  errorMessage = `Insufficient HBAR balance`;
+                } else {
+                  errorMessage = `Transaction reverted: ${asciiString}`;
+                }
+                console.error(`Decoded hex-encoded ASCII error:`, asciiString);
+              }
+            }
+          } catch (hexError) {
+            // If it's a standard error, try to extract the selector
+            const errorSelector = estimateError.data.slice(0, 10);
+            console.error(`Error selector: ${errorSelector}`);
+            
+            // Common error selectors
+            const errorMap: Record<string, string> = {
+              '0x08c379a0': 'Error(string)',
+              '0x4e487b71': 'Panic(uint256)',
+            };
+            
+            if (errorMap[errorSelector]) {
+              errorMessage = `Transaction reverted with ${errorMap[errorSelector]}`;
+            }
           }
         }
       }
@@ -865,8 +897,22 @@ export async function deployTokenOnEVM(
       throw new Error(`❌ Cannot call createToken function on factory contract.\n\nPossible causes:\n1. Factory contract ABI doesn't match (wrong function signature)\n2. Factory contract doesn't have createToken function\n3. Contract address is wrong\n\nFactory address: ${factoryAddress}\nChain: ${chain}\n\nPlease verify:\n1. The factory was deployed correctly\n2. The ABI matches your contract\n3. The address in .env is correct for ${chain}`);
     }
     
-    // Provide detailed error message
-    throw new Error(`❌ ${errorMessage}\n\nFactory: ${factoryAddress}\nChain: ${chain}\n\nPlease check:\n1. Factory contract exists and is deployed\n2. Parameters are valid (initialSupply: ${initialSupply}, basePrice: ${ethers.formatEther(basePrice)} ETH)\n3. You have sufficient testnet tokens\n4. Function signature matches the contract`);
+    // Provide detailed error message with chain-specific guidance
+    const nativeToken = chain === 'bsc' ? 'BNB' : chain === 'hedera' ? 'HBAR' : 'ETH';
+    let detailedMessage = `❌ ${errorMessage}\n\nFactory: ${factoryAddress}\nChain: ${chain}\n\n`;
+    
+    // Add chain-specific guidance
+    if (decodedReason === 'INSUFFICIENT_PAYER_BALANCE' || errorMessage.includes('Insufficient')) {
+      if (chain === 'hedera') {
+        detailedMessage += `⚠️ Insufficient HBAR balance!\n\nYou need HBAR (not ETH) to deploy on Hedera Testnet.\n\nTo get testnet HBAR:\n1. Visit https://portal.hedera.com/\n2. Connect your wallet\n3. Request testnet HBAR\n4. Make sure you have at least 10-20 HBAR for deployment\n\n`;
+      } else {
+        detailedMessage += `⚠️ Insufficient ${nativeToken} balance!\n\nYou need ${nativeToken} to pay for gas fees.\n\n`;
+      }
+    }
+    
+    detailedMessage += `Please check:\n1. Factory contract exists and is deployed\n2. Parameters are valid (initialSupply: ${initialSupply}, basePrice: ${ethers.formatEther(basePrice)} ${nativeToken})\n3. You have sufficient testnet ${nativeToken} (${chain === 'hedera' ? 'HBAR' : nativeToken})\n4. Function signature matches the contract`;
+    
+    throw new Error(detailedMessage);
   }
 
   // Deploy token - THIS SHOULD TRIGGER METAMASK POPUP
@@ -1100,7 +1146,13 @@ export async function deployTokenOnEVM(
     
     // Check for common revert reasons
     if (error.message?.includes('execution reverted')) {
-      errorMessage = `Transaction reverted. This usually means:\n1. Factory contract may not be deployed at ${factoryAddress}\n2. Invalid parameters\n3. Insufficient gas\n\nCheck the factory address in your .env file (VITE_${chain.toUpperCase()}_FACTORY)`;
+      const nativeToken = chain === 'bsc' ? 'BNB' : chain === 'hedera' ? 'HBAR' : 'ETH';
+      errorMessage = `Transaction reverted. This usually means:\n1. Factory contract may not be deployed at ${factoryAddress}\n2. Invalid parameters\n3. Insufficient gas or ${nativeToken} balance\n\nCheck the factory address in your .env file (VITE_${chain.toUpperCase()}_FACTORY)`;
+      
+      // Add specific guidance for Hedera
+      if (chain === 'hedera' && (error.message.includes('INSUFFICIENT') || error.data?.includes('494e53554646494349454e545f50415945525f42414c414e4345'))) {
+        errorMessage += `\n\n⚠️ Hedera requires HBAR (not ETH)!\nVisit https://portal.hedera.com/ to get testnet HBAR.`;
+      }
     } else if (error.message) {
       errorMessage = error.message;
     }
