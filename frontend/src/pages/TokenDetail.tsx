@@ -2398,14 +2398,34 @@ export default function TokenDetail() {
                     <p className="text-sm text-yellow-300">
                       ⚠️ Price variance detected across chains ({priceSync.variance.toFixed(2)}%).
                     </p>
-                    <p className="text-xs text-yellow-400 mt-1">
-                      Prices are syncing automatically, but you can manually trigger a sync now.
-                      {priceSync.variance > 100 && (
-                        <span className="block mt-1 text-yellow-500">
-                          💡 Tip: This token may need bonding curve configuration. Click "Sync Now" to auto-configure.
-                        </span>
-                      )}
-                    </p>
+                    {priceSync.parameterMismatch && priceSync.parameterMismatch.length > 0 ? (
+                      <div className="mt-2 p-3 bg-red-900/20 border border-red-700/50 rounded-lg">
+                        <p className="text-xs text-red-300 font-semibold mb-2">
+                          ❌ Parameter Mismatch Detected!
+                        </p>
+                        <p className="text-xs text-red-400/80 mb-2">
+                          Bonding curves have different <code className="bg-red-900/30 px-1 rounded">basePrice</code> or <code className="bg-red-900/30 px-1 rounded">slope</code> parameters. 
+                          Prices cannot sync properly when parameters differ.
+                        </p>
+                        <ul className="text-xs text-red-400/80 list-disc list-inside space-y-1 mb-2">
+                          {priceSync.parameterMismatch.map((mismatch: string, idx: number) => (
+                            <li key={idx}>{mismatch}</li>
+                          ))}
+                        </ul>
+                        <p className="text-xs text-red-300 font-medium">
+                          💡 Solution: Redeploy tokens with consistent parameters to enable proper price synchronization.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-yellow-400 mt-1">
+                        Prices are syncing automatically, but you can manually trigger a sync now.
+                        {priceSync.variance > 100 && (
+                          <span className="block mt-1 text-yellow-500">
+                            💡 Tip: This token may need bonding curve configuration. Click "Sync Now" to auto-configure.
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <SyncPriceButton tokenId={id || ''} onSync={() => refetchPriceSync()} />
                 </div>
