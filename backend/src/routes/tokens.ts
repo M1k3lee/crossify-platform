@@ -2107,6 +2107,9 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     
     // CRITICAL: Query ACTUAL bonding curve contract price for each chain
     // This shows the REAL trading price on each chain (may differ if not synced)
+    // Also fetch basePrice and slope to detect parameter mismatches
+    const curveParameters: Record<string, { basePrice: number; slope: number; actualPrice: number }> = {};
+    
     for (const dep of deployments) {
       let actualPrice = 0;
       
@@ -2130,16 +2133,37 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
           if (rpcUrl) {
             const provider = new ethers.JsonRpcProvider(rpcUrl);
             
-            // Query actual bonding curve contract
+            // Query actual bonding curve contract - get price AND parameters
             const bondingCurveABI = [
               'function getCurrentPrice() external view returns (uint256)',
+              'function basePrice() external view returns (uint256)',
+              'function slope() external view returns (uint256)',
             ];
             
             const curveContract = new ethers.Contract(dep.curve_address, bondingCurveABI, provider);
-            const currentPriceWei = await curveContract.getCurrentPrice();
-            actualPrice = parseFloat(ethers.formatEther(currentPriceWei));
+            const [currentPriceWei, basePriceWei, slopeWei] = await Promise.all([
+              curveContract.getCurrentPrice().catch(() => null),
+              curveContract.basePrice().catch(() => null),
+              curveContract.slope().catch(() => null),
+            ]);
             
-            console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${actualPrice} ETH`);
+            if (currentPriceWei) {
+              actualPrice = parseFloat(ethers.formatEther(currentPriceWei));
+              console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${actualPrice} ETH`);
+            }
+            
+            // Store parameters for mismatch detection
+            if (basePriceWei && slopeWei) {
+              const curveBasePrice = parseFloat(ethers.formatEther(basePriceWei));
+              const curveSlope = parseFloat(ethers.formatEther(slopeWei));
+              if (!curveParameters[dep.chain]) {
+                curveParameters[dep.chain] = { basePrice: 0, slope: 0, actualPrice: 0 };
+              }
+              curveParameters[dep.chain].basePrice = curveBasePrice;
+              curveParameters[dep.chain].slope = curveSlope;
+              curveParameters[dep.chain].actualPrice = actualPrice;
+              console.log(`   Base Price: ${curveBasePrice.toFixed(8)} ETH, Slope: ${curveSlope.toFixed(12)} ETH/token`);
+            }
           } else {
             console.warn(`⚠️ No RPC URL for chain ${dep.chain}, using expected price calculation`);
             // Use expected price based on global supply
