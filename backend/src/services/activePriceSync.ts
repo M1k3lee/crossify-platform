@@ -119,17 +119,22 @@ export async function syncSupplyForDeployment(
 
     // Check if the bonding curve is authorized
     const isAuthorized = await trackerContract.authorizedUpdaters(curveAddress);
-    if (!isAuthorized) {
+    
+    // Check if our wallet is the owner (owner can also update)
+    const signer = new ethers.Wallet(config.privateKey, provider);
+    const trackerOwner = await trackerContract.owner().catch(() => null);
+    const isOwner = trackerOwner && trackerOwner.toLowerCase() === signer.address.toLowerCase();
+    
+    if (!isAuthorized && !isOwner) {
       return {
         success: false,
-        message: `Bonding curve ${curveAddress} is not authorized in GlobalSupplyTracker`,
+        message: `Bonding curve ${curveAddress} is not authorized and wallet ${signer.address} is not the owner (owner: ${trackerOwner || 'unknown'})`,
         actualSupply,
         trackerSupply,
       };
     }
 
     // Update GlobalSupplyTracker with actual supply
-    const signer = new ethers.Wallet(config.privateKey, provider);
     const trackerWithSigner = new ethers.Contract(
       config.globalSupplyTrackerAddress,
       GLOBAL_SUPPLY_TRACKER_ABI,
@@ -137,8 +142,32 @@ export async function syncSupplyForDeployment(
     );
 
     console.log(`🔄 Syncing supply for ${tokenId} on ${chain}: ${trackerSupply} → ${actualSupply}`);
+    console.log(`   Wallet: ${signer.address}`);
+    console.log(`   Tracker Owner: ${trackerOwner || 'unknown'}`);
+    console.log(`   Is Owner: ${isOwner}`);
+    console.log(`   Curve Authorized: ${isAuthorized}`);
 
     try {
+      // Estimate gas first to catch errors early
+      try {
+        const gasEstimate = await trackerWithSigner.updateSupply.estimateGas(
+          tokenAddress,
+          config.chainName,
+          actualSupplyWei
+        );
+        console.log(`   Estimated gas: ${gasEstimate.toString()}`);
+      } catch (estimateError: any) {
+        console.error(`   Gas estimation failed:`, estimateError);
+        // Try to extract revert reason
+        const revertReason = estimateError.reason || estimateError.data || estimateError.message;
+        return {
+          success: false,
+          message: `Gas estimation failed (transaction would revert): ${revertReason}`,
+          actualSupply,
+          trackerSupply,
+        };
+      }
+
       const tx = await trackerWithSigner.updateSupply(
         tokenAddress,
         config.chainName,
@@ -162,9 +191,24 @@ export async function syncSupplyForDeployment(
       };
     } catch (error: any) {
       console.error(`❌ Failed to update supply:`, error);
+      
+      // Try to extract revert reason
+      let errorMessage = error.message || 'Unknown error';
+      if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.data) {
+        // Try to decode error data
+        try {
+          const decoded = ethers.AbiCoder.defaultAbiCoder().decode(['string'], error.data);
+          errorMessage = decoded[0] || errorMessage;
+        } catch {
+          // If decoding fails, use original message
+        }
+      }
+      
       return {
         success: false,
-        message: `Transaction failed: ${error.message}`,
+        message: `Transaction failed: ${errorMessage}`,
         actualSupply,
         trackerSupply,
       };
