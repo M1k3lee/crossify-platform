@@ -2230,6 +2230,104 @@ router.get('/:id/sync-diagnostics', async (req: Request, res: Response) => {
   }
 });
 
+// POST /tokens/:id/authorize-backend-wallet - Authorize backend wallet in GlobalSupplyTracker (if wallet is owner)
+router.post('/:id/authorize-backend-wallet', async (req: Request, res: Response) => {
+  try {
+    const { ethers } = await import('ethers');
+    const { getChainConfig } = await import('../services/activePriceSync');
+    
+    const BACKEND_WALLET = '0x30314630fEb44E1b1DF77397906240Ff5c40F6D2';
+    
+    const deployments = await dbAll(
+      `SELECT DISTINCT chain FROM token_deployments 
+       WHERE token_id = ? AND status = 'deployed' AND curve_address IS NOT NULL`,
+      [req.params.id]
+    ) as Array<{ chain: string }>;
+
+    const results = [];
+    
+    for (const dep of deployments) {
+      const chainLower = dep.chain.toLowerCase();
+      if (chainLower.includes('hedera') || chainLower.includes('solana')) continue;
+      
+      const config = getChainConfig(dep.chain);
+      if (!config || !config.globalSupplyTrackerAddress || !config.privateKey) {
+        results.push({
+          chain: dep.chain,
+          success: false,
+          message: 'No configuration or private key',
+        });
+        continue;
+      }
+      
+      try {
+        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const wallet = new ethers.Wallet(config.privateKey, provider);
+        
+        const trackerABI = [
+          'function owner() external view returns (address)',
+          'function authorizedUpdaters(address) external view returns (bool)',
+          'function authorizeUpdater(address) external',
+        ];
+        const tracker = new ethers.Contract(config.globalSupplyTrackerAddress, trackerABI, wallet);
+        
+        const owner = await tracker.owner();
+        const isOwner = owner.toLowerCase() === wallet.address.toLowerCase();
+        
+        if (!isOwner) {
+          results.push({
+            chain: dep.chain,
+            success: false,
+            message: `Wallet ${wallet.address} is not the owner (owner: ${owner})`,
+          });
+          continue;
+        }
+        
+        const isAuthorized = await tracker.authorizedUpdaters(BACKEND_WALLET);
+        if (isAuthorized) {
+          results.push({
+            chain: dep.chain,
+            success: true,
+            message: 'Backend wallet already authorized',
+          });
+          continue;
+        }
+        
+        const trackerWithSigner = new ethers.Contract(config.globalSupplyTrackerAddress, trackerABI, wallet);
+        const tx = await trackerWithSigner.authorizeUpdater(BACKEND_WALLET, { gasLimit: 200000 });
+        await tx.wait();
+        
+        results.push({
+          chain: dep.chain,
+          success: true,
+          message: `Backend wallet authorized: ${tx.hash}`,
+          txHash: tx.hash,
+        });
+      } catch (error: any) {
+        results.push({
+          chain: dep.chain,
+          success: false,
+          message: error.message || 'Unknown error',
+        });
+      }
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    res.json({
+      success: successCount === results.length,
+      message: `Authorized backend wallet on ${successCount}/${results.length} chains`,
+      results,
+    });
+  } catch (error: any) {
+    console.error('Error authorizing backend wallet:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to authorize backend wallet',
+      message: error.message,
+    });
+  }
+});
+
 // POST /tokens/:id/configure-bonding-curves - Auto-configure bonding curves to use global supply
 router.post('/:id/configure-bonding-curves', async (req: Request, res: Response) => {
   try {
