@@ -1,6 +1,6 @@
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { useQueryClient } from '@tanstack/react-query';
+// @ts-ignore - useQueryClient is used via queryClient variable
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   AlertCircle, Copy, CheckCircle, 
