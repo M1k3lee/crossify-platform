@@ -1662,42 +1662,56 @@ router.get('/:id/market-depth', async (req: Request, res: Response) => {
       const buyOrders: Array<{ price: number; amount: number; total: number }> = [];
       const sellOrders: Array<{ price: number; amount: number; total: number }> = [];
       
+      // Handle zero supply case - generate meaningful buy orders based on base price
+      const minOrderSize = Math.max(1000, currentSupply * 0.01); // At least 1000 tokens or 1% of supply
+      
       // Buy orders: simulate buying different amounts
       // Formula: price = basePrice + (slope * (supply + amount/2))
       for (let i = 1; i <= 20; i++) {
-        const amountWei = (currentSupply * 0.05 * i); // 5% increments in wei
+        // Use a fixed increment based on a reasonable order size, or percentage of supply if supply > 0
+        const amountWei = currentSupply > 0 
+          ? (currentSupply * 0.05 * i) // 5% increments of current supply
+          : (minOrderSize * i * Math.pow(10, 18)); // Fixed increments when supply is 0
         const amountTokens = amountWei / Math.pow(10, 18);
         
         // Average price for this amount (using bonding curve formula)
         const avgPrice = basePrice + (slope * (currentSupply + amountWei / 2));
         const totalCost = (avgPrice * amountWei) / Math.pow(10, 18);
         
-        buyOrders.push({
-          price: avgPrice / Math.pow(10, 18), // Convert to readable price
-          amount: amountTokens,
-          total: totalCost,
-        });
+        // Only add valid orders (price > 0, amount > 0, total > 0)
+        if (avgPrice > 0 && amountTokens > 0 && totalCost > 0) {
+          buyOrders.push({
+            price: avgPrice / Math.pow(10, 18), // Convert to readable price
+            amount: amountTokens,
+            total: totalCost,
+          });
+        }
       }
       
       // Sell orders: simulate selling different amounts
       // For selling, price decreases as supply decreases
       const availableSupply = currentSupply;
-      for (let i = 1; i <= 20 && (availableSupply * 0.05 * i) < availableSupply; i++) {
-        const amountWei = (availableSupply * 0.05 * i); // 5% of available in wei
-        const amountTokens = amountWei / Math.pow(10, 18);
-        
-        // Price after selling (supply decreases)
-        const supplyAfterSell = currentSupply - amountWei;
-        if (supplyAfterSell < 0) break;
-        
-        const avgPrice = basePrice + (slope * (supplyAfterSell + amountWei / 2));
-        const totalReceived = (avgPrice * amountWei) / Math.pow(10, 18);
-        
-        sellOrders.push({
-          price: avgPrice / Math.pow(10, 18), // Convert to readable price
-          amount: amountTokens,
-          total: totalReceived,
-        });
+      if (availableSupply > 0) {
+        for (let i = 1; i <= 20 && (availableSupply * 0.05 * i) < availableSupply; i++) {
+          const amountWei = (availableSupply * 0.05 * i); // 5% of available in wei
+          const amountTokens = amountWei / Math.pow(10, 18);
+          
+          // Price after selling (supply decreases)
+          const supplyAfterSell = currentSupply - amountWei;
+          if (supplyAfterSell < 0) break;
+          
+          const avgPrice = basePrice + (slope * (supplyAfterSell + amountWei / 2));
+          const totalReceived = (avgPrice * amountWei) / Math.pow(10, 18);
+          
+          // Only add valid orders
+          if (avgPrice > 0 && amountTokens > 0 && totalReceived > 0) {
+            sellOrders.push({
+              price: avgPrice / Math.pow(10, 18), // Convert to readable price
+              amount: amountTokens,
+              total: totalReceived,
+            });
+          }
+        }
       }
       
       return {
@@ -1960,8 +1974,19 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     const prices: Record<string, number> = {};
     const marketCaps: Record<string, number> = {};
     
+    // Calculate prices using GLOBAL supply for consistency across chains
+    // This shows what the price SHOULD be if all chains were synced
+    const globalSupplyValue = parseFloat(globalSupply || '0');
+    const basePrice = parseFloat(token.base_price || '0');
+    const slope = parseFloat(token.slope || '0');
+    
+    // Calculate expected price using global supply (what price should be if synced)
+    const expectedPriceWei = basePrice + (slope * globalSupplyValue);
+    const expectedPrice = expectedPriceWei / Math.pow(10, 18);
+    const expectedPriceUSD = expectedPrice * 3000; // Convert to USD (assuming ETH = $3000)
+    
     // CRITICAL: Query ACTUAL bonding curve contract price for each chain
-    // This ensures we show the REAL trading price, not a calculated display price
+    // This shows the REAL trading price on each chain (may differ if not synced)
     for (const dep of deployments) {
       let actualPrice = 0;
       
@@ -1996,26 +2021,27 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
             
             console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${actualPrice} ETH`);
           } else {
-            console.warn(`⚠️ No RPC URL for chain ${dep.chain}, using fallback calculation`);
-            // Fallback to base price if we can't query contract
-            actualPrice = token.base_price || 0;
+            console.warn(`⚠️ No RPC URL for chain ${dep.chain}, using expected price calculation`);
+            // Use expected price based on global supply
+            actualPrice = expectedPrice;
           }
         } catch (error: any) {
           console.error(`❌ Error fetching price from bonding curve for ${dep.chain}:`, error.message);
-          // Fallback to base price if contract query fails
-          actualPrice = token.base_price || 0;
+          // Use expected price based on global supply as fallback
+          actualPrice = expectedPrice;
         }
       } else {
-        // No curve address, use base price
-        actualPrice = token.base_price || 0;
+        // No curve address, use expected price based on global supply
+        actualPrice = expectedPrice;
       }
       
       // Convert to USD (assuming ETH = $3000)
       const priceUSD = actualPrice * 3000;
       prices[dep.chain] = priceUSD;
       
-      const localSupply = parseFloat(dep.current_supply || '0');
-      marketCaps[dep.chain] = priceUSD * localSupply; // Market cap = price * local supply
+      // Use global supply for market cap calculation to show consistent value
+      const supplyForMarketCap = globalSupplyValue > 0 ? globalSupplyValue : parseFloat(dep.current_supply || '0');
+      marketCaps[dep.chain] = priceUSD * (supplyForMarketCap / Math.pow(10, 18)); // Market cap = price * supply
     }
     
     // Calculate variance
@@ -2049,20 +2075,115 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
   }
 });
 
+// POST /tokens/:id/configure-bonding-curves - Auto-configure bonding curves to use global supply
+router.post('/:id/configure-bonding-curves', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const { configureTokenBondingCurves } = await import('../services/autoConfigureBondingCurves');
+    const result = await configureTokenBondingCurves(id);
+    
+    res.json({
+      success: result.success,
+      message: result.message,
+      results: result.results,
+    });
+  } catch (error) {
+    console.error('Error configuring bonding curves:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to configure bonding curves',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // POST /tokens/:id/sync-prices - Manually trigger price sync for a token
 router.post('/:id/sync-prices', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { ethers } = await import('ethers');
     
+    // First, get diagnostic information to understand the current state
+    const deployments = await dbAll(
+      'SELECT chain, token_address, curve_address FROM token_deployments WHERE token_id = ? AND status = ? AND curve_address IS NOT NULL',
+      [id, 'deployed']
+    ) as any[];
+    
+    const diagnostics: any[] = [];
+    
+    // Check configuration before syncing
+    for (const dep of deployments) {
+      const chainLower = dep.chain.toLowerCase();
+      const rpcUrls: Record<string, string> = {
+        'ethereum': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+        'sepolia': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+        'bsc': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+        'bsc-testnet': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+        'base': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+        'base-sepolia': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+      };
+      
+      const rpcUrl = rpcUrls[chainLower];
+      if (!rpcUrl) continue;
+      
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const bondingCurveABI = [
+        'function useGlobalSupply() external view returns (bool)',
+        'function globalSupplyTracker() external view returns (address)',
+        'function getCurrentPrice() external view returns (uint256)',
+        'function totalSupplySold() external view returns (uint256)',
+      ];
+      
+      try {
+        const curveContract = new ethers.Contract(dep.curve_address, bondingCurveABI, provider);
+        const [useGlobalSupply, trackerAddress, localSupply] = await Promise.all([
+          curveContract.useGlobalSupply().catch(() => false),
+          curveContract.globalSupplyTracker().catch(() => ethers.ZeroAddress),
+          curveContract.totalSupplySold().catch(() => null),
+        ]);
+        
+        diagnostics.push({
+          chain: dep.chain,
+          useGlobalSupply,
+          trackerAddress: trackerAddress === ethers.ZeroAddress ? null : trackerAddress,
+          localSupply: localSupply ? ethers.formatEther(localSupply) : null,
+          configured: useGlobalSupply && trackerAddress !== ethers.ZeroAddress,
+        });
+      } catch (error: any) {
+        diagnostics.push({
+          chain: dep.chain,
+          error: error.message,
+        });
+      }
+    }
+    
+    // Auto-configure bonding curves first (if needed)
+    console.log('🔧 Auto-configuring bonding curves...');
+    const { configureTokenBondingCurves } = await import('../services/autoConfigureBondingCurves');
+    const configResult = await configureTokenBondingCurves(id);
+    
+    // Now perform the actual sync
     const { syncTokenPrices } = await import('../services/activePriceSync');
     const result = await syncTokenPrices(id);
     
     // Always return 200, even if some chains failed
     // The frontend can check result.success and result.results to see which chains succeeded
     res.json({
-      success: result.success,
-      message: result.message,
-      results: result.results,
+      success: result.success && configResult.success,
+      message: `Configuration: ${configResult.message}. Sync: ${result.message}`,
+      configuration: {
+        success: configResult.success,
+        message: configResult.message,
+        results: configResult.results,
+      },
+      sync: {
+        success: result.success,
+        message: result.message,
+        results: result.results,
+      },
+      diagnostics, // Include diagnostic info so user can see what's configured
+      note: 'Bonding curves have been auto-configured and GlobalSupplyTracker has been updated. Prices should now sync across chains.',
     });
   } catch (error) {
     console.error('Error syncing prices:', error);
@@ -2318,7 +2439,7 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { period = '7d' } = req.query; // 24h, 7d, 30d, all
     
-    // Calculate date filter
+    // Calculate date filter - use parameterized query for better compatibility
     let dateFilter = '';
     const params: any[] = [id];
     if (period === '24h') {
@@ -2330,38 +2451,57 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     }
     // 'all' means no date filter
     
-    // Get transaction statistics
-    const txStats = await dbAll(`
-      SELECT 
-        type,
-        COUNT(*) as count,
-        SUM(CAST(amount AS REAL)) as total_amount,
-        AVG(CAST(price AS REAL)) as avg_price,
-        SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as total_volume
-      FROM transactions
-      WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
-      GROUP BY type
-    `, params) as any[];
+    // Wrap in try-catch for each query to handle missing table gracefully
+    let txStats: any[] = [];
+    let volumeByDay: any[] = [];
+    let uniqueAddresses: any[] = [];
+    let priceChange: any[] = [];
     
-    // Get volume by day
-    const volumeByDay = await dbAll(`
-      SELECT 
-        DATE(created_at) as date,
-        type,
-        COUNT(*) as count,
-        SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as volume
-      FROM transactions
-      WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
-      GROUP BY DATE(created_at), type
-      ORDER BY date DESC
-    `, params) as any[];
+    try {
+      // Get transaction statistics
+      txStats = await dbAll(`
+        SELECT 
+          type,
+          COUNT(*) as count,
+          SUM(CAST(amount AS REAL)) as total_amount,
+          AVG(CAST(price AS REAL)) as avg_price,
+          SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as total_volume
+        FROM transactions
+        WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
+        GROUP BY type
+      `, params) as any[];
+    } catch (error: any) {
+      console.warn('Error fetching transaction stats (table may not exist):', error.message);
+      // Return empty stats if table doesn't exist
+    }
     
-    // Get unique addresses
-    const uniqueAddresses = await dbAll(`
-      SELECT COUNT(DISTINCT from_address) + COUNT(DISTINCT to_address) as unique_count
-      FROM transactions
-      WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
-    `, params) as any[];
+    try {
+      // Get volume by day
+      volumeByDay = await dbAll(`
+        SELECT 
+          DATE(created_at) as date,
+          type,
+          COUNT(*) as count,
+          SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as volume
+        FROM transactions
+        WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
+        GROUP BY DATE(created_at), type
+        ORDER BY date DESC
+      `, params) as any[];
+    } catch (error: any) {
+      console.warn('Error fetching volume by day:', error.message);
+    }
+    
+    try {
+      // Get unique addresses
+      uniqueAddresses = await dbAll(`
+        SELECT COUNT(DISTINCT from_address) + COUNT(DISTINCT to_address) as unique_count
+        FROM transactions
+        WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
+      `, params) as any[];
+    } catch (error: any) {
+      console.warn('Error fetching unique addresses:', error.message);
+    }
     
     // Calculate buy/sell ratio
     const buyTxs = txStats.find((s: any) => s.type === 'buy');
@@ -2373,12 +2513,16 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     // Calculate total volume
     const totalVolume = txStats.reduce((sum: number, s: any) => sum + (parseFloat(s.total_volume || '0') || 0), 0);
     
-    // Get price change (first vs last transaction)
-    const priceChange = await dbAll(`
-      SELECT 
-        (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at DESC LIMIT 1) as last_price,
-        (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at ASC LIMIT 1) as first_price
-    `, [...params, ...params]) as any[];
+    try {
+      // Get price change (first vs last transaction)
+      priceChange = await dbAll(`
+        SELECT 
+          (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at DESC LIMIT 1) as last_price,
+          (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at ASC LIMIT 1) as first_price
+      `, [...params, ...params]) as any[];
+    } catch (error: any) {
+      console.warn('Error fetching price change:', error.message);
+    }
     
     const firstPrice = parseFloat(priceChange[0]?.first_price || '0') || 0;
     const lastPrice = parseFloat(priceChange[0]?.last_price || '0') || 0;

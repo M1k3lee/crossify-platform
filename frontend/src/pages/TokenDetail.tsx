@@ -56,14 +56,37 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
       const response = await axios.post(`${API_BASE}/tokens/${tokenId}/sync-prices`);
       return response.data;
     },
-    onSuccess: () => {
-      toast.success('Price sync triggered! Refreshing...');
+    onSuccess: (data) => {
+      // Show detailed success message
+      const configSuccess = data.configuration?.success;
+      const syncSuccess = data.sync?.success;
+      
+      if (configSuccess && syncSuccess) {
+        toast.success('✅ Bonding curves configured and prices synced!');
+      } else if (configSuccess) {
+        toast.success('✅ Bonding curves configured! Some chains may need manual sync.');
+      } else if (syncSuccess) {
+        toast.success('✅ Prices synced! Some curves may need configuration.');
+      } else {
+        toast.warning('⚠️ Sync completed with some issues. Check console for details.');
+      }
+      
+      // Log detailed results
+      if (data.configuration?.results) {
+        console.log('Configuration results:', data.configuration.results);
+      }
+      if (data.sync?.results) {
+        console.log('Sync results:', data.sync.results);
+      }
+      
       setTimeout(() => {
         onSync();
-      }, 2000);
+      }, 3000); // Give more time for blockchain confirmations
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to sync prices');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to sync prices';
+      toast.error(`❌ ${errorMsg}`);
+      console.error('Sync error details:', error.response?.data);
     },
   });
 
@@ -2236,6 +2259,11 @@ export default function TokenDetail() {
                     </p>
                     <p className="text-xs text-yellow-400 mt-1">
                       Prices are syncing automatically, but you can manually trigger a sync now.
+                      {priceSync.variance > 100 && (
+                        <span className="block mt-1 text-yellow-500">
+                          💡 Tip: This token may need bonding curve configuration. Click "Sync Now" to auto-configure.
+                        </span>
+                      )}
                     </p>
                   </div>
                   <SyncPriceButton tokenId={id || ''} onSync={() => refetchPriceSync()} />
