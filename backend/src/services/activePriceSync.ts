@@ -203,11 +203,25 @@ export async function syncTokenPrices(tokenId: string): Promise<{
       };
     }
 
-    console.log(`🔄 Syncing prices for token ${tokenId} across ${deployments.length} chains...`);
+    // Filter out non-EVM chains (Hedera, Solana, etc.)
+    const evmChains = deployments.filter(dep => {
+      const chainLower = dep.chain.toLowerCase();
+      return !chainLower.includes('hedera') && !chainLower.includes('solana');
+    });
+
+    if (evmChains.length === 0) {
+      return {
+        success: false,
+        message: 'No EVM chains found (Hedera/Solana not supported)',
+        results: [],
+      };
+    }
+
+    console.log(`🔄 Syncing prices for token ${tokenId} across ${evmChains.length} EVM chains...`);
 
     // Use Promise.allSettled to continue even if some chains fail
     const results = await Promise.allSettled(
-      deployments.map(async (dep) => {
+      evmChains.map(async (dep) => {
         try {
           const result = await syncSupplyForDeployment(
             tokenId,
