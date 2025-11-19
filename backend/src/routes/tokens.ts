@@ -2962,10 +2962,25 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
       stack: error?.stack,
       name: error?.name,
     });
-    res.status(500).json({ 
-      error: 'Failed to fetch token analytics',
-      message: error?.message || 'Unknown error',
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    
+    // Return empty data instead of 500 error to prevent frontend crashes
+    res.json({
+      period,
+      statistics: {
+        totalTransactions: 0,
+        buyTransactions: 0,
+        sellTransactions: 0,
+        buySellRatio: '0.00',
+        totalVolume: 0,
+        avgPrice: 0,
+        uniqueAddresses: 0,
+        priceChange: 0,
+        firstPrice: 0,
+        lastPrice: 0,
+      },
+      volumeByDay: [],
+      transactionsByType: [],
+      error: error?.message || 'Unknown error',
     });
   }
 });

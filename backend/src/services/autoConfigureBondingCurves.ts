@@ -279,14 +279,27 @@ export async function configureBondingCurve(
     } else if (curveOwner.toLowerCase() !== wallet.address.toLowerCase()) {
       // Normal case: owner exists but doesn't match
       // Check if we're the tracker owner - if so, we can still authorize the curve
-      console.log(`   ⚠️  Wallet is not curve owner. Checking if we're tracker owner...`);
+      console.log(`   ⚠️  Wallet (${wallet.address}) is not curve owner (${curveOwner}). Checking if we're tracker owner...`);
+      
+      // First check if tracker exists and we can access it
+      if (!config.globalSupplyTrackerAddress) {
+        result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner}) and no GlobalSupplyTracker configured`);
+        result.message = `Cannot configure: wallet is not the owner and no tracker configured`;
+        return result;
+      }
+      
       try {
         const trackerContract = new ethers.Contract(
           config.globalSupplyTrackerAddress,
           GLOBAL_SUPPLY_TRACKER_ABI,
           provider
         );
-        const trackerOwner = await trackerContract.owner().catch(() => null);
+        const trackerOwner = await trackerContract.owner().catch((e: any) => {
+          console.log(`   ⚠️  Could not get tracker owner: ${e.message}`);
+          return null;
+        });
+        
+        console.log(`   Tracker owner: ${trackerOwner || 'unknown'}`);
         const isTrackerOwner = trackerOwner && trackerOwner.toLowerCase() === wallet.address.toLowerCase();
         
         if (isTrackerOwner) {
@@ -299,14 +312,27 @@ export async function configureBondingCurve(
               wallet
             );
             const isAlreadyAuthorized = await trackerWithSigner.authorizedUpdaters(curveAddress).catch(() => false);
+            console.log(`   Curve authorization status: ${isAlreadyAuthorized ? 'Already authorized' : 'Not authorized'}`);
+            
             if (!isAlreadyAuthorized) {
+              console.log(`   📝 Authorizing curve in tracker...`);
               const authTx = await trackerWithSigner.authorizeUpdater(curveAddress, { gasLimit: 200000 });
+              console.log(`   ⏳ Waiting for authorization transaction...`);
               await authTx.wait();
               console.log(`   ✅ Authorized curve in tracker! TX: ${authTx.hash}`);
               result.changes.push('Authorized in GlobalSupplyTracker');
             } else {
               console.log(`   ✅ Curve already authorized in tracker`);
             }
+            
+            // Check if curve is already configured correctly
+            if (!needsTrackerUpdate && !needsEnableGlobalSupply) {
+              console.log(`   ✅ Curve is already configured correctly`);
+              result.success = true;
+              result.message = 'Already configured correctly (authorized by tracker owner)';
+              return result;
+            }
+            
             // Now we can configure the curve settings if needed
             // But we still can't call setGlobalSupplyTracker or setUseGlobalSupply if those require curve owner
             // Let's try anyway - some contracts might allow tracker owner to configure
@@ -314,19 +340,26 @@ export async function configureBondingCurve(
             // Continue to configuration step below
           } catch (authError: any) {
             console.log(`   ❌ Failed to authorize: ${authError.message}`);
+            if (authError.reason) {
+              console.log(`   Reason: ${authError.reason}`);
+            }
             result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner}) and authorization failed: ${authError.message}`);
             result.message = `Cannot configure: wallet is not the owner and authorization failed`;
             return result;
           }
         } else {
-          result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner})`);
-          result.message = `Cannot configure: wallet is not the owner`;
+          console.log(`   ❌ Not tracker owner either. Tracker owner: ${trackerOwner || 'unknown'}, Wallet: ${wallet.address}`);
+          result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner}) and not the tracker owner (${trackerOwner || 'unknown'})`);
+          result.message = `Cannot configure: wallet is not the owner and not the tracker owner`;
           return result;
         }
       } catch (error: any) {
         console.warn(`Could not check tracker owner: ${error.message}`);
-        result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner})`);
-        result.message = `Cannot configure: wallet is not the owner`;
+        if (error.reason) {
+          console.warn(`Reason: ${error.reason}`);
+        }
+        result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner}) and tracker check failed: ${error.message}`);
+        result.message = `Cannot configure: wallet is not the owner and tracker check failed`;
         return result;
       }
     }
