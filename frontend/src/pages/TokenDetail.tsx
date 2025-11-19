@@ -1,5 +1,4 @@
 import { useParams, useSearchParams } from 'react-router-dom';
-// @ts-ignore - useQueryClient is used in the component (line 253)
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
