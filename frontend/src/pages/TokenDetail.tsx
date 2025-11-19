@@ -1654,14 +1654,18 @@ export default function TokenDetail() {
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-white">{chainDisplayName}</h3>
-                        {dep.isGraduated ? (
+                        {dep.status === 'failed' ? (
+                          <span className="text-xs text-red-400">Failed</span>
+                        ) : dep.isGraduated ? (
                           <span className="text-xs text-green-400">Graduated</span>
                         ) : (
                           <span className="text-xs text-yellow-400">On Curve</span>
                         )}
                       </div>
                     </div>
-                    {dep.isGraduated ? (
+                    {dep.status === 'failed' ? (
+                      <AlertCircle className="w-5 h-5 text-red-400" />
+                    ) : dep.isGraduated ? (
                       <CheckCircle className="w-5 h-5 text-green-400" />
                     ) : (
                       <Zap className="w-5 h-5 text-yellow-400" />
@@ -1707,7 +1711,104 @@ export default function TokenDetail() {
                       )}
                     </div>
 
-                    {!dep.isGraduated && dep.curveAddress && (
+                    {/* Show retry button for failed deployments */}
+                    {dep.status === 'failed' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            setDeploying(dep.chain);
+                            toast.loading(`Retrying deployment to ${chainDisplayName}...`, { id: `retry-${dep.chain}` });
+                            
+                            const chain = dep.chain.toLowerCase();
+                            const evmChain = chain.includes('sepolia') && !chain.includes('base') ? 'ethereum' :
+                                            chain.includes('base') ? 'base' :
+                                            chain.includes('bsc') ? 'bsc' :
+                                            chain.includes('hedera') ? 'hedera' : null;
+
+                            if (!evmChain) {
+                              toast.error(`Deployment to ${dep.chain} is not yet supported`, { id: `retry-${dep.chain}` });
+                              setDeploying(null);
+                              return;
+                            }
+
+                            // Get token data
+                            let logoIpfs = '';
+                            if (metadata?.logoUrl) {
+                              logoIpfs = metadata.logoUrl.replace('https://ipfs.io/ipfs/', '').replace('ipfs://', '');
+                            } else if ((token as any).logoIpfs) {
+                              logoIpfs = (token as any).logoIpfs;
+                            } else if ((token as any).logo_ipfs) {
+                              logoIpfs = (token as any).logo_ipfs;
+                            }
+                            
+                            const tokenData = {
+                              name: token.name,
+                              symbol: token.symbol,
+                              decimals: token.decimals || 18,
+                              initialSupply: token.initialSupply || token.initial_supply || '1000000000',
+                              metadataUri: logoIpfs,
+                            };
+
+                            const curveData = {
+                              basePrice: ((token as any).basePrice || (token as any).base_price || 0.001).toString(),
+                              slope: ((token as any).slope || 0.000001).toString(),
+                              graduationThreshold: '0',
+                              buyFeePercent: ((token as any).buyFeePercent || (token as any).buy_fee_percent || 0).toString(),
+                              sellFeePercent: ((token as any).sellFeePercent || (token as any).sell_fee_percent || 0).toString(),
+                            };
+
+                            // Deploy to blockchain
+                            const result = await deployTokenOnEVM(evmChain as 'ethereum' | 'bsc' | 'base' | 'hedera', {
+                              chain: evmChain as any,
+                              tokenData,
+                              curveData,
+                            });
+
+                            // Save deployment to backend
+                            await axios.post(`${API_BASE}/tokens/${id}/deploy`, {
+                              chains: [evmChain],
+                              deployments: [{
+                                chain: dep.chain,
+                                tokenAddress: result.tokenAddress,
+                                curveAddress: result.curveAddress,
+                                status: 'deployed',
+                                txHash: result.txHash,
+                              }],
+                            });
+
+                            toast.success(`✅ Deployed to ${chainDisplayName}!`, { id: `retry-${dep.chain}` });
+                            
+                            // Refresh token data
+                            queryClient.invalidateQueries({ queryKey: ['token-status', id] });
+                            queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
+                          } catch (error: any) {
+                            console.error('Retry deployment error:', error);
+                            toast.error(error.message || `Failed to deploy to ${dep.chain}`, { 
+                              id: `retry-${dep.chain}`,
+                              duration: 10000 
+                            });
+                          } finally {
+                            setDeploying(null);
+                          }
+                        }}
+                        disabled={deploying !== null || !isConnected || deploying === dep.chain}
+                        className="block w-full mt-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:opacity-90 text-center disabled:opacity-50 disabled:cursor-not-allowed bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border border-yellow-500/50"
+                      >
+                        {deploying === dep.chain ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
+                            Retrying...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 inline mr-2" />
+                            Retry Deployment
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {!dep.isGraduated && dep.curveAddress && dep.status !== 'failed' && (
                       <Link
                         to={`/token/${id}?chain=${dep.chain}`}
                         className="block w-full mt-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition hover:opacity-90 text-center"

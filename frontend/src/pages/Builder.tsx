@@ -522,12 +522,13 @@ export default function Builder() {
               console.error(`❌ Deployment error for ${chain}:`, deployError);
               
               if (deployError.message?.includes('Factory contract') || deployError.message?.includes('factory') || deployError.message?.includes('Factory address not configured')) {
-                const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : 'Base Sepolia';
+                const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : chain === 'hedera' ? 'Hedera Testnet' : 'Base Sepolia';
                 const envVarName = chain === 'ethereum' ? 'VITE_ETH_FACTORY' : `VITE_${chain.toUpperCase()}_FACTORY`;
                 const correctAddresses = {
                   ethereum: '0x8eF1A74d477448630282EFC130ac9D17f495Bca4',
                   bsc: '0xFF8c690B5b65905da20D8de87Cd6298c223a40B6',
                   base: '0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58',
+                  hedera: '0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D',
                 };
                 
                 toast.error(
