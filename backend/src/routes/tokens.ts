@@ -2446,9 +2446,14 @@ router.post('/:id/configure-bonding-curves', async (req: Request, res: Response)
 
 // POST /tokens/:id/sync-prices - Manually trigger price sync for a token
 router.post('/:id/sync-prices', async (req: Request, res: Response) => {
+  const startTime = Date.now();
   try {
     const { id } = req.params;
+    console.log('');
+    console.log('='.repeat(80));
     console.log(`🔄 [SYNC-PRICES] Received sync request for token: ${id}`);
+    console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+    console.log('='.repeat(80));
     const { ethers } = await import('ethers');
     
     // First, get diagnostic information to understand the current state
@@ -2506,13 +2511,39 @@ router.post('/:id/sync-prices', async (req: Request, res: Response) => {
     }
     
     // Auto-configure bonding curves first (if needed)
-    console.log('🔧 Auto-configuring bonding curves...');
+    console.log('');
+    console.log('🔧 Step 1: Auto-configuring bonding curves...');
+    console.log(`   Found ${deployments.length} deployments to configure`);
     const { configureTokenBondingCurves } = await import('../services/autoConfigureBondingCurves');
     const configResult = await configureTokenBondingCurves(id);
+    console.log(`   Configuration result: ${configResult.success ? '✅ SUCCESS' : '❌ FAILED'}`);
+    console.log(`   Message: ${configResult.message}`);
+    if (configResult.results) {
+      configResult.results.forEach((r: any, i: number) => {
+        console.log(`   Chain ${i + 1} (${r.chain}): ${r.success ? '✅' : '❌'} ${r.message}`);
+      });
+    }
     
     // Now perform the actual sync
+    console.log('');
+    console.log('🔄 Step 2: Syncing prices...');
     const { syncTokenPrices } = await import('../services/activePriceSync');
     const result = await syncTokenPrices(id);
+    console.log(`   Sync result: ${result.success ? '✅ SUCCESS' : '❌ FAILED'}`);
+    console.log(`   Message: ${result.message}`);
+    if (result.results) {
+      result.results.forEach((r: any, i: number) => {
+        console.log(`   Chain ${i + 1} (${r.chain}): ${r.success ? '✅' : '❌'} ${r.message}`);
+        if (r.actualSupply) console.log(`      Actual Supply: ${r.actualSupply}`);
+        if (r.trackerSupply) console.log(`      Tracker Supply: ${r.trackerSupply}`);
+      });
+    }
+    
+    const duration = Date.now() - startTime;
+    console.log('');
+    console.log(`✅ Sync completed in ${duration}ms`);
+    console.log('='.repeat(80));
+    console.log('');
     
     // Always return 200, even if some chains failed
     // The frontend can check result.success and result.results to see which chains succeeded

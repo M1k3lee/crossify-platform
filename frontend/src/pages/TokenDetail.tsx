@@ -53,26 +53,66 @@ const CHAIN_NAMES: Record<string, string> = {
 function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => void }) {
   const syncMutation = useMutation({
     mutationFn: async () => {
-      console.log('🔄 Sync button clicked, starting sync for token:', tokenId);
-      console.log('📡 Making POST request to:', `${API_BASE}/tokens/${tokenId}/sync-prices`);
+      console.log('='.repeat(80));
+      console.log('🔄 SYNC BUTTON CLICKED');
+      console.log('='.repeat(80));
+      console.log('📋 Token ID:', tokenId);
+      console.log('📡 API Endpoint:', `${API_BASE}/tokens/${tokenId}/sync-prices`);
+      console.log('⏰ Timestamp:', new Date().toISOString());
+      console.log('');
+      
+      const startTime = Date.now();
       try {
-        const response = await axios.post(`${API_BASE}/tokens/${tokenId}/sync-prices`);
-        console.log('✅ Sync response received:', response.data);
+        console.log('📤 Sending POST request...');
+        const response = await axios.post(
+          `${API_BASE}/tokens/${tokenId}/sync-prices`,
+          {},
+          {
+            timeout: 120000, // 2 minute timeout
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        const duration = Date.now() - startTime;
+        console.log(`✅ Response received in ${duration}ms`);
+        console.log('📦 Full Response Data:', JSON.stringify(response.data, null, 2));
+        console.log('');
         return response.data;
       } catch (error: any) {
-        console.error('❌ Sync request failed:', error);
-        console.error('Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
+        const duration = Date.now() - startTime;
+        console.error(`❌ Request failed after ${duration}ms`);
+        console.error('❌ Error Type:', error.constructor.name);
+        console.error('❌ Error Message:', error.message);
+        console.error('❌ Error Stack:', error.stack);
+        if (error.response) {
+          console.error('❌ Response Status:', error.response.status);
+          console.error('❌ Response Data:', JSON.stringify(error.response.data, null, 2));
+          console.error('❌ Response Headers:', error.response.headers);
+        } else if (error.request) {
+          console.error('❌ No response received');
+          console.error('❌ Request:', error.request);
+        }
+        console.error('');
         throw error;
       }
     },
     onSuccess: (data) => {
+      console.log('');
+      console.log('='.repeat(80));
+      console.log('✅ SYNC COMPLETED');
+      console.log('='.repeat(80));
+      console.log('📊 Overall Success:', data.success ? '✅ YES' : '❌ NO');
+      console.log('📝 Message:', data.message || 'No message');
+      console.log('');
+      
       // Show detailed success message
       const configSuccess = data.configuration?.success;
       const syncSuccess = data.sync?.success;
+      
+      console.log('🔧 Configuration Status:', configSuccess ? '✅ SUCCESS' : '❌ FAILED');
+      console.log('🔄 Sync Status:', syncSuccess ? '✅ SUCCESS' : '❌ FAILED');
+      console.log('');
       
       if (configSuccess && syncSuccess) {
         toast.success('✅ Bonding curves configured and prices synced!');
@@ -86,28 +126,33 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
       
       // Log detailed results
       if (data.configuration?.results) {
-        console.log('Configuration results:', data.configuration.results);
-        // Show detailed configuration errors
+        console.log('🔧 CONFIGURATION RESULTS:');
+        console.log('-'.repeat(80));
         data.configuration.results.forEach((result: any, index: number) => {
           if (!result.success) {
-            console.error(`❌ Configuration failed for chain ${index + 1}:`, result);
-            console.error(`   Chain: ${result.chain || 'unknown'}`);
+            console.error(`❌ Chain ${index + 1} (${result.chain || 'unknown'}): FAILED`);
             console.error(`   Message: ${result.message || 'Unknown error'}`);
             if (result.errors && result.errors.length > 0) {
               console.error(`   Errors:`, result.errors);
             }
+            console.error(`   Full Result:`, JSON.stringify(result, null, 2));
           } else {
-            console.log(`✅ Configuration succeeded for chain ${index + 1}:`, result);
+            console.log(`✅ Chain ${index + 1} (${result.chain || 'unknown'}): SUCCESS`);
+            console.log(`   Message: ${result.message || 'Success'}`);
+            if (result.changes && result.changes.length > 0) {
+              console.log(`   Changes:`, result.changes);
+            }
           }
+          console.log('');
         });
       }
+      
       if (data.sync?.results) {
-        console.log('Sync results:', data.sync.results);
-        // Show detailed sync errors
+        console.log('🔄 SYNC RESULTS:');
+        console.log('-'.repeat(80));
         data.sync.results.forEach((result: any, index: number) => {
           if (!result.success) {
-            console.error(`❌ Sync failed for chain ${index + 1}:`, result);
-            console.error(`   Chain: ${result.chain || 'unknown'}`);
+            console.error(`❌ Chain ${index + 1} (${result.chain || 'unknown'}): FAILED`);
             console.error(`   Message: ${result.message || 'Unknown error'}`);
             if (result.actualSupply !== undefined) {
               console.error(`   Actual Supply: ${result.actualSupply}`);
@@ -115,9 +160,9 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
             if (result.trackerSupply !== undefined) {
               console.error(`   Tracker Supply: ${result.trackerSupply}`);
             }
+            console.error(`   Full Result:`, JSON.stringify(result, null, 2));
           } else {
-            console.log(`✅ Sync succeeded for chain ${index + 1}:`, result);
-            console.log(`   Chain: ${result.chain || 'unknown'}`);
+            console.log(`✅ Chain ${index + 1} (${result.chain || 'unknown'}): SUCCESS`);
             console.log(`   Message: ${result.message || 'Success'}`);
             if (result.actualSupply !== undefined) {
               console.log(`   Actual Supply: ${result.actualSupply}`);
@@ -125,18 +170,54 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
             if (result.trackerSupply !== undefined) {
               console.log(`   Tracker Supply: ${result.trackerSupply}`);
             }
+            if (result.txHash) {
+              console.log(`   Transaction: ${result.txHash}`);
+            }
           }
+          console.log('');
         });
       }
+      
+      if (data.diagnostics) {
+        console.log('🔍 DIAGNOSTICS:');
+        console.log('-'.repeat(80));
+        data.diagnostics.forEach((diag: any, index: number) => {
+          console.log(`Chain ${index + 1} (${diag.chain || 'unknown'}):`);
+          console.log(`   Use Global Supply: ${diag.useGlobalSupply ? '✅' : '❌'}`);
+          console.log(`   Tracker Address: ${diag.trackerAddress || 'Not set'}`);
+          console.log(`   Local Supply: ${diag.localSupply || 'N/A'}`);
+          console.log(`   Configured: ${diag.configured ? '✅' : '❌'}`);
+          console.log('');
+        });
+      }
+      
+      console.log('='.repeat(80));
+      console.log('');
       
       setTimeout(() => {
         onSync();
       }, 3000); // Give more time for blockchain confirmations
     },
     onError: (error: any) => {
+      console.log('');
+      console.log('='.repeat(80));
+      console.log('❌ SYNC ERROR');
+      console.log('='.repeat(80));
+      console.error('Error Type:', error.constructor.name);
+      console.error('Error Message:', error.message);
+      if (error.response) {
+        console.error('Response Status:', error.response.status);
+        console.error('Response Data:', JSON.stringify(error.response.data, null, 2));
+      } else if (error.request) {
+        console.error('No response received - request may have timed out');
+        console.error('Request config:', error.config);
+      }
+      console.error('Full Error:', error);
+      console.log('='.repeat(80));
+      console.log('');
+      
       const errorMsg = error.response?.data?.message || error.message || 'Failed to sync prices';
       toast.error(`❌ ${errorMsg}`);
-      console.error('Sync error details:', error.response?.data);
     },
   });
 
