@@ -109,8 +109,22 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
             console.error(`❌ Sync failed for chain ${index + 1}:`, result);
             console.error(`   Chain: ${result.chain || 'unknown'}`);
             console.error(`   Message: ${result.message || 'Unknown error'}`);
+            if (result.actualSupply !== undefined) {
+              console.error(`   Actual Supply: ${result.actualSupply}`);
+            }
+            if (result.trackerSupply !== undefined) {
+              console.error(`   Tracker Supply: ${result.trackerSupply}`);
+            }
           } else {
             console.log(`✅ Sync succeeded for chain ${index + 1}:`, result);
+            console.log(`   Chain: ${result.chain || 'unknown'}`);
+            console.log(`   Message: ${result.message || 'Success'}`);
+            if (result.actualSupply !== undefined) {
+              console.log(`   Actual Supply: ${result.actualSupply}`);
+            }
+            if (result.trackerSupply !== undefined) {
+              console.log(`   Tracker Supply: ${result.trackerSupply}`);
+            }
           }
         });
       }
