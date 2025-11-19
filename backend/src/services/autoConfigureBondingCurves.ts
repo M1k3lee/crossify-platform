@@ -193,11 +193,11 @@ export async function configureBondingCurve(
     
     // If owner() returned null, the contract might not have an owner function
     // In that case, check if the curve is already authorized in the tracker
-    // If it's authorized, we can skip the owner check (it was already configured)
+    // If it's authorized, we might be able to configure it using the tracker owner's key
     if (!curveOwner) {
       console.log(`⚠️  Bonding curve ${curveAddress} on ${chain} does not have owner() function or it failed`);
       
-      // Check if curve is already authorized in tracker - if so, it's already configured
+      // Check if curve is already authorized in tracker
       try {
         const trackerContract = new ethers.Contract(
           config.globalSupplyTrackerAddress,
@@ -205,6 +205,8 @@ export async function configureBondingCurve(
           provider
         );
         const isAuthorized = await trackerContract.authorizedUpdaters(curveAddress).catch(() => false);
+        const trackerOwner = await trackerContract.owner().catch(() => null);
+        const isTrackerOwner = trackerOwner && trackerOwner.toLowerCase() === wallet.address.toLowerCase();
         
         if (isAuthorized && currentUseGlobalSupply && currentTrackerAddress.toLowerCase() === config.globalSupplyTrackerAddress.toLowerCase()) {
           // Already configured correctly, skip owner check
@@ -213,17 +215,26 @@ export async function configureBondingCurve(
           result.message = 'Already configured correctly (owner check skipped)';
           return result;
         }
+        
+        // If authorized but not configured, and we're the tracker owner, try to configure anyway
+        // Some contracts might allow tracker owner to configure
+        if (isAuthorized && isTrackerOwner && (needsTrackerUpdate || needsEnableGlobalSupply)) {
+          console.log(`⚠️  Owner is null but curve is authorized. Attempting configuration with tracker owner key...`);
+          // Continue to try configuration - will fail if contract requires curve owner
+        } else {
+          // If not authorized or not tracker owner, we can't configure without knowing the owner
+          result.errors.push(`Bonding curve owner() returned null. Cannot determine owner to configure.`);
+          result.message = `Cannot configure: owner check failed (returned null)`;
+          return result;
+        }
       } catch (error: any) {
         console.warn(`Could not check tracker authorization: ${error.message}`);
+        result.errors.push(`Bonding curve owner() returned null. Cannot determine owner to configure.`);
+        result.message = `Cannot configure: owner check failed (returned null)`;
+        return result;
       }
-      
-      // If not authorized, we can't configure without knowing the owner
-      result.errors.push(`Bonding curve owner() returned null. Cannot determine owner to configure.`);
-      result.message = `Cannot configure: owner check failed (returned null)`;
-      return result;
-    }
-    
-    if (curveOwner.toLowerCase() !== wallet.address.toLowerCase()) {
+    } else if (curveOwner.toLowerCase() !== wallet.address.toLowerCase()) {
+      // Normal case: owner exists but doesn't match
       result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner})`);
       result.message = `Cannot configure: wallet is not the owner`;
       return result;
