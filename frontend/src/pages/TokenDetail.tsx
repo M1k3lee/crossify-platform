@@ -1542,6 +1542,7 @@ export default function TokenDetail() {
                     queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
                     queryClient.invalidateQueries({ queryKey: ['token-transactions', id] });
                     queryClient.invalidateQueries({ queryKey: ['price-sync', id] });
+                    queryClient.invalidateQueries({ queryKey: ['price-history', id] }); // Refresh chart
                     queryClient.invalidateQueries({ queryKey: ['audit-logs', id] });
                   }, 2000);
                 }}

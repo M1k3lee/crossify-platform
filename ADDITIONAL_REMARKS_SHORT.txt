@@ -1,0 +1,22 @@
+Pitch Deck: https://www.crossify.io/pitch-deck.pdf
+
+Test Environment: https://www.crossify.io (No login required - connect wallet to test)
+
+Hedera Testnet Contracts:
+- TokenFactory: 0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D
+- View on HashScan: https://hashscan.io/testnet/address/0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D
+
+Testnet Tokens: Available via standard faucets (Sepolia, BSC, Base, Hedera portal, Solana airdrop)
+
+Demo Steps:
+1. Visit https://www.crossify.io
+2. Connect wallet (MetaMask/HashPack/Phantom)
+3. Create token on multiple chains including Hedera
+4. Test cross-chain price sync (buy on one chain, watch price update on all)
+5. Verify HCS audit logs on HashScan
+6. Experience Hedera's 3-5s finality and ~$0.0001/tx costs
+
+GitHub: https://github.com/M1k3lee/crossify-platform
+
+All features operational on testnets. Hedera integration fully deployed and verified.
+

@@ -1459,7 +1459,7 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
     }
     
     // Get transactions with price data
-    // SQLite stores dates as ISO strings, so we compare directly
+    // Handle both SQLite (ISO string) and PostgreSQL (TIMESTAMP) date formats
     const startTimeISO = new Date(startTime).toISOString();
     
     let query = `
@@ -1473,7 +1473,7 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
       WHERE token_id = ? 
         AND status = 'confirmed'
         AND price IS NOT NULL
-        AND price > 0
+        AND CAST(price AS REAL) > 0
         AND created_at >= ?
     `;
     const params: any[] = [id, startTimeISO];
@@ -1485,30 +1485,58 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
     
     query += ' ORDER BY created_at ASC';
     
-    const transactions = await dbAll(query, params) as any[];
+    let transactions: any[] = [];
+    try {
+      transactions = await dbAll(query, params) as any[];
+      console.log(`📊 Found ${transactions.length} transactions for price history (token: ${id}, timeframe: ${timeframe})`);
+    } catch (error: any) {
+      console.error('Error fetching transactions for price history:', error);
+      // Continue with empty array - will show current price
+    }
     
     // Group transactions by time interval and calculate OHLC
     const buckets: Map<number, { open: number; high: number; low: number; close: number; volume: number }> = new Map();
     
     transactions.forEach(tx => {
-      const txTime = typeof tx.created_at === 'string' 
-        ? new Date(tx.created_at).getTime() 
-        : tx.created_at;
+      // Parse price - handle both number and string
+      const price = typeof tx.price === 'number' ? tx.price : parseFloat(tx.price || '0');
+      if (isNaN(price) || price <= 0) {
+        console.warn(`⚠️ Skipping transaction with invalid price: ${tx.price}`);
+        return;
+      }
+      
+      // Parse timestamp - handle both SQLite (ISO string) and PostgreSQL (Date object or string)
+      let txTime: number;
+      if (typeof tx.created_at === 'string') {
+        txTime = new Date(tx.created_at).getTime();
+      } else if (tx.created_at instanceof Date) {
+        txTime = tx.created_at.getTime();
+      } else if (typeof tx.created_at === 'number') {
+        txTime = tx.created_at;
+      } else {
+        console.warn(`⚠️ Skipping transaction with invalid timestamp: ${tx.created_at}`);
+        return;
+      }
+      
+      if (isNaN(txTime) || txTime < startTime) {
+        return; // Skip transactions outside timeframe
+      }
+      
       const bucketTime = Math.floor(txTime / interval) * interval;
       
       if (!buckets.has(bucketTime)) {
         buckets.set(bucketTime, {
-          open: tx.price,
-          high: tx.price,
-          low: tx.price,
-          close: tx.price,
+          open: price,
+          high: price,
+          low: price,
+          close: price,
           volume: parseFloat(tx.amount || '0'),
         });
       } else {
         const bucket = buckets.get(bucketTime)!;
-        bucket.high = Math.max(bucket.high, tx.price);
-        bucket.low = Math.min(bucket.low, tx.price);
-        bucket.close = tx.price;
+        bucket.high = Math.max(bucket.high, price);
+        bucket.low = Math.min(bucket.low, price);
+        bucket.close = price;
         bucket.volume += parseFloat(tx.amount || '0');
       }
     });
@@ -1544,28 +1572,60 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
       }
     }
     
-    // If no transactions, return current price from deployments
+    // If no transactions, try to get current price from price-sync endpoint or deployments
     if (data.length === 0) {
-      const deployments = await dbAll(
-        'SELECT * FROM token_deployments WHERE token_id = ?',
-        [id]
-      ) as any[];
-      
-      if (deployments.length > 0) {
-        const dep = deployments[0];
-        const price = dep.market_cap / (parseFloat(dep.current_supply || '1') * Math.pow(10, 18)) || 0.001;
+      try {
+        // Try to get current price from deployments or price-sync
+        const deployments = await dbAll(
+          'SELECT chain, market_cap, current_supply FROM token_deployments WHERE token_id = ? AND status = ?',
+          [id, 'deployed']
+        ) as any[];
         
-        // Create flat line with current price
-        for (let time = startTime; time <= now; time += interval) {
-          data.push({
-            time,
-            open: price,
-            high: price,
-            low: price,
-            close: price,
-            volume: 0,
-          });
+        if (deployments.length > 0) {
+          // Get token parameters for price calculation
+          const token = await dbGet('SELECT base_price, slope FROM tokens WHERE id = ?', [id]) as any;
+          
+          let price = 0.001; // Default fallback
+          
+          if (token) {
+            // Calculate price using global supply
+            const { getGlobalSupply } = await import('../services/globalSupply');
+            const globalSupply = await getGlobalSupply(id);
+            const globalSupplyValue = parseFloat(globalSupply || '0');
+            const basePrice = parseFloat(token.base_price || '0');
+            const slope = parseFloat(token.slope || '0');
+            
+            // Price formula: basePrice + (slope * globalSupply)
+            // Convert to USD (assuming ETH = $3000)
+            const priceWei = basePrice + (slope * globalSupplyValue);
+            price = (priceWei / Math.pow(10, 18)) * 3000;
+          } else if (deployments[0].market_cap && deployments[0].current_supply) {
+            // Fallback to market cap calculation
+            const supply = parseFloat(deployments[0].current_supply || '1');
+            price = deployments[0].market_cap / (supply * Math.pow(10, 18)) || 0.001;
+          }
+          
+          // Create flat line with current price (at least 2 points for chart to render)
+          const points = Math.max(2, Math.floor((now - startTime) / interval) + 1);
+          for (let i = 0; i < points; i++) {
+            const time = startTime + (i * interval);
+            if (time <= now) {
+              data.push({
+                time,
+                open: price,
+                high: price,
+                low: price,
+                close: price,
+                volume: 0,
+              });
+            }
+          }
+          
+          console.log(`📊 Created flat price line with ${data.length} points at price $${price.toFixed(6)}`);
         }
+      } catch (error: any) {
+        console.error('Error creating fallback price data:', error);
+        // Return empty data - frontend will show "No data" message
       }
     }
     
