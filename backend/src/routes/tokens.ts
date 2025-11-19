@@ -2075,6 +2075,161 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/:id/sync-diagnostics - Detailed diagnostics for sync issues (no deployment needed)
+router.get('/:id/sync-diagnostics', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { ethers } = await import('ethers');
+    const { getChainConfig } = await import('../services/activePriceSync');
+    
+    const deployments = await dbAll(
+      `SELECT chain, curve_address, token_address FROM token_deployments 
+       WHERE token_id = ? AND status = 'deployed' AND curve_address IS NOT NULL`,
+      [id]
+    ) as Array<{ chain: string; curve_address: string; token_address: string }>;
+
+    const diagnostics = [];
+    
+    for (const dep of deployments) {
+      const chainLower = dep.chain.toLowerCase();
+      
+      // Skip non-EVM chains
+      if (chainLower.includes('hedera') || chainLower.includes('solana')) {
+        diagnostics.push({
+          chain: dep.chain,
+          skipped: true,
+          reason: 'Non-EVM chain',
+        });
+        continue;
+      }
+      
+      const config = getChainConfig(dep.chain);
+      
+      if (!config || !config.globalSupplyTrackerAddress) {
+        diagnostics.push({
+          chain: dep.chain,
+          error: 'No chain configuration or tracker address found',
+        });
+        continue;
+      }
+      
+      try {
+        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const wallet = config.privateKey ? new ethers.Wallet(config.privateKey, provider) : null;
+        
+        // Get bonding curve info
+        const curveABI = [
+          'function totalSupplySold() external view returns (uint256)',
+          'function owner() external view returns (address)',
+        ];
+        const curveContract = new ethers.Contract(dep.curve_address, curveABI, provider);
+        const actualSupplyWei = await curveContract.totalSupplySold();
+        const actualSupply = ethers.formatEther(actualSupplyWei);
+        const curveOwner = await curveContract.owner();
+        
+        // Get tracker info
+        const trackerABI = [
+          'function owner() external view returns (address)',
+          'function chainSupply(address tokenId, string memory chain) external view returns (uint256)',
+          'function authorizedUpdaters(address) external view returns (bool)',
+          'function getGlobalSupply(address tokenId) external view returns (uint256)',
+        ];
+        const trackerContract = new ethers.Contract(
+          config.globalSupplyTrackerAddress,
+          trackerABI,
+          provider
+        );
+        
+        const trackerOwner = await trackerContract.owner();
+        const trackerSupplyWei = await trackerContract.chainSupply(dep.token_address, config.chainName);
+        const trackerSupply = ethers.formatEther(trackerSupplyWei);
+        const isAuthorized = await trackerContract.authorizedUpdaters(dep.curve_address);
+        const globalSupplyWei = await trackerContract.getGlobalSupply(dep.token_address).catch(() => null);
+        const globalSupply = globalSupplyWei ? ethers.formatEther(globalSupplyWei) : null;
+        
+        // Test if wallet can update
+        let canUpdate = false;
+        let updateError = null;
+        if (wallet) {
+          const isOwner = trackerOwner.toLowerCase() === wallet.address.toLowerCase();
+          canUpdate = isAuthorized || isOwner;
+          
+          if (canUpdate) {
+            // Try gas estimation
+            try {
+              const trackerWithSigner = new ethers.Contract(
+                config.globalSupplyTrackerAddress,
+                ['function updateSupply(address tokenId, string memory chain, uint256 newSupply) external payable'],
+                wallet
+              );
+              await trackerWithSigner.updateSupply.estimateGas(
+                dep.token_address,
+                config.chainName,
+                actualSupplyWei
+              );
+              updateError = null;
+            } catch (estError: any) {
+              updateError = estError.reason || estError.data?.message || estError.message || 'Gas estimation failed';
+            }
+          } else {
+            updateError = `Not authorized (curve authorized: ${isAuthorized}, wallet is owner: ${isOwner})`;
+          }
+        } else {
+          updateError = 'No private key configured';
+        }
+        
+        diagnostics.push({
+          chain: dep.chain,
+          curveAddress: dep.curve_address,
+          tokenAddress: dep.token_address,
+          trackerAddress: config.globalSupplyTrackerAddress,
+          actualSupply,
+          trackerSupply,
+          globalSupply,
+          needsUpdate: actualSupplyWei.toString() !== trackerSupplyWei.toString(),
+          canUpdate,
+          updateError,
+          authorization: {
+            curveAuthorized: isAuthorized,
+            walletAddress: wallet?.address || null,
+            trackerOwner,
+            walletIsOwner: wallet ? trackerOwner.toLowerCase() === wallet.address.toLowerCase() : false,
+            curveOwner,
+          },
+          config: {
+            hasPrivateKey: !!config.privateKey,
+            rpcUrl: config.rpcUrl,
+            chainName: config.chainName,
+          },
+        });
+      } catch (error: any) {
+        diagnostics.push({
+          chain: dep.chain,
+          error: error.message || 'Unknown error',
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        });
+      }
+    }
+    
+    res.json({
+      tokenId: id,
+      diagnostics,
+      summary: {
+        total: diagnostics.length,
+        canUpdate: diagnostics.filter(d => d.canUpdate && !d.updateError).length,
+        needsUpdate: diagnostics.filter(d => d.needsUpdate).length,
+        errors: diagnostics.filter(d => d.error || d.updateError).length,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching sync diagnostics:', error);
+    res.status(500).json({
+      error: 'Failed to fetch diagnostics',
+      message: error.message,
+    });
+  }
+});
+
 // POST /tokens/:id/configure-bonding-curves - Auto-configure bonding curves to use global supply
 router.post('/:id/configure-bonding-curves', async (req: Request, res: Response) => {
   try {

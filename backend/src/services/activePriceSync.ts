@@ -25,7 +25,7 @@ interface ChainConfig {
   chainName: string; // For GlobalSupplyTracker updateSupply call
 }
 
-function getChainConfig(chain: string): ChainConfig | null {
+export function getChainConfig(chain: string): ChainConfig | null {
   const chainLower = chain.toLowerCase();
   
   const configs: Record<string, ChainConfig> = {
