@@ -66,7 +66,14 @@ crossify-platform/
 
 ## Documentation
 
-See the `docs/` directory for detailed documentation on:
+### Core Documentation
+
+- **Price Synchronization System**: `docs/PRICE_SYNC_SYSTEM.md` - Complete guide to cross-chain price sync
+- **API Reference**: `docs/API_REFERENCE.md` - Comprehensive API documentation
+- **Recent Updates**: `docs/RECENT_UPDATES.md` - Latest changes and improvements
+
+### System Documentation
+
 - **DEX Graduation System**: `docs/DEX_GRADUATION_COMPLETE.md` - Complete graduation system guide
 - **Graduation Implementation**: `docs/GRADUATION_IMPLEMENTATION_SUMMARY.md` - Implementation details
 - **Cross-Chain Liquidity Bridge**: `docs/LIQUIDITY_BRIDGE_IMPLEMENTATION.md` - Complete bridge system guide
@@ -74,10 +81,14 @@ See the `docs/` directory for detailed documentation on:
 - **DEX Integration**: `docs/DEX_INTEGRATION_GUIDE.md` - DEX integration details
 - **Deployment Results**: `LIQUIDITY_BRIDGE_DEPLOYMENT_RESULTS.md` - All deployed contract addresses
 - **Final Summary**: `FINAL_DEPLOYMENT_SUMMARY.md` - Complete deployment status
-- Smart contract architecture
-- API endpoints
-- Frontend components
-- Deployment guides
+
+### GitHub Wiki
+
+- [Architecture](https://github.com/M1k3lee/crossify-platform/wiki/Architecture) - System architecture overview
+- [Contracts](https://github.com/M1k3lee/crossify-platform/wiki/Contracts) - Smart contract documentation
+- [Price Synchronization](https://github.com/M1k3lee/crossify-platform/wiki/Price-Synchronization) - Price sync guide
+- [Development Process](https://github.com/M1k3lee/crossify-platform/wiki/Development-Process) - Development workflow
+- [Testing](https://github.com/M1k3lee/crossify-platform/wiki/Testing) - Testing guidelines
 
 ## 🎉 Cross-Chain Liquidity Bridge - DEPLOYED!
 
