@@ -2251,38 +2251,71 @@ router.post('/:id/authorize-backend-wallet', async (req: Request, res: Response)
       if (chainLower.includes('hedera') || chainLower.includes('solana')) continue;
       
       const config = getChainConfig(dep.chain);
-      if (!config || !config.globalSupplyTrackerAddress || !config.privateKey) {
+      if (!config || !config.globalSupplyTrackerAddress) {
         results.push({
           chain: dep.chain,
           success: false,
-          message: 'No configuration or private key',
+          message: 'No configuration or tracker address',
         });
         continue;
       }
       
       try {
         const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-        const wallet = new ethers.Wallet(config.privateKey, provider);
+        
+        // Try chain-specific key first, then ETHEREUM_PRIVATE_KEY (owner's key)
+        const possibleKeys = [
+          config.privateKey,
+          process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY,
+        ].filter(Boolean) as string[];
+        
+        if (possibleKeys.length === 0) {
+          results.push({
+            chain: dep.chain,
+            success: false,
+            message: 'No private key available (need owner key)',
+          });
+          continue;
+        }
         
         const trackerABI = [
           'function owner() external view returns (address)',
           'function authorizedUpdaters(address) external view returns (bool)',
           'function authorizeUpdater(address) external',
         ];
-        const tracker = new ethers.Contract(config.globalSupplyTrackerAddress, trackerABI, wallet);
         
-        const owner = await tracker.owner();
-        const isOwner = owner.toLowerCase() === wallet.address.toLowerCase();
+        // Try each key until we find the owner
+        let ownerWallet: ethers.Wallet | null = null;
+        let trackerOwner: string | null = null;
         
-        if (!isOwner) {
+        for (const key of possibleKeys) {
+          const wallet = new ethers.Wallet(key.replace(/^0x/, ''), provider);
+          const tracker = new ethers.Contract(config.globalSupplyTrackerAddress, trackerABI, wallet);
+          const owner = await tracker.owner();
+          
+          if (owner.toLowerCase() === wallet.address.toLowerCase()) {
+            ownerWallet = wallet;
+            trackerOwner = owner;
+            break;
+          }
+          
+          // Store the first tracker owner we see (for error messages)
+          if (!trackerOwner) {
+            trackerOwner = owner;
+          }
+        }
+        
+        if (!ownerWallet) {
           results.push({
             chain: dep.chain,
             success: false,
-            message: `Wallet ${wallet.address} is not the owner (owner: ${owner})`,
+            message: `No private key matches owner address ${trackerOwner}. Need private key for owner: ${trackerOwner}`,
+            ownerAddress: trackerOwner,
           });
           continue;
         }
         
+        const tracker = new ethers.Contract(config.globalSupplyTrackerAddress, trackerABI, ownerWallet);
         const isAuthorized = await tracker.authorizedUpdaters(BACKEND_WALLET);
         if (isAuthorized) {
           results.push({
@@ -2293,7 +2326,7 @@ router.post('/:id/authorize-backend-wallet', async (req: Request, res: Response)
           continue;
         }
         
-        const trackerWithSigner = new ethers.Contract(config.globalSupplyTrackerAddress, trackerABI, wallet);
+        const trackerWithSigner = new ethers.Contract(config.globalSupplyTrackerAddress, trackerABI, ownerWallet);
         const tx = await trackerWithSigner.authorizeUpdater(BACKEND_WALLET, { gasLimit: 200000 });
         await tx.wait();
         
