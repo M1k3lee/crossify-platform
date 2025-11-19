@@ -306,10 +306,14 @@ export default function HowItWorks() {
                 <p className="text-lg text-gray-300 max-w-3xl mx-auto">
                   When someone buys your token on Ethereum, the price automatically updates on BSC, Base, Solana, and Hedera. No arbitrage. No confusion. Just perfect synchronization.
                 </p>
-                <div className="flex items-center justify-center gap-4 mt-4">
+                <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
                   <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">
                     <span className="text-xs text-blue-300">Powered by</span>
                     <span className="text-sm font-semibold text-blue-400">LayerZero</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
+                    <span className="text-xs text-purple-300">Powered by</span>
+                    <span className="text-sm font-semibold text-purple-400">Supra</span>
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 rounded-full border border-green-500/30">
                     <span className="text-xs text-green-300">Audited by</span>
@@ -355,9 +359,13 @@ export default function HowItWorks() {
                     <ArrowRight className="w-8 h-8 text-primary-400" />
                     <div className="flex-1 text-center">
                       <div className="bg-primary-500/20 rounded-lg p-4 border border-primary-500/30">
-                        <div className="text-primary-300 font-semibold mb-1">LayerZero Sync</div>
+                        <div className="text-primary-300 font-semibold mb-1">Cross-Chain Sync</div>
                         <div className="text-gray-400 text-sm">Broadcasts to all chains</div>
-                        <div className="text-xs text-primary-400/70 mt-1">Powered by LayerZero</div>
+                        <div className="flex items-center justify-center gap-2 mt-1 flex-wrap">
+                          <span className="text-xs text-blue-400/70">LayerZero</span>
+                          <span className="text-xs text-gray-500">+</span>
+                          <span className="text-xs text-purple-400/70">Supra</span>
+                        </div>
                       </div>
                     </div>
                     <ArrowRight className="w-8 h-8 text-primary-400" />
@@ -377,8 +385,9 @@ export default function HowItWorks() {
                     </div>
                   </div>
                   <div className="text-center text-sm text-gray-400 space-y-1">
-                    <div>⚡ Happens in seconds via LayerZero messaging</div>
+                    <div>⚡ Happens in seconds via LayerZero & Supra cross-chain messaging</div>
                     <div className="text-xs">📝 Immutably logged via Hedera Consensus Service</div>
+                    <div className="text-xs">🆔 Token ID system ensures perfect sync across all chains</div>
                   </div>
                 </div>
               </div>

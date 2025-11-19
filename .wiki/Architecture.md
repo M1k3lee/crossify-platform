@@ -78,14 +78,51 @@ This is where the magic happens. Each token gets its own BondingCurve that:
 
 **The Innovation**: Instead of using local supply for pricing, we use **global supply** from the GlobalSupplyTracker. This means a buy on BSC Testnet affects the price on Base Sepolia instantly.
 
-#### GlobalSupplyTracker
-The heart of our cross-chain synchronization. This contract:
-- Maintains a global supply counter for each token
+#### GlobalSupplyTracker (V1 - Legacy)
+The original cross-chain synchronization contract:
+- Maintains a global supply counter for each token (address-based)
 - Receives updates from all chains
 - Provides unified supply data to all BondingCurves
-- Integrates with UnifiedCrossChainSync for cross-chain messaging
+- Integrates with CrossChainSync for LayerZero messaging
 
-**Why This Matters**: Traditional bonding curves use local supply, meaning prices diverge across chains. Our global supply approach keeps prices synchronized within 0.5% variance.
+**Limitation**: Uses token addresses as keys, which means tokens with different addresses on each chain are tracked separately.
+
+#### TokenIDRegistry (New - January 2025)
+Revolutionary contract that enables true cross-chain token identification:
+- Maps token addresses to canonical bytes32 token IDs (derived from database UUIDs)
+- Allows tokens with different addresses on each chain to share the same token ID
+- Provides reverse lookup (token ID → address on specific chain)
+- Tracks primary address for each token ID
+
+**Deployed Addresses**:
+- Sepolia: `0x4f3854445c33E9cf42b40B0AB36f4Dd58c23331f`
+- BSC Testnet: `0x4f3854445c33E9cf42b40B0AB36f4Dd58c23331f`
+- Base Sepolia: `0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D`
+
+**Why This Matters**: Enables true cross-chain price synchronization for tokens that have different contract addresses on each chain.
+
+#### GlobalSupplyTrackerV2 (New - January 2025)
+The next-generation global supply tracker with Token ID support:
+- Tracks global supply using bytes32 token IDs instead of addresses
+- Integrates with TokenIDRegistry for address-to-ID mapping
+- Backward compatible: Auto-looks up token IDs for address-based calls
+- Supports both token ID and address-based tracking
+- Integrates with UnifiedCrossChainSync for cross-chain messaging
+- Real-time cross-chain sync via LayerZero
+
+**Deployed Addresses**:
+- Sepolia: `0xc443F7e5F0e62C4803030E938d5Cc762F0829A02`
+- BSC Testnet: `0xc443F7e5F0e62C4803030E938d5Cc762F0829A02`
+- Base Sepolia: `0x7aDD63A32854b5b44091B56e5c37B09Ec32e215C`
+
+**Key Features**:
+- Token ID-based global supply tracking
+- Chain-specific supply tracking per token ID
+- Automatic cross-chain synchronization
+- Fee management for cross-chain messages
+- Authorized updater system (bonding curves)
+
+**Why This Matters**: Traditional bonding curves use local supply, meaning prices diverge across chains. Our global supply approach with Token IDs keeps prices synchronized across all chains, even when tokens have different addresses on each chain.
 
 #### UnifiedCrossChainSync
 Our next-generation cross-chain synchronization layer that supports multiple protocols in parallel:

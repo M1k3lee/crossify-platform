@@ -6,20 +6,22 @@ This page provides a comprehensive overview of every smart contract in the Cross
 
 ## Contract Overview
 
-The Crossify platform consists of 12 core smart contracts, each serving a specific purpose in the token launch and trading ecosystem:
+The Crossify platform consists of 14 core smart contracts, each serving a specific purpose in the token launch and trading ecosystem:
 
 1. **TokenFactory** - Entry point for token creation
 2. **BondingCurve** - Manages token sales with linear pricing
-3. **GlobalSupplyTracker** - Tracks supply across all chains
-4. **CrossChainSync** - Handles LayerZero messaging (legacy, still supported)
-5. **UnifiedCrossChainSync** - Unified interface for multiple cross-chain protocols
-6. **SupraSync** - Supra HyperNova adapter for cross-chain messaging
-7. **CrossChainLiquidityBridge** - Manages liquidity across chains
-8. **CrossifyToken** - Standard ERC20 token implementation
-9. **Migration** - Handles DEX graduation
-10. **DEXDetector** - Identifies available DEXes
-11. **UnifiedLiquidityPool** - Shared liquidity management
-12. **CFY Contracts** - Platform token ecosystem (separate system)
+3. **GlobalSupplyTracker** - Tracks supply across all chains (V1 - legacy, address-based)
+4. **GlobalSupplyTrackerV2** - Next-gen supply tracker with Token ID support (January 2025)
+5. **TokenIDRegistry** - Maps token addresses to canonical bytes32 token IDs (January 2025)
+6. **CrossChainSync** - Handles LayerZero messaging (legacy, still supported)
+7. **UnifiedCrossChainSync** - Unified interface for multiple cross-chain protocols
+8. **SupraSync** - Supra HyperNova adapter for cross-chain messaging
+9. **CrossChainLiquidityBridge** - Manages liquidity across chains
+10. **CrossifyToken** - Standard ERC20 token implementation
+11. **Migration** - Handles DEX graduation
+12. **DEXDetector** - Identifies available DEXes
+13. **UnifiedLiquidityPool** - Shared liquidity management
+14. **CFY Contracts** - Platform token ecosystem (separate system)
 
 ## 1. TokenFactory
 
@@ -120,46 +122,121 @@ constructor(
 - Cross-chain price synchronization
 - Graduation scenarios
 
-## 3. GlobalSupplyTracker
+## 3. GlobalSupplyTracker (V1 - Legacy)
 
-**Purpose**: The heart of cross-chain price synchronization. Tracks the total supply sold across all chains.
-
-**Key Innovation**: This contract maintains a single source of truth for supply across all chains. When a token is bought on any chain, the global supply updates, and all chains see the new price.
+**Purpose**: The original cross-chain price synchronization contract. Tracks the total supply sold across all chains using token addresses as keys.
 
 **Key Features**:
-- Global supply tracking per token
+- Global supply tracking per token (address-based)
 - Per-chain supply tracking
 - Cross-chain synchronization via LayerZero
 - Authorized updater system (only bonding curves can update)
 - Fallback to local pricing if cross-chain fails
 
+**Limitation**: Uses token addresses as keys, which means tokens with different addresses on each chain are tracked separately. This prevents true cross-chain synchronization for tokens deployed with different addresses.
+
+**Status**: Legacy contract, still functional. New tokens should use GlobalSupplyTrackerV2.
+
+## 4. TokenIDRegistry (New - January 2025)
+
+**Purpose**: Revolutionary contract that enables true cross-chain token identification by mapping token addresses to canonical bytes32 token IDs.
+
+**Key Innovation**: Tokens deployed on different chains have different contract addresses, but they represent the same logical token. TokenIDRegistry creates a unified identity system by mapping all addresses to a single bytes32 token ID (derived from the database UUID).
+
+**Key Features**:
+- Maps token addresses to bytes32 token IDs
+- Reverse lookup: token ID → address on specific chain
+- Primary address tracking (first registered address per token ID)
+- Chain-aware address mapping
+- Owner-controlled registration
+
 **Data Structure**:
 ```solidity
-mapping(address => uint256) public globalSupply; // token => total supply
-mapping(address => mapping(string => uint256)) public chainSupply; // token => chain => supply
-mapping(address => bool) public authorizedUpdaters; // bonding curves
+mapping(address => bytes32) public tokenIdByAddress; // address => token ID
+mapping(bytes32 => address) public primaryAddressByTokenId; // token ID => primary address
+mapping(bytes32 => mapping(string => address)) public addressByTokenIdAndChain; // token ID => chain => address
 ```
 
-**Key Functions**:
-- `updateSupply()` - Update supply (called by bonding curves)
-- `getGlobalSupply()` - Get current global supply
-- `syncSupplyUpdate()` - Cross-chain sync via LayerZero
-- `authorizeUpdater()` - Add authorized bonding curve
+**Deployed Addresses**:
+- Sepolia: `0x4f3854445c33E9cf42b40B0AB36f4Dd58c23331f`
+- BSC Testnet: `0x4f3854445c33E9cf42b40B0AB36f4Dd58c23331f`
+- Base Sepolia: `0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D`
 
-**Cross-Chain Flow**:
-1. BondingCurve calls `updateSupply()` with new supply
-2. GlobalSupplyTracker updates local state
-3. Sends LayerZero message to all other chains
-4. Other chains receive message and update their trackers
-5. All BondingCurves now see updated global supply
+**Key Functions**:
+- `registerToken()` - Register a token address with a token ID
+- `getTokenId()` - Get token ID for an address
+- `getTokenAddress()` - Get token address for a token ID on a specific chain
+- `isRegistered()` - Check if an address is registered
+- `batchRegisterTokens()` - Batch register multiple tokens
+
+**Token ID Generation**: Token IDs are generated by hashing the database UUID (without dashes) using keccak256. This ensures consistency between backend and smart contracts.
+
+**Why This Matters**: Enables true cross-chain price synchronization. A token deployed on Sepolia with address `0xABC...` and on BSC with address `0xDEF...` can now share the same token ID, allowing GlobalSupplyTrackerV2 to track them as a single logical token.
 
 **Testing**: 
-- Tested cross-chain messaging between Sepolia, BSC Testnet, and Base Sepolia
-- Verified supply updates propagate correctly
-- Tested failure scenarios (message failures, network issues)
-- Confirmed price synchronization within 0.5% variance
+- Verified token ID generation matches backend
+- Tested address-to-ID and ID-to-address lookups
+- Confirmed batch registration works correctly
+- Validated cross-chain address mapping
 
-## 4. CrossChainSync
+## 5. GlobalSupplyTrackerV2 (New - January 2025)
+
+**Purpose**: Next-generation global supply tracker that uses Token IDs instead of addresses for true cross-chain synchronization.
+
+**Key Innovation**: Unlike V1 which uses addresses (which differ per chain), V2 uses bytes32 token IDs from TokenIDRegistry. This enables tokens with different addresses on each chain to share the same global supply.
+
+**Key Features**:
+- Token ID-based global supply tracking
+- Chain-specific supply tracking per token ID
+- Automatic cross-chain synchronization via LayerZero
+- Backward compatible: Auto-looks up token IDs for address-based calls
+- Fee management for cross-chain messages
+- Authorized updater system (bonding curves)
+
+**Data Structure**:
+```solidity
+mapping(bytes32 => uint256) public globalSupply; // token ID => total supply
+mapping(bytes32 => mapping(string => uint256)) public chainSupply; // token ID => chain => supply
+mapping(address => bool) public authorizedUpdaters; // bonding curves
+TokenIDRegistry public tokenIDRegistry; // Registry for ID lookups
+```
+
+**Deployed Addresses**:
+- Sepolia: `0xc443F7e5F0e62C4803030E938d5Cc762F0829A02`
+- BSC Testnet: `0xc443F7e5F0e62C4803030E938d5Cc762F0829A02`
+- Base Sepolia: `0x7aDD63A32854b5b44091B56e5c37B09Ec32e215C`
+
+**Key Functions**:
+- `updateSupplyByTokenId()` - Update supply using token ID (recommended)
+- `updateSupply()` - Update supply using address (backward compatible, auto-looks up token ID)
+- `getGlobalSupply()` - Get global supply for a token ID
+- `getGlobalSupplyByAddress()` - Get global supply for an address (looks up token ID)
+- `getChainSupply()` - Get supply for a token ID on a specific chain
+- `setCrossChainSync()` - Configure cross-chain sync contract
+- `authorizeUpdater()` - Authorize bonding curve to update supply
+
+**Cross-Chain Flow**:
+1. BondingCurve calls `updateSupply()` with token address
+2. V2 looks up token ID from TokenIDRegistry
+3. V2 updates global supply using token ID
+4. V2 sends LayerZero message to all other chains (using token address for compatibility)
+5. Other chains receive message and update their V2 instances
+6. All BondingCurves now see updated global supply
+
+**Backward Compatibility**: 
+- Address-based calls automatically look up token IDs
+- Falls back to address-based tracking if token not registered
+- Existing tokens continue to work
+
+**Why This Matters**: Enables true cross-chain price synchronization. A token with address `0xABC...` on Sepolia and `0xDEF...` on BSC can now share the same global supply, ensuring prices stay synchronized.
+
+**Testing**: 
+- Verified token ID lookups work correctly
+- Tested cross-chain synchronization with different addresses
+- Confirmed backward compatibility with address-based calls
+- Validated global supply calculation across chains
+
+## 6. CrossChainSync
 
 **Purpose**: Handles LayerZero messaging for cross-chain communication (legacy, still supported).
 
@@ -184,7 +261,7 @@ mapping(address => bool) public authorizedUpdaters; // bonding curves
 
 **Status**: Legacy contract, still functional. New deployments should use UnifiedCrossChainSync.
 
-## 5. UnifiedCrossChainSync
+## 7. UnifiedCrossChainSync
 
 **Purpose**: Next-generation unified interface for multiple cross-chain protocols. Supports LayerZero and Supra HyperNova in parallel.
 
@@ -230,7 +307,7 @@ enum Protocol { LAYERZERO, SUPRA, BOTH, AUTO }
 
 **Why This Matters**: Provides redundancy, performance optimization, and future-proofing. LayerZero is proven and reliable, while Supra offers enhanced security with L1-to-L1 cryptographic consensus.
 
-## 6. SupraSync
+## 8. SupraSync
 
 **Purpose**: Adapter contract for Supra HyperNova cross-chain messaging.
 
@@ -260,7 +337,7 @@ enum Protocol { LAYERZERO, SUPRA, BOTH, AUTO }
 - `setEnabled()` - Enable/disable Supra sync
 - `isReady()` - Check if Supra is configured and ready
 
-## 7. CrossChainLiquidityBridge
+## 9. CrossChainLiquidityBridge
 
 **Purpose**: Manages liquidity across chains, ensuring all chains have sufficient reserves.
 
@@ -288,7 +365,7 @@ enum Protocol { LAYERZERO, SUPRA, BOTH, AUTO }
 - Confirmed liquidity transfers work correctly
 - Tested edge cases (all chains low, one chain very high)
 
-## 8. CrossifyToken
+## 10. CrossifyToken
 
 **Purpose**: Standard ERC20 token implementation with additional features.
 
@@ -301,7 +378,7 @@ enum Protocol { LAYERZERO, SUPRA, BOTH, AUTO }
 
 **Why Custom Token?**: We needed a token that integrates seamlessly with our bonding curve system and supports all our features.
 
-## 9. Migration
+## 11. Migration
 
 **Purpose**: Handles the migration from bonding curve to DEX when graduation threshold is reached.
 
@@ -318,7 +395,7 @@ enum Protocol { LAYERZERO, SUPRA, BOTH, AUTO }
 - BaseSwap (Base)
 - Raydium (Solana - planned)
 
-## 10. DEXDetector
+## 12. DEXDetector
 
 **Purpose**: Automatically detects available DEXes on each chain.
 
@@ -328,7 +405,7 @@ enum Protocol { LAYERZERO, SUPRA, BOTH, AUTO }
 - Factory address resolution
 - Pool creation parameters
 
-## 11. UnifiedLiquidityPool
+## 13. UnifiedLiquidityPool
 
 **Purpose**: Manages shared liquidity across chains (alternative to bridge approach).
 

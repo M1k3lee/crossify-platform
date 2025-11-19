@@ -168,12 +168,15 @@ export default function Marketplace() {
                 <h3 className="text-lg font-semibold text-white mb-1">Cross-Chain Price Synchronization</h3>
                 <p className="text-sm text-gray-300">
                   Tokens with <span className="text-primary-400 font-semibold">cross-chain sync enabled</span> maintain 
-                  consistent pricing across all chains. Buy on any chain, price updates everywhere instantly via LayerZero.
+                  consistent pricing across all chains. Buy on any chain, price updates everywhere instantly via LayerZero & Supra cross-chain protocols.
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="px-3 py-1 bg-blue-500/20 border border-blue-500/50 rounded-full">
                   <span className="text-blue-400 text-sm font-semibold">Powered by LayerZero</span>
+                </div>
+                <div className="px-3 py-1 bg-purple-500/20 border border-purple-500/50 rounded-full">
+                  <span className="text-purple-400 text-sm font-semibold">Powered by Supra</span>
                 </div>
                 <div className="px-3 py-1 bg-green-500/20 border border-green-500/50 rounded-full">
                   <span className="text-green-400 text-sm font-semibold">Audited by Hedera</span>

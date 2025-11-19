@@ -18,11 +18,13 @@ Crossify.io is a complete multichain token launch platform that enables creators
 - 📈 **Bonding Curve Sales** - Automated pricing with linear bonding curves
 - 🎓 **Automatic DEX Graduation** - Tokens automatically migrate to DEX when market cap thresholds are reached
 - 🌉 **Cross-Chain Liquidity Bridge** - Shared liquidity pools that automatically rebalance across chains
-- 📊 **Real-Time Price Sync** - Prices stay synchronized across all chains (target: <0.5% variance)
+- 📊 **Real-Time Price Sync** - Prices stay synchronized across all chains using Token ID-based global supply tracking
 - 🔄 **Dual Cross-Chain Architecture** - LayerZero + Supra HyperNova support for redundancy and performance
+- 🆔 **Token ID System** - Unified token identification across chains using bytes32 token IDs (enables true cross-chain sync)
 - ⚡ **Hedera Integration** - Ultra-fast (3-5s finality) and ultra-cheap (~$0.0001/tx) launches
 - 📝 **Immutable Audit Trails** - Powered by Hedera Consensus Service (HCS)
 - 💧 **Proactive Liquidity Management** - Automatic rebalancing every 30 seconds
+- 🔐 **Advanced Security** - Multi-protocol cross-chain messaging with automatic failover
 
 ## The Journey
 
@@ -64,5 +66,20 @@ Feel free to reach out! This is a living project, and I'm always happy to discus
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: January 2025*
+
+## Recent Major Updates
+
+### Token ID-Based Cross-Chain Synchronization (January 2025)
+We've implemented a revolutionary Token ID system that enables true cross-chain price synchronization:
+- **TokenIDRegistry**: Maps token addresses to canonical bytes32 token IDs across all chains
+- **GlobalSupplyTrackerV2**: Tracks global supply using token IDs instead of addresses
+- **Unified Price Sync**: Tokens with different addresses on each chain now share the same global supply
+- **Backward Compatible**: Existing tokens continue to work while new tokens benefit from improved sync
+
+### Dual Protocol Support
+- **LayerZero v2**: Battle-tested cross-chain messaging with proven security
+- **Supra HyperNova**: Next-generation bridgeless cross-chain technology (EVM support coming soon)
+- **Automatic Failover**: If one protocol fails, the other handles cross-chain messages
+- **Performance Comparison**: Real-time metrics to compare protocol performance
 
