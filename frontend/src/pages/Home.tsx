@@ -503,6 +503,15 @@ export default function Home() {
                 <span className="text-xs text-gray-500">Cross-Chain Messaging</span>
               </div>
               
+              {/* Supra Logo Placeholder */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-24 h-24 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center border border-purple-500/30">
+                  <Network className="w-12 h-12 text-purple-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-300">Supra</span>
+                <span className="text-xs text-gray-500">Cross-Chain Infrastructure</span>
+              </div>
+              
               {/* OpenZeppelin Logo Placeholder */}
               <div className="flex flex-col items-center gap-2">
                 <div className="w-24 h-24 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center border border-green-500/30">
