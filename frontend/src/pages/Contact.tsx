@@ -102,7 +102,7 @@ export default function Contact() {
               </div>
               <h3 className="text-2xl font-semibold text-white mb-3">Discord</h3>
               <a
-                href="https://discord.gg/WQMevJek"
+                href="https://discord.gg/JSXq9cU2CH"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary-400 hover:text-primary-300 transition-colors text-lg block mb-4"
