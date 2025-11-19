@@ -1581,6 +1581,22 @@ export default function Builder() {
                   </>
                 )}
               </button>
+              {(loading || deploying || !formData.name || !formData.symbol || !formData.initialSupply || formData.chains.length === 0) && (
+                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-3 py-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                  {loading || deploying 
+                    ? 'Deployment in progress...' 
+                    : !formData.name 
+                    ? 'Missing: Token Name' 
+                    : !formData.symbol 
+                    ? 'Missing: Token Symbol' 
+                    : !formData.initialSupply 
+                    ? 'Missing: Initial Supply' 
+                    : formData.chains.length === 0 
+                    ? 'Missing: Select at least one chain' 
+                    : 'Ready to deploy'}
+                </div>
+              )}
+            </div>
             )}
           </div>
         </motion.div>
