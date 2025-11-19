@@ -27,21 +27,21 @@ const CHAIN_CONFIGS: Record<string, ChainConfig> = {
     name: "Base Sepolia",
     network: "baseSepolia",
     rpcUrl: process.env.RPC_URL_BASE_SEPOLIA || "https://base-sepolia-rpc.publicnode.com",
-    tokenIDRegistry: process.env.TOKEN_ID_REGISTRY_BASE_SEPOLIA || "",
+    tokenIDRegistry: process.env.TOKEN_ID_REGISTRY_BASE_SEPOLIA || "0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D",
     chainName: "base-sepolia",
   },
   'bsc-testnet': {
     name: "BSC Testnet",
     network: "bscTestnet",
     rpcUrl: process.env.RPC_URL_BSC_TESTNET || "https://bsc-testnet.publicnode.com",
-    tokenIDRegistry: process.env.TOKEN_ID_REGISTRY_BSC_TESTNET || "",
+    tokenIDRegistry: process.env.TOKEN_ID_REGISTRY_BSC_TESTNET || "0x4f3854445c33E9cf42b40B0AB36f4Dd58c23331f",
     chainName: "bsc-testnet",
   },
   'sepolia': {
     name: "Sepolia",
     network: "sepolia",
     rpcUrl: process.env.RPC_URL_SEPOLIA || "https://ethereum-sepolia-rpc.publicnode.com",
-    tokenIDRegistry: process.env.TOKEN_ID_REGISTRY_SEPOLIA || "",
+    tokenIDRegistry: process.env.TOKEN_ID_REGISTRY_SEPOLIA || "0x4f3854445c33E9cf42b40B0AB36f4Dd58c23331f",
     chainName: "sepolia",
   },
 };
@@ -60,9 +60,31 @@ function uuidToBytes32(uuidString: string): string {
  */
 async function getAllTokens(): Promise<Array<{ id: string; deployments: any[] }>> {
   try {
-    // Get all tokens (you may need to paginate or filter)
-    const response = await axios.get(`${API_BASE}/tokens`);
-    return response.data.tokens || [];
+    // Try to get tokens from status endpoint for a known token first
+    // If that works, we can expand to get all tokens
+    const knownTokenId = process.env.TOKEN_ID || "ea23015c-d3c7-40e1-8cb3-94d2cbd813b9";
+    
+    try {
+      const response = await axios.get(`${API_BASE}/tokens/${knownTokenId}/status`);
+      if (response.data && response.data.deployments) {
+        return [{
+          id: knownTokenId,
+          deployments: response.data.deployments || []
+        }];
+      }
+    } catch (e) {
+      // Continue to try other methods
+    }
+    
+    // Try the tokens endpoint
+    try {
+      const response = await axios.get(`${API_BASE}/tokens`);
+      return response.data.tokens || response.data || [];
+    } catch (e) {
+      console.warn("⚠️  Could not fetch tokens from API, will try to register known token");
+      // Return empty array, we'll handle known tokens manually
+      return [];
+    }
   } catch (error: any) {
     console.error("❌ Failed to fetch tokens:", error.message);
     return [];
@@ -139,18 +161,42 @@ async function registerToken(
 }
 
 async function main() {
-  const ownerPrivateKey = process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY;
+  // Use the deployer's private key (same one used to deploy TokenIDRegistry)
+  // This should be the PRIVATE_KEY from .env, not the GlobalSupplyTracker owner's key
+  const ownerPrivateKey = process.env.PRIVATE_KEY || process.env.ETHEREUM_PRIVATE_KEY;
   
   if (!ownerPrivateKey) {
-    console.error("❌ ERROR: ETHEREUM_PRIVATE_KEY or PRIVATE_KEY not found!");
+    console.error("❌ ERROR: PRIVATE_KEY or ETHEREUM_PRIVATE_KEY not found!");
+    console.error("   Use the same private key that was used to deploy TokenIDRegistry");
     process.exit(1);
   }
   
   console.log(`\n🔧 Registering tokens in TokenIDRegistry...\n`);
   
   // Get all tokens from API
-  const tokens = await getAllTokens();
-  console.log(`Found ${tokens.length} tokens in database\n`);
+  let tokens = await getAllTokens();
+  
+  // If no tokens found, try to register the known token manually
+  if (tokens.length === 0) {
+    const knownTokenId = process.env.TOKEN_ID || "ea23015c-d3c7-40e1-8cb3-94d2cbd813b9";
+    console.log(`⚠️  No tokens found from API, trying to register known token: ${knownTokenId}\n`);
+    
+    try {
+      const response = await axios.get(`${API_BASE}/tokens/${knownTokenId}/status`);
+      if (response.data && response.data.deployments) {
+        tokens = [{
+          id: knownTokenId,
+          deployments: response.data.deployments || []
+        }];
+      }
+    } catch (e: any) {
+      console.error(`❌ Failed to fetch token ${knownTokenId}: ${e.message}`);
+      console.log("\n💡 Tip: Set TOKEN_ID environment variable to register a specific token");
+      return;
+    }
+  }
+  
+  console.log(`Found ${tokens.length} token(s) to register\n`);
   
   if (tokens.length === 0) {
     console.log("No tokens to register");
@@ -181,15 +227,28 @@ async function main() {
                     d.chain?.toLowerCase() === chainKey
       );
       
-      if (!deployment || !deployment.token_address || deployment.status !== 'deployed') {
+      if (!deployment) {
         skipped++;
         continue;
       }
       
+      const tokenAddress = deployment.token_address || deployment.tokenAddress;
+      const status = deployment.status || 'unknown';
+      
+      if (!tokenAddress || status !== 'deployed') {
+        console.log(`   ⚠️  Skipping: tokenAddress=${tokenAddress || 'N/A'}, status=${status}`);
+        skipped++;
+        continue;
+      }
+      
+      console.log(`   Token ID: ${token.id}`);
+      console.log(`   Token Address: ${tokenAddress}`);
+      console.log(`   Status: ${status}\n`);
+      
       const result = await registerToken(
         config,
         token.id,
-        deployment.token_address,
+        tokenAddress,
         ownerPrivateKey
       );
       

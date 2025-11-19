@@ -44,7 +44,7 @@ contract TokenIDRegistry {
         address tokenAddress,
         bytes32 tokenId,
         string memory chain
-    ) external onlyOwner {
+    ) public onlyOwner {
         require(tokenAddress != address(0), "Invalid token address");
         require(tokenId != bytes32(0), "Invalid token ID");
         

@@ -164,7 +164,7 @@ contract GlobalSupplyTrackerV2 {
         bytes32 tokenId,
         string memory chain,
         uint256 newSupply
-    ) external payable onlyAuthorized {
+    ) public payable onlyAuthorized {
         require(tokenId != bytes32(0), "Invalid token ID");
         
         uint256 oldChainSupply = chainSupply[tokenId][chain];
