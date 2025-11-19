@@ -64,10 +64,17 @@ export async function syncSupplyForDeployment(
 ): Promise<{ success: boolean; message: string; actualSupply?: string; trackerSupply?: string }> {
   try {
     const config = getChainConfig(chain);
-    if (!config || !config.globalSupplyTrackerAddress) {
+    if (!config) {
       return {
         success: false,
-        message: `Chain configuration not found for ${chain}`,
+        message: `Chain configuration not found for ${chain}. Supported chains: sepolia, base-sepolia, bsc-testnet`,
+      };
+    }
+    
+    if (!config.globalSupplyTrackerAddress) {
+      return {
+        success: false,
+        message: `GlobalSupplyTracker address not configured for ${chain}. Set GLOBAL_SUPPLY_TRACKER_${chain.toUpperCase().replace('-', '_')} environment variable`,
       };
     }
 
@@ -197,35 +204,67 @@ export async function syncTokenPrices(tokenId: string): Promise<{
 
     console.log(`🔄 Syncing prices for token ${tokenId} across ${deployments.length} chains...`);
 
-    const results = await Promise.all(
+    // Use Promise.allSettled to continue even if some chains fail
+    const results = await Promise.allSettled(
       deployments.map(async (dep) => {
-        const result = await syncSupplyForDeployment(
-          tokenId,
-          dep.chain,
-          dep.curve_address,
-          dep.token_address
-        );
-        return {
-          chain: dep.chain,
-          success: result.success,
-          message: result.message,
-        };
+        try {
+          const result = await syncSupplyForDeployment(
+            tokenId,
+            dep.chain,
+            dep.curve_address,
+            dep.token_address
+          );
+          return {
+            chain: dep.chain,
+            success: result.success,
+            message: result.message,
+          };
+        } catch (error: any) {
+          console.error(`❌ Error syncing ${dep.chain} for token ${tokenId}:`, error);
+          return {
+            chain: dep.chain,
+            success: false,
+            message: `Error: ${error.message || 'Unknown error'}`,
+          };
+        }
       })
     );
 
-    const successCount = results.filter(r => r.success).length;
-    const allSuccess = successCount === results.length;
+    // Process results from Promise.allSettled
+    const processedResults = results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        const dep = deployments[index];
+        console.error(`❌ Promise rejected for ${dep?.chain}:`, result.reason);
+        return {
+          chain: dep?.chain || 'unknown',
+          success: false,
+          message: `Promise rejected: ${result.reason?.message || 'Unknown error'}`,
+        };
+      }
+    });
+
+    const successCount = processedResults.filter(r => r.success).length;
+    const allSuccess = successCount === processedResults.length;
+
+    // Log detailed results
+    console.log(`📊 Sync results for token ${tokenId}:`);
+    processedResults.forEach(r => {
+      console.log(`   ${r.success ? '✅' : '❌'} ${r.chain}: ${r.message}`);
+    });
 
     return {
       success: allSuccess,
-      message: `Synced ${successCount}/${results.length} chains`,
-      results,
+      message: `Synced ${successCount}/${processedResults.length} chains`,
+      results: processedResults,
     };
   } catch (error: any) {
-    console.error(`Error syncing token prices for ${tokenId}:`, error);
+    console.error(`❌ Error syncing token prices for ${tokenId}:`, error);
+    console.error(`   Stack:`, error.stack);
     return {
       success: false,
-      message: error.message || 'Unknown error',
+      message: `Fatal error: ${error.message || 'Unknown error'}`,
       results: [],
     };
   }

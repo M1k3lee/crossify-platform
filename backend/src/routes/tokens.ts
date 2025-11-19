@@ -1949,25 +1949,21 @@ router.post('/:id/sync-prices', async (req: Request, res: Response) => {
     const { syncTokenPrices } = await import('../services/activePriceSync');
     const result = await syncTokenPrices(id);
     
-    if (result.success) {
-      res.json({
-        success: true,
-        message: result.message,
-        results: result.results,
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: result.message,
-        results: result.results,
-      });
-    }
+    // Always return 200, even if some chains failed
+    // The frontend can check result.success and result.results to see which chains succeeded
+    res.json({
+      success: result.success,
+      message: result.message,
+      results: result.results,
+    });
   } catch (error) {
     console.error('Error syncing prices:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     res.status(500).json({ 
       success: false,
       error: 'Failed to sync prices',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     });
   }
 });
