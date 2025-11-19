@@ -32,8 +32,13 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
         
         const response = await axios.get(`${API_BASE}/tokens/${tokenId}/price-history?${params}`);
         return response.data;
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching price history:', error);
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
         // Return empty data on error
         return { data: [], timeframe, interval: 3600000 };
       }
@@ -43,6 +48,17 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
   });
 
   const priceHistory: ChartDataPoint[] = priceHistoryData?.data || [];
+  
+  // Debug logging
+  if (priceHistoryData) {
+    console.log('📊 Price history data received:', {
+      dataLength: priceHistory.length,
+      timeframe: priceHistoryData.timeframe,
+      interval: priceHistoryData.interval,
+      firstPoint: priceHistory[0],
+      lastPoint: priceHistory[priceHistory.length - 1],
+    });
+  }
 
   const chartData = useMemo(() => {
     if (!priceHistory || priceHistory.length === 0) return null;
