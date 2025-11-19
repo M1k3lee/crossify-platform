@@ -31,20 +31,21 @@ function getChainConfig(chain: string): ChainConfig | null {
   const configs: Record<string, ChainConfig> = {
     'sepolia': {
       rpcUrl: process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
-      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_SEPOLIA,
-      privateKey: process.env.ETHEREUM_PRIVATE_KEY,
+      // Prefer V2, fallback to V1 for backward compatibility
+      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_V2_SEPOLIA || process.env.GLOBAL_SUPPLY_TRACKER_SEPOLIA,
+      privateKey: process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY,
       chainName: 'sepolia',
     },
     'base-sepolia': {
       rpcUrl: process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
-      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_BASESEPOLIA,
-      privateKey: process.env.BASE_PRIVATE_KEY,
+      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_V2_BASE_SEPOLIA || process.env.GLOBAL_SUPPLY_TRACKER_BASESEPOLIA,
+      privateKey: process.env.BASE_PRIVATE_KEY || process.env.PRIVATE_KEY,
       chainName: 'base-sepolia',
     },
     'bsc-testnet': {
       rpcUrl: process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
-      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_BSCTESTNET,
-      privateKey: process.env.BSC_PRIVATE_KEY,
+      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_V2_BSC_TESTNET || process.env.GLOBAL_SUPPLY_TRACKER_BSCTESTNET,
+      privateKey: process.env.BSC_PRIVATE_KEY || process.env.PRIVATE_KEY,
       chainName: 'bsc-testnet',
     },
   };
