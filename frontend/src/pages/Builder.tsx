@@ -109,23 +109,39 @@ export default function Builder() {
     
     if (supplyNum <= 0 || basePriceNum <= 0) return '0.00001';
     
-    // Strategy: Calculate slope so that at a certain % of supply sold, price increases by a reasonable multiplier
-    // This prevents early buyers from getting unrealistic paper gains
-    let targetSupplyPercent: number;
+    // For very large supplies (over 10 billion), use a different strategy
+    // Instead of targeting a percentage, target an absolute supply amount
+    // This prevents the slope from becoming too small to be meaningful
+    const isVeryLargeSupply = supplyNum > 10000000000; // 10 billion
+    
+    let targetSupply: number;
     let priceMultiplier: number;
     
-    if (tokenType === 'memecoin') {
-      // For memecoins: At 5% supply sold, price should be 2x base price (100% increase)
-      targetSupplyPercent = 0.05; // 5%
-      priceMultiplier = 2; // 2x = 100% increase
-    } else if (tokenType === 'utility') {
-      // For utility tokens: At 2% supply sold, price should be 2x base price
-      targetSupplyPercent = 0.02; // 2%
-      priceMultiplier = 2; // 2x
+    if (isVeryLargeSupply) {
+      // For very large supplies: Target a fixed amount (e.g., 1 billion tokens sold)
+      // This ensures the slope is meaningful even for massive supplies
+      targetSupply = 1000000000; // 1 billion tokens
+      priceMultiplier = 2; // 2x price at 1B tokens sold
     } else {
-      // For premium tokens: At 1% supply sold, price should be 2x base price
-      targetSupplyPercent = 0.01; // 1%
-      priceMultiplier = 2; // 2x
+      // Strategy: Calculate slope so that at a certain % of supply sold, price increases by a reasonable multiplier
+      // This prevents early buyers from getting unrealistic paper gains
+      let targetSupplyPercent: number;
+      
+      if (tokenType === 'memecoin') {
+        // For memecoins: At 5% supply sold, price should be 2x base price (100% increase)
+        targetSupplyPercent = 0.05; // 5%
+        priceMultiplier = 2; // 2x = 100% increase
+      } else if (tokenType === 'utility') {
+        // For utility tokens: At 2% supply sold, price should be 2x base price
+        targetSupplyPercent = 0.02; // 2%
+        priceMultiplier = 2; // 2x
+      } else {
+        // For premium tokens: At 1% supply sold, price should be 2x base price
+        targetSupplyPercent = 0.01; // 1%
+        priceMultiplier = 2; // 2x
+      }
+      
+      targetSupply = supplyNum * targetSupplyPercent;
     }
     
     // Formula: targetPrice = basePrice + (slope * targetSupply)
@@ -134,11 +150,14 @@ export default function Builder() {
     // basePrice * (multiplier - 1) = slope * targetSupply
     // slope = basePrice * (multiplier - 1) / targetSupply
     
-    const targetSupply = supplyNum * targetSupplyPercent;
     const slope = (basePriceNum * (priceMultiplier - 1)) / targetSupply;
     
-    // Ensure minimum slope to avoid zero
-    return Math.max(slope, basePriceNum / (supplyNum * 0.1)).toFixed(12);
+    // Ensure minimum meaningful slope (at least 1e-12 to be visible)
+    const minSlope = Math.max(basePriceNum / (supplyNum * 0.1), 1e-12);
+    const finalSlope = Math.max(slope, minSlope);
+    
+    // Format with up to 12 decimal places, but remove trailing zeros
+    return finalSlope.toFixed(12).replace(/\.?0+$/, '');
   };
 
   // Detect token type based on base price
