@@ -122,7 +122,11 @@ export async function syncSupplyForDeployment(
 
     // Update GlobalSupplyTracker with actual supply
     const signer = new ethers.Wallet(config.privateKey, provider);
-    const trackerWithSigner = trackerContract.connect(signer);
+    const trackerWithSigner = new ethers.Contract(
+      config.globalSupplyTrackerAddress,
+      GLOBAL_SUPPLY_TRACKER_ABI,
+      signer
+    );
 
     console.log(`🔄 Syncing supply for ${tokenId} on ${chain}: ${trackerSupply} → ${actualSupply}`);
 
