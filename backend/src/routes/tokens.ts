@@ -2820,12 +2820,19 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     // Calculate date filter - use parameterized query for better compatibility
     let dateFilter = '';
     const params: any[] = [id];
+    const now = new Date();
     if (period === '24h') {
-      dateFilter = "AND created_at >= datetime('now', '-1 day')";
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      dateFilter = "AND created_at >= ?";
+      params.push(oneDayAgo.toISOString());
     } else if (period === '7d') {
-      dateFilter = "AND created_at >= datetime('now', '-7 days')";
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      dateFilter = "AND created_at >= ?";
+      params.push(sevenDaysAgo.toISOString());
     } else if (period === '30d') {
-      dateFilter = "AND created_at >= datetime('now', '-30 days')";
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dateFilter = "AND created_at >= ?";
+      params.push(thirtyDaysAgo.toISOString());
     }
     // 'all' means no date filter
     
