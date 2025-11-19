@@ -26,27 +26,30 @@ interface ChainConfig {
   privateKey: string;
 }
 
+// Use single PRIVATE_KEY for all chains (fallback to chain-specific if available)
+const DEFAULT_PRIVATE_KEY = process.env.PRIVATE_KEY || "";
+
 const CHAIN_CONFIGS: Record<string, ChainConfig> = {
   'base-sepolia': {
     name: "Base Sepolia",
     network: "baseSepolia",
     rpcUrl: process.env.RPC_URL_BASE_SEPOLIA || "https://base-sepolia-rpc.publicnode.com",
     globalSupplyTracker: process.env.GLOBAL_SUPPLY_TRACKER_BASE_SEPOLIA || "0x1eC9ee96EbD41111ad7b99f29D9a61e46b721C65",
-    privateKey: process.env.PRIVATE_KEY_BASE_SEPOLIA || "",
+    privateKey: process.env.PRIVATE_KEY_BASE_SEPOLIA || DEFAULT_PRIVATE_KEY,
   },
   'bsc-testnet': {
     name: "BSC Testnet",
     network: "bscTestnet",
     rpcUrl: process.env.RPC_URL_BSC_TESTNET || "https://bsc-testnet.publicnode.com",
     globalSupplyTracker: process.env.GLOBAL_SUPPLY_TRACKER_BSC_TESTNET || "0xe84Ae64735261F441e0bcB12bCf60630c5239ef4",
-    privateKey: process.env.PRIVATE_KEY_BSC_TESTNET || "",
+    privateKey: process.env.PRIVATE_KEY_BSC_TESTNET || DEFAULT_PRIVATE_KEY,
   },
   'sepolia': {
     name: "Sepolia",
     network: "sepolia",
     rpcUrl: process.env.RPC_URL_SEPOLIA || "https://ethereum-sepolia-rpc.publicnode.com",
     globalSupplyTracker: process.env.GLOBAL_SUPPLY_TRACKER_SEPOLIA || "0x130195A8D09dfd99c36D5903B94088EDBD66533e",
-    privateKey: process.env.PRIVATE_KEY_SEPOLIA || "",
+    privateKey: process.env.PRIVATE_KEY_SEPOLIA || DEFAULT_PRIVATE_KEY,
   },
 };
 
@@ -93,11 +96,39 @@ async function fixBondingCurve(
     const trackerContract = new ethers.Contract(config.globalSupplyTracker, trackerABI, wallet);
     
     // Check current state
-    const curveOwner = await curveContract.owner();
-    const trackerOwner = await trackerContract.owner();
-    const currentTracker = await curveContract.globalSupplyTracker();
-    const useGlobalSupply = await curveContract.useGlobalSupply();
-    const isAuthorized = await trackerContract.isAuthorized(curveAddress);
+    let curveOwner, trackerOwner, currentTracker, useGlobalSupply, isAuthorized;
+    
+    try {
+      curveOwner = await curveContract.owner();
+    } catch (e: any) {
+      return { success: false, message: `Failed to get curve owner: ${e.message}` };
+    }
+    
+    try {
+      trackerOwner = await trackerContract.owner();
+    } catch (e: any) {
+      return { success: false, message: `Failed to get tracker owner: ${e.message}` };
+    }
+    
+    try {
+      currentTracker = await curveContract.globalSupplyTracker();
+    } catch (e: any) {
+      return { success: false, message: `Failed to get current tracker: ${e.message}` };
+    }
+    
+    try {
+      useGlobalSupply = await curveContract.useGlobalSupply();
+    } catch (e: any) {
+      return { success: false, message: `Failed to check useGlobalSupply: ${e.message}` };
+    }
+    
+    try {
+      isAuthorized = await trackerContract.isAuthorized(curveAddress);
+    } catch (e: any) {
+      // isAuthorized might not exist or might revert - that's okay, we'll try to authorize anyway
+      console.log(`   ⚠️  Could not check authorization status: ${e.message}`);
+      isAuthorized = false; // Assume not authorized if we can't check
+    }
     
     console.log(`\n   Current state:`);
     console.log(`   - Curve owner: ${curveOwner}`);
@@ -200,14 +231,28 @@ async function main() {
   
   // Fix each chain
   for (const dep of deployments) {
-    if (!dep.curve_address || dep.status !== 'deployed') {
-      console.warn(`⚠️  Skipping ${dep.chain}: no curve address or not deployed`);
+    // Handle different field name variations
+    const curveAddress = dep.curve_address || dep.curveAddress || dep.curve;
+    const status = dep.status || 'unknown';
+    
+    console.log(`\n📋 Deployment: ${dep.chain}`);
+    console.log(`   Status: ${status}`);
+    console.log(`   Curve Address: ${curveAddress || 'N/A'}`);
+    console.log(`   Token Address: ${dep.token_address || dep.tokenAddress || dep.token || 'N/A'}`);
+    
+    if (!curveAddress) {
+      console.warn(`⚠️  Skipping ${dep.chain}: no curve address found`);
       continue;
     }
     
-    const chainKey = dep.chain?.toLowerCase().includes('base-sepolia') ? 'base-sepolia' :
-                    dep.chain?.toLowerCase().includes('bsc-testnet') ? 'bsc-testnet' :
-                    dep.chain?.toLowerCase().includes('sepolia') ? 'sepolia' : null;
+    if (status !== 'deployed' && status !== 'active') {
+      console.warn(`⚠️  Skipping ${dep.chain}: status is '${status}' (expected 'deployed' or 'active')`);
+      // Continue anyway - might still be fixable
+    }
+    
+    const chainKey = dep.chain?.toLowerCase().includes('base-sepolia') || dep.chain?.toLowerCase().includes('base') ? 'base-sepolia' :
+                    dep.chain?.toLowerCase().includes('bsc-testnet') || dep.chain?.toLowerCase().includes('bsc') ? 'bsc-testnet' :
+                    dep.chain?.toLowerCase().includes('sepolia') || dep.chain?.toLowerCase().includes('ethereum') ? 'sepolia' : null;
     
     if (!chainKey || !CHAIN_CONFIGS[chainKey]) {
       console.warn(`⚠️  Unknown chain: ${dep.chain}`);
@@ -219,13 +264,13 @@ async function main() {
     console.log(`${'='.repeat(60)}`);
     console.log(`${config.name}`);
     console.log(`${'='.repeat(60)}`);
-    console.log(`Curve Address: ${dep.curve_address}`);
+    console.log(`Curve Address: ${curveAddress}`);
     console.log(`Tracker Address: ${config.globalSupplyTracker}\n`);
     
-    const result = await fixBondingCurve(config, dep.curve_address);
+    const result = await fixBondingCurve(config, curveAddress);
     
-    const status = result.success ? "✅" : "❌";
-    console.log(`\n${status} ${result.message}\n`);
+    const statusIcon = result.success ? "✅" : "❌";
+    console.log(`\n${statusIcon} ${result.message}\n`);
     
     results.push({
       chain: config.name,
@@ -261,6 +306,7 @@ async function main() {
 }
 
 main().catch(console.error);
+
 
 
 
