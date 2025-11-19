@@ -11,6 +11,9 @@ import { motion } from 'framer-motion';
 import QuantumBackground from '../components/QuantumBackground';
 import toast from 'react-hot-toast';
 import { mintTokens, burnTokens, pauseToken, updateBondingCurveFees } from '../services/tokenManagement';
+import { deployTokenOnEVM } from '../services/blockchain';
+import { useQueryClient } from '@tanstack/react-query';
+import { Loader2, Zap } from 'lucide-react';
 
 import { API_BASE } from '../config/api';
 
@@ -40,11 +43,13 @@ export default function CreatorDashboard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
+  const queryClient = useQueryClient();
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [mintAmount, setMintAmount] = useState('');
   const [burnAmount, setBurnAmount] = useState('');
   const [mintTo, setMintTo] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [retryingDeployment, setRetryingDeployment] = useState<string | null>(null);
   
   // Fee editing state
   const [editingFees, setEditingFees] = useState(false);
@@ -417,6 +422,95 @@ export default function CreatorDashboard() {
       setSellFee(token.sellFeePercent?.toString() || '0');
     }
   }, [token]);
+
+  // Retry failed deployment
+  const handleRetryDeployment = async (dep: any) => {
+    if (!isConnected || !address) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+
+    if (!isOwner) {
+      toast.error('Only the token creator can retry deployments');
+      return;
+    }
+
+    try {
+      setRetryingDeployment(dep.chain);
+      toast.loading(`Retrying deployment to ${dep.chain}...`, { id: `retry-${dep.chain}` });
+      
+      const chain = dep.chain.toLowerCase();
+      const evmChain = chain.includes('sepolia') && !chain.includes('base') ? 'ethereum' :
+                      chain.includes('base') ? 'base' :
+                      chain.includes('bsc') ? 'bsc' :
+                      chain.includes('hedera') ? 'hedera' : null;
+
+      if (!evmChain) {
+        toast.error(`Deployment to ${dep.chain} is not yet supported`, { id: `retry-${dep.chain}` });
+        setRetryingDeployment(null);
+        return;
+      }
+
+      // Get token data
+      let logoIpfs = '';
+      if (token.logoUrl) {
+        logoIpfs = token.logoUrl.replace('https://ipfs.io/ipfs/', '').replace('ipfs://', '');
+      } else if (token.logoIpfs) {
+        logoIpfs = token.logoIpfs;
+      } else if (token.logo_ipfs) {
+        logoIpfs = token.logo_ipfs;
+      }
+      
+      const tokenData = {
+        name: token.name,
+        symbol: token.symbol,
+        decimals: token.decimals || 18,
+        initialSupply: token.initialSupply || token.initial_supply || '1000000000',
+        metadataUri: logoIpfs,
+      };
+
+      const curveData = {
+        basePrice: (token.basePrice || token.base_price || 0.001).toString(),
+        slope: (token.slope || 0.000001).toString(),
+        graduationThreshold: '0',
+        buyFeePercent: (token.buyFeePercent || token.buy_fee_percent || 0).toString(),
+        sellFeePercent: (token.sellFeePercent || token.sell_fee_percent || 0).toString(),
+      };
+
+      // Deploy to blockchain
+      const result = await deployTokenOnEVM(evmChain as 'ethereum' | 'bsc' | 'base' | 'hedera', {
+        chain: evmChain as any,
+        tokenData,
+        curveData,
+      });
+
+      // Save deployment to backend
+      await axios.post(`${API_BASE}/tokens/${id}/deploy`, {
+        chains: [evmChain],
+        deployments: [{
+          chain: dep.chain,
+          tokenAddress: result.tokenAddress,
+          curveAddress: result.curveAddress,
+          status: 'deployed',
+          txHash: result.txHash,
+        }],
+      });
+
+      toast.success(`✅ Deployed to ${dep.chain}!`, { id: `retry-${dep.chain}` });
+      
+      // Refresh token data
+      queryClient.invalidateQueries({ queryKey: ['creator-token', id] });
+      queryClient.invalidateQueries({ queryKey: ['token-status', id] });
+    } catch (error: any) {
+      console.error('Retry deployment error:', error);
+      toast.error(error.message || `Failed to deploy to ${dep.chain}`, { 
+        id: `retry-${dep.chain}`,
+        duration: 10000 
+      });
+    } finally {
+      setRetryingDeployment(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -890,7 +984,9 @@ export default function CreatorDashboard() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-white capitalize">{dep.chain}</h3>
                   <span className={`px-2 py-1 rounded text-xs ${
-                    dep.status === 'deployed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                    dep.status === 'deployed' ? 'bg-green-500/20 text-green-400' : 
+                    dep.status === 'failed' ? 'bg-red-500/20 text-red-400' : 
+                    'bg-yellow-500/20 text-yellow-400'
                   }`}>
                     {dep.status}
                   </span>
@@ -933,6 +1029,25 @@ export default function CreatorDashboard() {
                         <span className="text-white font-semibold">${(dep.marketCap / 1e6).toFixed(2)}M</span>
                       </div>
                     )}
+                    {dep.status === 'failed' && isOwner && (
+                      <button
+                        onClick={() => handleRetryDeployment(dep)}
+                        disabled={retryingDeployment !== null || !isConnected || retryingDeployment === dep.chain}
+                        className="block w-full mt-3 px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition text-center flex items-center justify-center gap-2"
+                      >
+                        {retryingDeployment === dep.chain ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Retrying...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4" />
+                            Retry Deployment
+                          </>
+                        )}
+                      </button>
+                    )}
                     {dep.status === 'deployed' && dep.curveAddress && (
                       <Link
                         to={`/token/${id}?chain=${dep.chain}`}
@@ -940,6 +1055,11 @@ export default function CreatorDashboard() {
                       >
                         Trade on {dep.chain === 'bsc' ? 'BSC' : dep.chain === 'ethereum' ? 'Ethereum' : dep.chain === 'base' ? 'Base' : dep.chain}
                       </Link>
+                    )}
+                    {dep.status === 'failed' && dep.error && (
+                      <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                        {dep.error.length > 100 ? `${dep.error.substring(0, 100)}...` : dep.error}
+                      </div>
                     )}
                   </div>
                 )}
