@@ -94,18 +94,35 @@ async function authorizeV2(
 }
 
 async function main() {
-  // CrossChainSync is owned by a different wallet (0x78B056f4cFb69bE85E52850000902eB0B5b418BC)
+  // CrossChainSync is owned by wallet 0x78B056f4cFb69bE85E52850000902eB0B5b418BC
+  // This is typically ETHEREUM_PRIVATE_KEY (Key 2 in environment)
   // Try to get the owner's private key from environment
-  const ownerPrivateKey = process.env.CROSS_CHAIN_SYNC_OWNER_PRIVATE_KEY || 
+  const ownerPrivateKey = process.env.ETHEREUM_PRIVATE_KEY || 
+                          process.env.CROSS_CHAIN_SYNC_OWNER_PRIVATE_KEY || 
                           process.env.GLOBAL_SUPPLY_TRACKER_OWNER_PRIVATE_KEY ||
-                          process.env.PRIVATE_KEY || 
-                          process.env.ETHEREUM_PRIVATE_KEY;
+                          process.env.PRIVATE_KEY;
   
   if (!ownerPrivateKey) {
     console.error("❌ ERROR: Private key not found!");
     console.error("   CrossChainSync contracts are owned by wallet 0x78B056f4cFb69bE85E52850000902eB0B5b418BC");
-    console.error("   Set CROSS_CHAIN_SYNC_OWNER_PRIVATE_KEY or GLOBAL_SUPPLY_TRACKER_OWNER_PRIVATE_KEY");
+    console.error("   This is typically ETHEREUM_PRIVATE_KEY in your .env file");
+    console.error("   Set ETHEREUM_PRIVATE_KEY or CROSS_CHAIN_SYNC_OWNER_PRIVATE_KEY");
     process.exit(1);
+  }
+  
+  // Verify the key matches the owner address
+  try {
+    const wallet = new ethers.Wallet(ownerPrivateKey.replace(/^0x/, ''));
+    if (wallet.address.toLowerCase() !== "0x78B056f4cFb69bE85E52850000902eB0B5b418BC".toLowerCase()) {
+      console.warn("⚠️  WARNING: Private key doesn't match owner address!");
+      console.warn(`   Expected: 0x78B056f4cFb69bE85E52850000902eB0B5b418BC`);
+      console.warn(`   Got: ${wallet.address}`);
+      console.warn("   Continuing anyway, but authorization will likely fail...\n");
+    } else {
+      console.log(`✅ Verified: Private key matches owner address\n`);
+    }
+  } catch (e) {
+    console.warn("⚠️  Could not verify private key, continuing anyway...\n");
   }
   
   console.log(`\n🔧 Authorizing GlobalSupplyTrackerV2 in CrossChainSync...\n`);
