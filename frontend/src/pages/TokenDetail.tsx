@@ -129,15 +129,21 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
         console.log('🔧 CONFIGURATION RESULTS:');
         console.log('-'.repeat(80));
         data.configuration.results.forEach((result: any, index: number) => {
+          const chainName = result.chain || 'unknown';
           if (!result.success) {
-            console.error(`❌ Chain ${index + 1} (${result.chain || 'unknown'}): FAILED`);
+            console.error(`❌ Chain ${index + 1} (${chainName}): FAILED`);
+            console.error(`   Curve Address: ${result.curveAddress || 'N/A'}`);
             console.error(`   Message: ${result.message || 'Unknown error'}`);
             if (result.errors && result.errors.length > 0) {
-              console.error(`   Errors:`, result.errors);
+              console.error(`   Errors:`);
+              result.errors.forEach((err: string) => {
+                console.error(`     - ${err}`);
+              });
             }
             console.error(`   Full Result:`, JSON.stringify(result, null, 2));
           } else {
-            console.log(`✅ Chain ${index + 1} (${result.chain || 'unknown'}): SUCCESS`);
+            console.log(`✅ Chain ${index + 1} (${chainName}): SUCCESS`);
+            console.log(`   Curve Address: ${result.curveAddress || 'N/A'}`);
             console.log(`   Message: ${result.message || 'Success'}`);
             if (result.changes && result.changes.length > 0) {
               console.log(`   Changes:`, result.changes);

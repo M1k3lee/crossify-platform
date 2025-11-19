@@ -1919,10 +1919,6 @@ export default function BuyWidget({
           status: 'confirmed',
         });
         console.log('✅ Transaction recorded for chart');
-        
-        // Invalidate price history query to refresh chart immediately
-        const { useQueryClient } = await import('@tanstack/react-query');
-        // Note: This will be handled by the parent component via onSuccess callback
       } catch (recordError) {
         console.warn('⚠️ Failed to record transaction (non-critical):', recordError);
         // Don't fail the buy if recording fails
