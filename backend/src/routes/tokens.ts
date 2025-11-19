@@ -2102,6 +2102,7 @@ router.post('/:id/configure-bonding-curves', async (req: Request, res: Response)
 router.post('/:id/sync-prices', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    console.log(`🔄 [SYNC-PRICES] Received sync request for token: ${id}`);
     const { ethers } = await import('ethers');
     
     // First, get diagnostic information to understand the current state

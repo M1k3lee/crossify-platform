@@ -53,8 +53,21 @@ const CHAIN_NAMES: Record<string, string> = {
 function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => void }) {
   const syncMutation = useMutation({
     mutationFn: async () => {
-      const response = await axios.post(`${API_BASE}/tokens/${tokenId}/sync-prices`);
-      return response.data;
+      console.log('🔄 Sync button clicked, starting sync for token:', tokenId);
+      console.log('📡 Making POST request to:', `${API_BASE}/tokens/${tokenId}/sync-prices`);
+      try {
+        const response = await axios.post(`${API_BASE}/tokens/${tokenId}/sync-prices`);
+        console.log('✅ Sync response received:', response.data);
+        return response.data;
+      } catch (error: any) {
+        console.error('❌ Sync request failed:', error);
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        throw error;
+      }
     },
     onSuccess: (data) => {
       // Show detailed success message
@@ -92,7 +105,10 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
 
   return (
     <button
-      onClick={() => syncMutation.mutate()}
+      onClick={() => {
+        console.log('🖱️ Sync button clicked!');
+        syncMutation.mutate();
+      }}
       disabled={syncMutation.isPending}
       className="px-3 py-1.5 text-xs font-medium text-yellow-300 bg-yellow-900/30 border border-yellow-700/50 rounded-md hover:bg-yellow-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
     >
