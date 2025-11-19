@@ -1827,6 +1827,114 @@ router.get('/:id/related', async (req: Request, res: Response) => {
   }
 });
 
+// GET /tokens/:id/price-sync-diagnostic - Diagnostic endpoint to check bonding curve configuration
+router.get('/:id/price-sync-diagnostic', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { ethers } = await import('ethers');
+    
+    const deployments = await dbAll(
+      'SELECT chain, token_address, curve_address FROM token_deployments WHERE token_id = ? AND status = ? AND curve_address IS NOT NULL',
+      [id, 'deployed']
+    ) as any[];
+    
+    const diagnosticResults: any[] = [];
+    
+    for (const dep of deployments) {
+      const chainLower = dep.chain.toLowerCase();
+      const rpcUrls: Record<string, string> = {
+        'ethereum': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+        'sepolia': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+        'bsc': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+        'bsc-testnet': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+        'base': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+        'base-sepolia': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+      };
+      
+      const rpcUrl = rpcUrls[chainLower];
+      if (!rpcUrl) continue;
+      
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      
+      const bondingCurveABI = [
+        'function useGlobalSupply() external view returns (bool)',
+        'function globalSupplyTracker() external view returns (address)',
+        'function getCurrentPrice() external view returns (uint256)',
+        'function totalSupplySold() external view returns (uint256)',
+        'function getSupplyForPricing() external view returns (uint256)',
+      ];
+      
+      const trackerABI = [
+        'function getGlobalSupply(address token) external view returns (uint256)',
+        'function authorizedUpdaters(address) external view returns (bool)',
+        'function chainSupply(address token, string memory chain) external view returns (uint256)',
+      ];
+      
+      try {
+        const curveContract = new ethers.Contract(dep.curve_address, bondingCurveABI, provider);
+        
+        const [useGlobalSupply, trackerAddress, currentPrice, localSupply, supplyForPricing] = await Promise.all([
+          curveContract.useGlobalSupply().catch(() => false),
+          curveContract.globalSupplyTracker().catch(() => ethers.ZeroAddress),
+          curveContract.getCurrentPrice().catch(() => null),
+          curveContract.totalSupplySold().catch(() => null),
+          curveContract.getSupplyForPricing().catch(() => null),
+        ]);
+        
+        let globalSupply = null;
+        let isAuthorized = false;
+        let chainSupply = null;
+        
+        if (trackerAddress && trackerAddress !== ethers.ZeroAddress) {
+          try {
+            const trackerContract = new ethers.Contract(trackerAddress, trackerABI, provider);
+            [globalSupply, isAuthorized, chainSupply] = await Promise.all([
+              trackerContract.getGlobalSupply(dep.token_address).catch(() => null),
+              trackerContract.authorizedUpdaters(dep.curve_address).catch(() => false),
+              trackerContract.chainSupply(dep.token_address, chainLower).catch(() => null),
+            ]);
+          } catch (e) {
+            // Tracker might not exist or have different ABI
+          }
+        }
+        
+        diagnosticResults.push({
+          chain: dep.chain,
+          curveAddress: dep.curve_address,
+          tokenAddress: dep.token_address,
+          useGlobalSupply,
+          trackerAddress: trackerAddress === ethers.ZeroAddress ? null : trackerAddress,
+          isAuthorized,
+          currentPrice: currentPrice ? ethers.formatEther(currentPrice) : null,
+          currentPriceUSD: currentPrice ? parseFloat(ethers.formatEther(currentPrice)) * 3000 : null,
+          localSupply: localSupply ? ethers.formatEther(localSupply) : null,
+          globalSupply: globalSupply ? ethers.formatEther(globalSupply) : null,
+          chainSupply: chainSupply ? ethers.formatEther(chainSupply) : null,
+          supplyForPricing: supplyForPricing ? ethers.formatEther(supplyForPricing) : null,
+          issues: [
+            !useGlobalSupply && 'useGlobalSupply is disabled',
+            (!trackerAddress || trackerAddress === ethers.ZeroAddress) && 'GlobalSupplyTracker not set',
+            trackerAddress && trackerAddress !== ethers.ZeroAddress && !isAuthorized && 'Bonding curve not authorized in GlobalSupplyTracker',
+          ].filter(Boolean),
+        });
+      } catch (error: any) {
+        diagnosticResults.push({
+          chain: dep.chain,
+          error: error.message,
+        });
+      }
+    }
+    
+    res.json({
+      tokenId: id,
+      diagnostics: diagnosticResults,
+    });
+  } catch (error) {
+    console.error('Error in price sync diagnostic:', error);
+    res.status(500).json({ error: 'Failed to run diagnostic' });
+  }
+});
+
 // GET /tokens/:id/price-sync - Must be before /:id route
 router.get('/:id/price-sync', async (req: Request, res: Response) => {
   try {
