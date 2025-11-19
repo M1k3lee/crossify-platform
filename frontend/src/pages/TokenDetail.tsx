@@ -87,9 +87,32 @@ function SyncPriceButton({ tokenId, onSync }: { tokenId: string; onSync: () => v
       // Log detailed results
       if (data.configuration?.results) {
         console.log('Configuration results:', data.configuration.results);
+        // Show detailed configuration errors
+        data.configuration.results.forEach((result: any, index: number) => {
+          if (!result.success) {
+            console.error(`❌ Configuration failed for chain ${index + 1}:`, result);
+            console.error(`   Chain: ${result.chain || 'unknown'}`);
+            console.error(`   Message: ${result.message || 'Unknown error'}`);
+            if (result.errors && result.errors.length > 0) {
+              console.error(`   Errors:`, result.errors);
+            }
+          } else {
+            console.log(`✅ Configuration succeeded for chain ${index + 1}:`, result);
+          }
+        });
       }
       if (data.sync?.results) {
         console.log('Sync results:', data.sync.results);
+        // Show detailed sync errors
+        data.sync.results.forEach((result: any, index: number) => {
+          if (!result.success) {
+            console.error(`❌ Sync failed for chain ${index + 1}:`, result);
+            console.error(`   Chain: ${result.chain || 'unknown'}`);
+            console.error(`   Message: ${result.message || 'Unknown error'}`);
+          } else {
+            console.log(`✅ Sync succeeded for chain ${index + 1}:`, result);
+          }
+        });
       }
       
       setTimeout(() => {
