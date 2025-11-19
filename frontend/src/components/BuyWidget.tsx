@@ -2317,10 +2317,11 @@ export default function BuyWidget({
                     ⚠️ Using global supply (cross-chain sync enabled). Price includes tokens from all chains.
                   </p>
                 )}
-                {debugInfo && realCurrentPrice && (
+                {debugInfo && (
                   <p className="text-xs text-gray-500 mt-2">
                     Price = ${(parseFloat(debugInfo.basePrice) * 3000).toFixed(6)} + (${(parseFloat(debugInfo.slope) * 3000).toFixed(6)} × {(debugInfo.globalSupply || debugInfo.localSupply)})
-                    {' = '}${realCurrentPrice.toFixed(6)}
+                    {' = '}${debugInfo.globalSupply ? currentPrice.toFixed(6) : (realCurrentPrice !== null ? realCurrentPrice.toFixed(6) : currentPrice.toFixed(6))}
+                    {debugInfo.globalSupply && ' (using global supply)'}
                   </p>
                 )}
               </div>
