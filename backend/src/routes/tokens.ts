@@ -2825,9 +2825,11 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 // GET /tokens/:id/analytics - Get token analytics and statistics
 router.get('/:id/analytics', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { period = '7d' } = req.query; // 24h, 7d, 30d, all
+  const periodValue = typeof period === 'string' ? period : '7d';
+  
   try {
-    const { id } = req.params;
-    const { period = '7d' } = req.query; // 24h, 7d, 30d, all
     
     // Calculate date filter - use parameterized query for better compatibility
     let dateFilter = '';
