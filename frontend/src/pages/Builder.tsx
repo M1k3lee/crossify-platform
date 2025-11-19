@@ -1509,25 +1509,66 @@ export default function Builder() {
                 <Zap className="w-4 h-4" />
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  trackButtonClick({
-                    buttonName: 'deploy_token',
-                    location: 'builder_step_4',
-                    additionalData: {
-                      chains: formData.chains.join(','),
-                      tokenSymbol: formData.symbol,
-                      crossChainEnabled: crossChainEnabled && formData.chains.length > 1,
-                    },
-                  });
-                  handleSubmit();
-                }}
-                disabled={loading || deploying || !formData.name || !formData.symbol || !formData.initialSupply || formData.chains.length === 0}
-                className="px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
-              >
+              <div className="relative group">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Debug: Log why button might be disabled
+                    const isDisabled = loading || deploying || !formData.name || !formData.symbol || !formData.initialSupply || formData.chains.length === 0;
+                    if (isDisabled) {
+                      const reasons = [];
+                      if (loading) reasons.push('Loading');
+                      if (deploying) reasons.push('Deploying');
+                      if (!formData.name) reasons.push('Missing token name');
+                      if (!formData.symbol) reasons.push('Missing token symbol');
+                      if (!formData.initialSupply) reasons.push('Missing initial supply');
+                      if (formData.chains.length === 0) reasons.push('No chains selected');
+                      
+                      console.log('🚫 Deploy button disabled. Reasons:', reasons);
+                      console.log('📋 Form state:', {
+                        name: formData.name,
+                        symbol: formData.symbol,
+                        initialSupply: formData.initialSupply,
+                        chains: formData.chains,
+                        chainsCount: formData.chains.length,
+                        loading,
+                        deploying,
+                      });
+                      
+                      toast.error(`Cannot deploy: ${reasons.join(', ')}`, { duration: 5000 });
+                      return;
+                    }
+                    
+                    trackButtonClick({
+                      buttonName: 'deploy_token',
+                      location: 'builder_step_4',
+                      additionalData: {
+                        chains: formData.chains.join(','),
+                        tokenSymbol: formData.symbol,
+                        crossChainEnabled: crossChainEnabled && formData.chains.length > 1,
+                      },
+                    });
+                    handleSubmit();
+                  }}
+                  disabled={loading || deploying || !formData.name || !formData.symbol || !formData.initialSupply || formData.chains.length === 0}
+                  className="px-6 py-3 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+                  title={
+                    loading || deploying 
+                      ? 'Deployment in progress...' 
+                      : !formData.name 
+                      ? 'Please enter a token name' 
+                      : !formData.symbol 
+                      ? 'Please enter a token symbol' 
+                      : !formData.initialSupply 
+                      ? 'Please enter an initial supply' 
+                      : formData.chains.length === 0 
+                      ? 'Please select at least one chain' 
+                      : 'Deploy your token'
+                  }
+                >
                 {loading || deploying ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
