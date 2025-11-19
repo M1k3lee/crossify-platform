@@ -349,9 +349,36 @@ export async function configureBondingCurve(
           }
         } else {
           console.log(`   ❌ Not tracker owner either. Tracker owner: ${trackerOwner || 'unknown'}, Wallet: ${wallet.address}`);
+          
+          // For Hedera, if we can't configure but curve is already authorized, mark as success
+          // This allows sync to continue even if configuration fails
+          if (chain.toLowerCase().includes('hedera')) {
+            try {
+              const trackerContract = new ethers.Contract(
+                config.globalSupplyTrackerAddress,
+                GLOBAL_SUPPLY_TRACKER_ABI,
+                provider
+              );
+              const isAuthorized = await trackerContract.authorizedUpdaters(curveAddress).catch(() => false);
+              const currentUseGlobalSupply = await curveContract.useGlobalSupply().catch(() => false);
+              const currentTrackerAddress = await curveContract.globalSupplyTracker().catch(() => ethers.ZeroAddress);
+              
+              if (isAuthorized && currentUseGlobalSupply && currentTrackerAddress.toLowerCase() === config.globalSupplyTrackerAddress.toLowerCase()) {
+                console.log(`   ⚠️  Hedera: Cannot configure but already set up correctly, marking as success`);
+                result.success = true;
+                result.message = 'Already configured correctly (Hedera - owner check skipped)';
+                return result;
+              }
+            } catch (e) {
+              // Continue to error
+            }
+          }
+          
           result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner}) and not the tracker owner (${trackerOwner || 'unknown'})`);
           result.message = `Cannot configure: wallet is not the owner and not the tracker owner`;
-          return result;
+          // Don't return - allow sync to continue even if configuration fails
+          // This is a warning, not a blocker
+          console.log(`   ⚠️  Configuration failed but sync can continue`);
         }
       } catch (error: any) {
         console.warn(`Could not check tracker owner: ${error.message}`);
