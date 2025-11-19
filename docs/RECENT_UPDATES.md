@@ -2,6 +2,25 @@
 
 **Last Updated**: January 2025
 
+## January 2025 - Latest Updates
+
+### Unified Price Display System ✅
+- **Consistent Price Display**: All UI elements (buy widget, cross-chain sync, charts) now show the same price
+- **Global Supply Pricing**: Prices calculated using global supply ensure perfect consistency
+- **Smart Fallbacks**: System gracefully handles parameter mismatches without alarming users
+- **Result**: Buy widget and cross-chain sync now show identical prices ($0.020700) instead of different prices
+
+### Chart System Improvements ✅
+- **Working Charts**: Charts now display data even when there are no transactions
+- **Fallback Data**: Generates price history using current contract prices
+- **Better Validation**: Allows volume: 0 for fallback data
+- **Performance**: Optimized data point generation (max 100 points)
+
+### User Experience Enhancements ✅
+- **Less Alarming Warnings**: Parameter mismatch changed from red error to blue info message
+- **Better Error Messages**: More helpful and less technical error messages
+- **Improved Hedera Support**: More lenient configuration for Hedera chains
+
 ## January 2025 Updates
 
 ### Price Synchronization System

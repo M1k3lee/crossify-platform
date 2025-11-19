@@ -68,24 +68,35 @@ Returns token status across all chains.
 
 **GET** `/tokens/:id/price-sync`
 
-Returns current price synchronization status.
+Returns current price synchronization status. Uses unified expected prices for consistent display across all chains.
 
 **Response**:
 ```json
 {
-  "expectedPrice": "0.001",
-  "expectedPriceUSD": "3.00",
-  "chains": [
-    {
-      "chain": "sepolia",
-      "actualPrice": "0.001",
-      "actualPriceUSD": "3.00",
-      "variance": "0.00%"
-    }
-  ],
-  "maxVariance": "0.00%"
+  "tokenId": "uuid",
+  "prices": {
+    "sepolia": 0.020700,
+    "bsc-testnet": 0.020700,
+    "base-sepolia": 0.020700
+  },
+  "marketCaps": {...},
+  "globalSupply": "7321.0",
+  "supplyByChain": {...},
+  "variance": 0.0,
+  "inSync": true,
+  "needsSync": false,
+  "parameterMismatch": ["chain has different parameters..."],
+  "expectedPrice": 0.020700,
+  "usingExpectedPrice": true,
+  "lastSync": "2025-01-XX..."
 }
 ```
+
+**Key Fields**:
+- `prices`: Unified prices for each chain (calculated from global supply)
+- `usingExpectedPrice`: `true` when using unified price calculation
+- `parameterMismatch`: Array of parameter differences (informational only)
+- `variance`: Should be 0 when using expected prices
 
 ### Sync Prices
 
