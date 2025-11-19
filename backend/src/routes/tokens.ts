@@ -1575,9 +1575,11 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
     // If no transactions, try to get current price from price-sync endpoint or deployments
     if (data.length === 0) {
       try {
+        console.log(`📊 No transactions found, generating fallback chart data...`);
+        
         // Try to get current price from deployments or price-sync
         const deployments = await dbAll(
-          'SELECT chain, market_cap, current_supply FROM token_deployments WHERE token_id = ? AND status = ?',
+          'SELECT chain, market_cap, current_supply, curve_address FROM token_deployments WHERE token_id = ? AND status = ?',
           [id, 'deployed']
         ) as any[];
         
@@ -1588,26 +1590,69 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
           let price = 0.001; // Default fallback
           
           if (token) {
-            // Calculate price using global supply
-            const { getGlobalSupply } = await import('../services/globalSupply');
-            const globalSupply = await getGlobalSupply(id);
-            const globalSupplyValue = parseFloat(globalSupply || '0');
-            const basePrice = parseFloat(token.base_price || '0');
-            const slope = parseFloat(token.slope || '0');
+            // Try to get actual price from a bonding curve contract first
+            let foundPrice = false;
+            const { ethers } = await import('ethers');
             
-            // Price formula: basePrice + (slope * globalSupply)
-            // basePrice and slope are in wei (1e18), so convert globalSupplyValue to wei first
-            const globalSupplyWei = globalSupplyValue * Math.pow(10, 18);
-            const priceWei = basePrice + (slope * globalSupplyWei);
-            price = (priceWei / Math.pow(10, 18)) * 3000; // Convert to USD (assuming ETH = $3000)
+            for (const dep of deployments) {
+              if (dep.curve_address && !foundPrice) {
+                try {
+                  const rpcUrls: Record<string, string> = {
+                    'ethereum': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+                    'sepolia': process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+                    'bsc': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+                    'bsc-testnet': process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
+                    'base': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+                    'base-sepolia': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
+                    'hedera': process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
+                    'hedera-testnet': process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
+                  };
+                  
+                  const chainLower = dep.chain.toLowerCase();
+                  const rpcUrl = rpcUrls[chainLower];
+                  
+                  if (rpcUrl) {
+                    const provider = new ethers.JsonRpcProvider(rpcUrl);
+                    const bondingCurveABI = ['function getCurrentPrice() external view returns (uint256)'];
+                    const curveContract = new ethers.Contract(dep.curve_address, bondingCurveABI, provider);
+                    const currentPriceWei = await curveContract.getCurrentPrice();
+                    const currentPriceETH = parseFloat(ethers.formatEther(currentPriceWei));
+                    price = currentPriceETH * 3000; // Convert to USD
+                    foundPrice = true;
+                    console.log(`✅ Got current price from ${dep.chain} bonding curve: $${price.toFixed(6)}`);
+                    break;
+                  }
+                } catch (error: any) {
+                  console.warn(`⚠️ Could not fetch price from ${dep.chain}: ${error.message}`);
+                }
+              }
+            }
+            
+            // If we didn't get price from contract, calculate from global supply
+            if (!foundPrice) {
+              const { getGlobalSupply } = await import('../services/globalSupply');
+              const globalSupply = await getGlobalSupply(id);
+              const globalSupplyValue = parseFloat(globalSupply || '0');
+              const basePrice = parseFloat(token.base_price || '0');
+              const slope = parseFloat(token.slope || '0');
+              
+              // Price formula: basePrice + (slope * globalSupply)
+              // basePrice and slope are in wei (1e18), so convert globalSupplyValue to wei first
+              const globalSupplyWei = globalSupplyValue * Math.pow(10, 18);
+              const priceWei = basePrice + (slope * globalSupplyWei);
+              price = (priceWei / Math.pow(10, 18)) * 3000; // Convert to USD (assuming ETH = $3000)
+              console.log(`📊 Calculated price from global supply: $${price.toFixed(6)}`);
+            }
           } else if (deployments[0].market_cap && deployments[0].current_supply) {
             // Fallback to market cap calculation
             const supply = parseFloat(deployments[0].current_supply || '1');
             price = deployments[0].market_cap / (supply * Math.pow(10, 18)) || 0.001;
+            console.log(`📊 Calculated price from market cap: $${price.toFixed(6)}`);
           }
           
           // Create flat line with current price (at least 2 points for chart to render)
-          const points = Math.max(2, Math.floor((now - startTime) / interval) + 1);
+          // Generate enough points to fill the timeframe
+          const points = Math.max(10, Math.floor((now - startTime) / interval) + 1);
           for (let i = 0; i < points; i++) {
             const time = startTime + (i * interval);
             if (time <= now) {
@@ -1623,9 +1668,12 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
           }
           
           console.log(`📊 Created flat price line with ${data.length} points at price $${price.toFixed(6)}`);
+        } else {
+          console.log(`⚠️ No deployed deployments found, cannot generate chart data`);
         }
       } catch (error: any) {
         console.error('Error creating fallback price data:', error);
+        console.error('Error stack:', error.stack);
         // Return empty data - frontend will show "No data" message
       }
     }
@@ -2129,6 +2177,28 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       ? `High variance detected (${variance.toFixed(2)}%). Consider calling POST /tokens/${id}/sync-prices to sync prices.`
       : null;
     
+    // Check for parameter mismatches
+    const parameterMismatch: string[] = [];
+    const parameterChains = Object.keys(curveParameters);
+    if (parameterChains.length > 1) {
+      const firstChain = parameterChains[0];
+      const firstParams = curveParameters[firstChain];
+      
+      for (let i = 1; i < parameterChains.length; i++) {
+        const chain = parameterChains[i];
+        const params = curveParameters[chain];
+        
+        const basePriceDiff = Math.abs(params.basePrice - firstParams.basePrice);
+        const slopeDiff = Math.abs(params.slope - firstParams.slope);
+        
+        if (basePriceDiff > 0.00000001 || slopeDiff > 0.00000001) {
+          parameterMismatch.push(
+            `${chain} has different parameters (basePrice: ${params.basePrice.toFixed(8)} vs ${firstParams.basePrice.toFixed(8)}, slope: ${params.slope.toFixed(12)} vs ${firstParams.slope.toFixed(12)})`
+          );
+        }
+      }
+    }
+    
     res.json({
       tokenId: id,
       prices,
@@ -2136,9 +2206,11 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       globalSupply,
       supplyByChain,
       variance,
-      inSync: !needsSync,
+      inSync: !needsSync && parameterMismatch.length === 0,
       needsSync,
       syncSuggestion,
+      parameterMismatch: parameterMismatch.length > 0 ? parameterMismatch : undefined,
+      expectedPrice: expectedPriceUSD,
       lastSync: new Date().toISOString(),
     });
   } catch (error) {
