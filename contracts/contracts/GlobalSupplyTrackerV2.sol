@@ -6,15 +6,17 @@ import "./TokenIDRegistry.sol";
 /**
  * @title ICrossChainSync
  * @dev Interface for CrossChainSync contract
+ * Note: CrossChainSync uses address-based tokens, so we'll look up the token address
+ * from TokenIDRegistry when calling syncSupplyUpdate
  */
 interface ICrossChainSync {
     function syncSupplyUpdate(
-        bytes32 tokenId,
+        address token,
         uint256 newSupply,
         uint32 sourceEID
     ) external payable;
     
-    function estimateSyncFee(bytes32 tokenId, uint32 targetEID) external view returns (uint256 fee);
+    function estimateSyncFee(address token, uint32 targetEID) external view returns (uint256 fee);
 }
 
 /**
@@ -211,6 +213,8 @@ contract GlobalSupplyTrackerV2 {
     
     /**
      * @dev Internal function to sync supply across chains via LayerZero
+     * Note: CrossChainSync uses address-based tokens, so we look up the token address
+     * from TokenIDRegistry for the current chain
      */
     function _syncCrossChain(
         bytes32 tokenId,
@@ -228,6 +232,13 @@ contract GlobalSupplyTrackerV2 {
             return;
         }
         
+        // Get token address for current chain from registry
+        address tokenAddress = tokenIDRegistry.getTokenAddress(tokenId, chain);
+        if (tokenAddress == address(0)) {
+            emit CrossChainSyncFailed(tokenId, chain, newSupply, "Token address not found in registry");
+            return;
+        }
+        
         uint256 availableFee = msg.value;
         
         if (availableFee == 0 && address(this).balance >= minFeeReserve) {
@@ -236,7 +247,7 @@ contract GlobalSupplyTrackerV2 {
         
         if (availableFee > 0) {
             try crossChainSync.syncSupplyUpdate{value: availableFee}(
-                tokenId,
+                tokenAddress,
                 newSupply,
                 sourceEID
             ) {
