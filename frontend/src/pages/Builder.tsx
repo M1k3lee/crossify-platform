@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import axios from 'axios';
-import { Upload, Check, Zap, Sparkles, AlertCircle, Info, HelpCircle } from 'lucide-react';
+import { Upload, Check, Zap, Sparkles, AlertCircle, Info, HelpCircle, TrendingUp } from 'lucide-react';
 import AdvancedSettings from '../components/AdvancedSettings';
 import AdvancedTokenSettingsComponent, { AdvancedTokenSettings } from '../components/AdvancedTokenSettings';
 import InitialDistributionSettingsComponent, { InitialDistributionSettings } from '../components/InitialDistributionSettings';
@@ -99,6 +99,65 @@ export default function Builder() {
     accentColor: '#8B5CF6',
   });
 
+  // Track if slope was manually edited (to avoid auto-overwriting user changes)
+  const [slopeManuallyEdited, setSlopeManuallyEdited] = useState(false);
+
+  // Auto-calculate recommended slope based on supply and base price
+  const calculateRecommendedSlope = (supply: string, basePrice: string, tokenType: 'memecoin' | 'utility' | 'premium' = 'memecoin'): string => {
+    const supplyNum = parseFloat(supply.replace(/,/g, '')) || 0;
+    const basePriceNum = parseFloat(basePrice) || 0;
+    
+    if (supplyNum <= 0 || basePriceNum <= 0) return '0.00001';
+    
+    // Strategy: Calculate slope so that at a certain % of supply sold, price increases by a reasonable multiplier
+    // This prevents early buyers from getting unrealistic paper gains
+    let targetSupplyPercent: number;
+    let priceMultiplier: number;
+    
+    if (tokenType === 'memecoin') {
+      // For memecoins: At 5% supply sold, price should be 2x base price (100% increase)
+      targetSupplyPercent = 0.05; // 5%
+      priceMultiplier = 2; // 2x = 100% increase
+    } else if (tokenType === 'utility') {
+      // For utility tokens: At 2% supply sold, price should be 2x base price
+      targetSupplyPercent = 0.02; // 2%
+      priceMultiplier = 2; // 2x
+    } else {
+      // For premium tokens: At 1% supply sold, price should be 2x base price
+      targetSupplyPercent = 0.01; // 1%
+      priceMultiplier = 2; // 2x
+    }
+    
+    // Formula: targetPrice = basePrice + (slope * targetSupply)
+    // targetPrice = basePrice * multiplier
+    // basePrice * multiplier = basePrice + (slope * targetSupply)
+    // basePrice * (multiplier - 1) = slope * targetSupply
+    // slope = basePrice * (multiplier - 1) / targetSupply
+    
+    const targetSupply = supplyNum * targetSupplyPercent;
+    const slope = (basePriceNum * (priceMultiplier - 1)) / targetSupply;
+    
+    // Ensure minimum slope to avoid zero
+    return Math.max(slope, basePriceNum / (supplyNum * 0.1)).toFixed(12);
+  };
+
+  // Detect token type based on base price
+  const detectTokenType = (basePrice: string): 'memecoin' | 'utility' | 'premium' => {
+    const price = parseFloat(basePrice) || 0;
+    if (price < 0.001) return 'memecoin';
+    if (price < 0.1) return 'utility';
+    return 'premium';
+  };
+
+  // Calculate price at different supply levels for preview
+  const calculatePriceAtSupply = (supply: string, basePrice: string, slope: string, supplyPercent: number): number => {
+    const totalSupply = parseFloat(supply.replace(/,/g, '')) || 0;
+    const basePriceNum = parseFloat(basePrice) || 0;
+    const slopeNum = parseFloat(slope) || 0;
+    const supplySold = totalSupply * supplyPercent;
+    return basePriceNum + (slopeNum * supplySold);
+  };
+
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedTokenSettings>({
     mintable: false,
     burnable: false,
@@ -171,7 +230,22 @@ export default function Builder() {
       // Remove commas, spaces, and trim whitespace
       value = value.replace(/[,\s]/g, '').trim();
     }
-    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    const newFormData = { ...formData, [field]: value };
+    
+    // Auto-calculate slope when supply or basePrice changes (only if slope hasn't been manually edited)
+    if ((field === 'initialSupply' || field === 'basePrice') && !slopeManuallyEdited) {
+      const tokenType = detectTokenType(newFormData.basePrice);
+      const recommendedSlope = calculateRecommendedSlope(newFormData.initialSupply, newFormData.basePrice, tokenType);
+      newFormData.slope = recommendedSlope;
+    }
+    
+    // Track if slope is being manually edited
+    if (field === 'slope') {
+      setSlopeManuallyEdited(true);
+    }
+    
+    setFormData(newFormData);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1075,14 +1149,29 @@ export default function Builder() {
                   )}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <label className="block text-sm font-medium text-gray-300">Price Growth Rate (USD per token)</label>
-                    <div className="group relative">
-                      <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
-                      <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 border border-gray-600 rounded-lg text-xs text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                        How much the price increases (in USD) with each token purchased. Lower = gradual growth, Higher = rapid price appreciation. This will be automatically converted to native token units.
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <label className="block text-sm font-medium text-gray-300">Price Growth Rate (USD per token)</label>
+                      <div className="group relative">
+                        <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-gray-800 border border-gray-600 rounded-lg text-xs text-gray-300 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                          How much the price increases (in USD) with each token purchased. Lower = gradual growth, Higher = rapid price appreciation. This will be automatically converted to native token units.
+                        </div>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tokenType = detectTokenType(formData.basePrice);
+                        const recommendedSlope = calculateRecommendedSlope(formData.initialSupply, formData.basePrice, tokenType);
+                        setSlopeManuallyEdited(false); // Reset flag so future changes auto-calculate
+                        handleInputChange('slope', recommendedSlope);
+                        toast.success(`Auto-calculated slope for ${tokenType}: ${recommendedSlope}`);
+                      }}
+                      className="text-xs px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 text-primary-300 rounded-md border border-primary-500/50 transition-colors"
+                    >
+                      ✨ Auto-Calculate
+                    </button>
                   </div>
                   <input
                     type="text"
@@ -1097,7 +1186,7 @@ export default function Builder() {
                     </p>
                   )}
                   <p className="text-xs text-gray-400 mt-2">
-                    💡 Tip: $0.00001 = steady growth, $0.0001 = faster growth, $0.001 = very aggressive
+                    💡 Tip: Click "Auto-Calculate" to set optimal growth rate based on your supply. This prevents unrealistic price jumps.
                   </p>
                   {formData.slope && (isNaN(parseFloat(formData.slope)) || parseFloat(formData.slope) < 0) && (
                     <p className="text-xs text-red-400 mt-1">Must be a non-negative number</p>
@@ -1105,9 +1194,53 @@ export default function Builder() {
                 </div>
               </div>
 
+              {/* Price Preview */}
+              {formData.initialSupply && formData.basePrice && formData.slope && 
+               !isNaN(parseFloat(formData.initialSupply.replace(/,/g, ''))) && 
+               !isNaN(parseFloat(formData.basePrice)) && 
+               !isNaN(parseFloat(formData.slope)) && (
+                <div className="mt-6 p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-lg">
+                  <h3 className="text-sm font-semibold text-blue-300 mb-3 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    Price Preview at Different Supply Levels
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    {[0.01, 0.05, 0.1, 0.25].map((percent) => {
+                      const price = calculatePriceAtSupply(formData.initialSupply, formData.basePrice, formData.slope, percent);
+                      const supplySold = parseFloat(formData.initialSupply.replace(/,/g, '')) * percent;
+                      const totalValue = price * supplySold;
+                      const priceChange = ((price - parseFloat(formData.basePrice)) / parseFloat(formData.basePrice)) * 100;
+                      return (
+                        <div key={percent} className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                          <p className="text-xs text-gray-400 mb-1">{percent * 100}% Supply Sold</p>
+                          <p className="text-sm font-bold text-white">${price.toFixed(6)}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {priceChange > 0 ? '+' : ''}{priceChange.toFixed(1)}% from start
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Total Value: ${totalValue.toFixed(2)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <p className="text-xs text-yellow-300">
+                      ⚠️ <strong>Important:</strong> This preview shows what the price would be if that % of supply was sold. 
+                      Early buyers get tokens at lower prices, but the price increases as more tokens are bought. 
+                      Make sure the growth rate is reasonable to avoid unrealistic paper gains!
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-4 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
                 <p className="text-xs text-gray-400">
-                  <strong>Quick Examples:</strong> Memecoin (Base: 0.0001, Slope: 0.00001) | Utility Token (Base: 0.01, Slope: 0.0001) | Premium Token (Base: 0.1, Slope: 0.001)
+                  <strong>Quick Examples:</strong> Memecoin (Base: 0.0001, Slope: Auto) | Utility Token (Base: 0.01, Slope: Auto) | Premium Token (Base: 0.1, Slope: Auto)
+                </p>
+                <p className="text-xs text-blue-400 mt-2">
+                  💡 <strong>Pro Tip:</strong> For large supplies (like 420B tokens), use "Auto-Calculate" to set a slope that prevents unrealistic price jumps. 
+                  This ensures early buyers don't get massive paper gains that aren't backed by real liquidity.
                 </p>
               </div>
 
