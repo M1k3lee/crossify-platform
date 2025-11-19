@@ -233,6 +233,8 @@ export async function syncTokenPrices(tokenId: string): Promise<{
             chain: dep.chain,
             success: result.success,
             message: result.message,
+            actualSupply: result.actualSupply,
+            trackerSupply: result.trackerSupply,
           };
         } catch (error: any) {
           console.error(`❌ Error syncing ${dep.chain} for token ${tokenId}:`, error);
@@ -256,6 +258,8 @@ export async function syncTokenPrices(tokenId: string): Promise<{
           chain: dep?.chain || 'unknown',
           success: false,
           message: `Promise rejected: ${result.reason?.message || 'Unknown error'}`,
+          actualSupply: undefined,
+          trackerSupply: undefined,
         };
       }
     });
