@@ -2041,9 +2041,20 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     const slope = parseFloat(token.slope || '0');
     
     // Calculate expected price using global supply (what price should be if synced)
-    const expectedPriceWei = basePrice + (slope * globalSupplyValue);
+    // basePrice and slope are stored in wei (1e18), so we need to convert globalSupplyValue to wei first
+    const globalSupplyWei = globalSupplyValue * Math.pow(10, 18);
+    const expectedPriceWei = basePrice + (slope * globalSupplyWei);
     const expectedPrice = expectedPriceWei / Math.pow(10, 18);
     const expectedPriceUSD = expectedPrice * 3000; // Convert to USD (assuming ETH = $3000)
+    
+    console.log(`💰 Price calculation for token ${id}:`);
+    console.log(`   Base Price (wei): ${basePrice}`);
+    console.log(`   Slope (wei per token): ${slope}`);
+    console.log(`   Global Supply: ${globalSupplyValue} tokens`);
+    console.log(`   Global Supply (wei): ${globalSupplyWei}`);
+    console.log(`   Expected Price (wei): ${expectedPriceWei}`);
+    console.log(`   Expected Price (ETH): ${expectedPrice}`);
+    console.log(`   Expected Price (USD): $${expectedPriceUSD}`);
     
     // CRITICAL: Query ACTUAL bonding curve contract price for each chain
     // This shows the REAL trading price on each chain (may differ if not synced)

@@ -50,6 +50,18 @@ function getChainConfig(chain: string): ChainConfig | null {
       privateKey: process.env.BSC_PRIVATE_KEY || process.env.PRIVATE_KEY,
       chainName: 'bsc-testnet',
     },
+    'hedera-testnet': {
+      rpcUrl: process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
+      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_HEDERA_TESTNET || process.env.GLOBAL_SUPPLY_TRACKER_HEDERA,
+      privateKey: process.env.HEDERA_PRIVATE_KEY || process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY,
+      chainName: 'hedera-testnet',
+    },
+    'hedera': {
+      rpcUrl: process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
+      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_HEDERA_TESTNET || process.env.GLOBAL_SUPPLY_TRACKER_HEDERA,
+      privateKey: process.env.HEDERA_PRIVATE_KEY || process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY,
+      chainName: 'hedera-testnet',
+    },
   };
   
   return configs[chainLower] || null;
@@ -346,10 +358,10 @@ export async function configureTokenBondingCurves(tokenId: string): Promise<{
       };
     }
 
-    // Filter out non-EVM chains (Hedera, Solana, etc.)
+    // Filter out only Solana (Hedera is EVM-compatible, so include it)
     const evmChains = deployments.filter(dep => {
       const chainLower = dep.chain.toLowerCase();
-      return !chainLower.includes('hedera') && !chainLower.includes('solana');
+      return !chainLower.includes('solana');
     });
 
     if (evmChains.length === 0) {
