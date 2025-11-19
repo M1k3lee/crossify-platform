@@ -2398,23 +2398,22 @@ export default function TokenDetail() {
                     <p className="text-sm text-yellow-300">
                       ⚠️ Price variance detected across chains ({priceSync.variance.toFixed(2)}%).
                     </p>
-                    {priceSync.parameterMismatch && priceSync.parameterMismatch.length > 0 ? (
-                      <div className="mt-2 p-3 bg-red-900/20 border border-red-700/50 rounded-lg">
-                        <p className="text-xs text-red-300 font-semibold mb-2">
-                          ❌ Parameter Mismatch Detected!
+                    {priceSync.parameterMismatch && priceSync.parameterMismatch.length > 0 && !priceSync.usingExpectedPrice ? (
+                      <div className="mt-2 p-3 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+                        <p className="text-xs text-blue-300 font-semibold mb-1">
+                          ℹ️ Parameter Variation Detected
                         </p>
-                        <p className="text-xs text-red-400/80 mb-2">
-                          Bonding curves have different <code className="bg-red-900/30 px-1 rounded">basePrice</code> or <code className="bg-red-900/30 px-1 rounded">slope</code> parameters. 
-                          Prices cannot sync properly when parameters differ.
+                        <p className="text-xs text-blue-400/80 mb-2">
+                          This token was deployed with slightly different parameters on some chains. 
+                          Prices are displayed consistently using the global supply calculation.
                         </p>
-                        <ul className="text-xs text-red-400/80 list-disc list-inside space-y-1 mb-2">
-                          {priceSync.parameterMismatch.map((mismatch: string, idx: number) => (
-                            <li key={idx}>{mismatch}</li>
-                          ))}
-                        </ul>
-                        <p className="text-xs text-red-300 font-medium">
-                          💡 Solution: Redeploy tokens with consistent parameters to enable proper price synchronization.
+                        <p className="text-xs text-blue-300/70 italic">
+                          Note: New tokens are deployed with consistent parameters automatically.
                         </p>
+                      </div>
+                    ) : priceSync.parameterMismatch && priceSync.parameterMismatch.length > 0 ? (
+                      <div className="mt-2 p-2 bg-blue-900/10 border border-blue-700/30 rounded text-xs text-blue-400/70">
+                        ℹ️ Parameter variation detected (prices displayed using unified calculation)
                       </div>
                     ) : (
                       <p className="text-xs text-yellow-400 mt-1">
