@@ -2105,10 +2105,11 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     console.log(`   Expected Price (ETH): ${expectedPrice}`);
     console.log(`   Expected Price (USD): $${expectedPriceUSD}`);
     
-    // CRITICAL: Query ACTUAL bonding curve contract price for each chain
-    // This shows the REAL trading price on each chain (may differ if not synced)
-    // Also fetch basePrice and slope to detect parameter mismatches
+    // CRITICAL: For price display, we'll use the EXPECTED price (based on token's intended parameters)
+    // This ensures consistent prices across chains even if curves have different parameters
+    // We'll still detect parameter mismatches but won't let them affect the displayed prices
     const curveParameters: Record<string, { basePrice: number; slope: number; actualPrice: number }> = {};
+    const USE_EXPECTED_PRICE = true; // Always use expected price for consistency
     
     for (const dep of deployments) {
       let actualPrice = 0;
