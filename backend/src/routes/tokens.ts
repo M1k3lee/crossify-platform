@@ -2835,15 +2835,15 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     let dateFilter = '';
     const params: any[] = [id];
     const now = new Date();
-    if (period === '24h') {
+    if (periodValue === '24h') {
       const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       dateFilter = "AND created_at >= ?";
       params.push(oneDayAgo.toISOString());
-    } else if (period === '7d') {
+    } else if (periodValue === '7d') {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       dateFilter = "AND created_at >= ?";
       params.push(sevenDaysAgo.toISOString());
-    } else if (period === '30d') {
+    } else if (periodValue === '30d') {
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       dateFilter = "AND created_at >= ?";
       params.push(thirtyDaysAgo.toISOString());
@@ -2929,7 +2929,7 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     const priceChangePercent = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
     
     res.json({
-      period,
+      period: periodValue,
       statistics: {
         totalTransactions: txStats.reduce((sum: number, s: any) => sum + (parseInt(s.count || '0') || 0), 0),
         buyTransactions: buyCount,
@@ -2967,7 +2967,7 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     
     // Return empty data instead of 500 error to prevent frontend crashes
     res.json({
-      period,
+      period: periodValue,
       statistics: {
         totalTransactions: 0,
         buyTransactions: 0,
