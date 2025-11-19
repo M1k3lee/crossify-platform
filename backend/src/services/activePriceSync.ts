@@ -16,6 +16,7 @@ const GLOBAL_SUPPLY_TRACKER_ABI = [
   'function getGlobalSupply(address tokenId) external view returns (uint256)',
   'function chainSupply(address tokenId, string memory chain) external view returns (uint256)',
   'function authorizedUpdaters(address) external view returns (bool)',
+  'function owner() external view returns (address)',
 ];
 
 interface ChainConfig {
