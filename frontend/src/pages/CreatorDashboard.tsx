@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
@@ -99,7 +99,23 @@ export default function CreatorDashboard() {
     }
   }, [token, deployments, id]);
 
-  const isOwner = token?.creatorAddress?.toLowerCase() === address?.toLowerCase();
+  // Check if user is owner - for Hedera, we need to be more flexible since wallet addresses might differ
+  const isOwner = useMemo(() => {
+    if (!token?.creatorAddress || !address) return false;
+    const creatorLower = token.creatorAddress.toLowerCase();
+    const addressLower = address.toLowerCase();
+    const isMatch = creatorLower === addressLower;
+    
+    // Debug logging for owner check
+    console.log('🔍 Owner check:', {
+      creatorAddress: token.creatorAddress,
+      currentAddress: address,
+      isMatch,
+      isConnected,
+    });
+    
+    return isMatch;
+  }, [token?.creatorAddress, address, isConnected]);
   const capabilities: TokenCapabilities = token?.advancedSettings || {
     mintable: false,
     burnable: false,
@@ -991,6 +1007,44 @@ export default function CreatorDashboard() {
                     {dep.status}
                   </span>
                 </div>
+                
+                {/* Show retry button for failed deployments (even without tokenAddress) */}
+                {dep.status === 'failed' && (
+                  <div className="space-y-2 mb-3">
+                    {isOwner ? (
+                      <button
+                        onClick={() => handleRetryDeployment(dep)}
+                        disabled={retryingDeployment !== null || !isConnected || retryingDeployment === dep.chain}
+                        className="block w-full px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition text-center flex items-center justify-center gap-2"
+                      >
+                        {retryingDeployment === dep.chain ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Retrying...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4" />
+                            Retry Deployment
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
+                        {isConnected 
+                          ? `Connect with creator wallet (${token?.creatorAddress?.slice(0, 6)}...${token?.creatorAddress?.slice(-4)}) to retry`
+                          : 'Connect wallet to retry deployment'}
+                      </div>
+                    )}
+                    {dep.error && (
+                      <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                        {dep.error.length > 150 ? `${dep.error.substring(0, 150)}...` : dep.error}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Show deployment details if tokenAddress exists */}
                 {dep.tokenAddress && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
@@ -1029,25 +1083,6 @@ export default function CreatorDashboard() {
                         <span className="text-white font-semibold">${(dep.marketCap / 1e6).toFixed(2)}M</span>
                       </div>
                     )}
-                    {dep.status === 'failed' && isOwner && (
-                      <button
-                        onClick={() => handleRetryDeployment(dep)}
-                        disabled={retryingDeployment !== null || !isConnected || retryingDeployment === dep.chain}
-                        className="block w-full mt-3 px-3 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition text-center flex items-center justify-center gap-2"
-                      >
-                        {retryingDeployment === dep.chain ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Retrying...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="w-4 h-4" />
-                            Retry Deployment
-                          </>
-                        )}
-                      </button>
-                    )}
                     {dep.status === 'deployed' && dep.curveAddress && (
                       <Link
                         to={`/token/${id}?chain=${dep.chain}`}
@@ -1056,11 +1091,13 @@ export default function CreatorDashboard() {
                         Trade on {dep.chain === 'bsc' ? 'BSC' : dep.chain === 'ethereum' ? 'Ethereum' : dep.chain === 'base' ? 'Base' : dep.chain}
                       </Link>
                     )}
-                    {dep.status === 'failed' && dep.error && (
-                      <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
-                        {dep.error.length > 100 ? `${dep.error.substring(0, 100)}...` : dep.error}
-                      </div>
-                    )}
+                  </div>
+                )}
+                
+                {/* Show error message for failed deployments without tokenAddress */}
+                {dep.status === 'failed' && !dep.tokenAddress && dep.error && (
+                  <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                    {dep.error.length > 150 ? `${dep.error.substring(0, 150)}...` : dep.error}
                   </div>
                 )}
               </div>
