@@ -190,7 +190,40 @@ export async function configureBondingCurve(
 
     // Check if the private key matches the curve owner
     const wallet = new ethers.Wallet(config.privateKey, provider);
-    if (!curveOwner || curveOwner.toLowerCase() !== wallet.address.toLowerCase()) {
+    
+    // If owner() returned null, the contract might not have an owner function
+    // In that case, check if the curve is already authorized in the tracker
+    // If it's authorized, we can skip the owner check (it was already configured)
+    if (!curveOwner) {
+      console.log(`⚠️  Bonding curve ${curveAddress} on ${chain} does not have owner() function or it failed`);
+      
+      // Check if curve is already authorized in tracker - if so, it's already configured
+      try {
+        const trackerContract = new ethers.Contract(
+          config.globalSupplyTrackerAddress,
+          GLOBAL_SUPPLY_TRACKER_ABI,
+          provider
+        );
+        const isAuthorized = await trackerContract.authorizedUpdaters(curveAddress).catch(() => false);
+        
+        if (isAuthorized && currentUseGlobalSupply && currentTrackerAddress.toLowerCase() === config.globalSupplyTrackerAddress.toLowerCase()) {
+          // Already configured correctly, skip owner check
+          console.log(`✅ Curve is already authorized and configured, skipping owner check`);
+          result.success = true;
+          result.message = 'Already configured correctly (owner check skipped)';
+          return result;
+        }
+      } catch (error: any) {
+        console.warn(`Could not check tracker authorization: ${error.message}`);
+      }
+      
+      // If not authorized, we can't configure without knowing the owner
+      result.errors.push(`Bonding curve owner() returned null. Cannot determine owner to configure.`);
+      result.message = `Cannot configure: owner check failed (returned null)`;
+      return result;
+    }
+    
+    if (curveOwner.toLowerCase() !== wallet.address.toLowerCase()) {
       result.errors.push(`Private key wallet (${wallet.address}) is not the owner of bonding curve (${curveOwner})`);
       result.message = `Cannot configure: wallet is not the owner`;
       return result;

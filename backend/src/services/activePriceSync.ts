@@ -80,13 +80,29 @@ export async function syncSupplyForDeployment(
       };
     }
 
-    // Create provider
+    // Create provider with timeout
     const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+    provider._getConnection().timeout = 10000; // 10 second timeout
     
     // Get actual supply from bonding curve
-    const curveContract = new ethers.Contract(curveAddress, BONDING_CURVE_ABI, provider);
-    const actualSupplyWei = await curveContract.totalSupplySold();
-    const actualSupply = ethers.formatEther(actualSupplyWei);
+    let actualSupplyWei;
+    let actualSupply;
+    try {
+      const curveContract = new ethers.Contract(curveAddress, BONDING_CURVE_ABI, provider);
+      actualSupplyWei = await Promise.race([
+        curveContract.totalSupplySold(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('RPC timeout')), 10000))
+      ]) as bigint;
+      actualSupply = ethers.formatEther(actualSupplyWei);
+    } catch (error: any) {
+      if (error.message.includes('ENETUNREACH') || error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
+        return {
+          success: false,
+          message: `Network error connecting to ${chain} RPC: ${error.message}. Please try again later.`,
+        };
+      }
+      throw error;
+    }
 
     // Get current supply from GlobalSupplyTracker
     const trackerContract = new ethers.Contract(
