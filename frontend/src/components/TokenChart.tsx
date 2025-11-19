@@ -49,12 +49,14 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
     
     // Filter out invalid data points and validate all values
     const validData = priceHistory.filter(p => {
-      const isValid = (val: any) => {
+      const isValid = (val: any, allowZero: boolean = false) => {
         if (val === null || val === undefined) return false;
         const num = typeof val === 'number' ? val : parseFloat(val);
-        return !isNaN(num) && isFinite(num) && num > 0;
+        if (isNaN(num) || !isFinite(num)) return false;
+        return allowZero ? num >= 0 : num > 0;
       };
-      return isValid(p.open) && isValid(p.high) && isValid(p.low) && isValid(p.close) && isValid(p.volume);
+      // Price values must be > 0, but volume can be 0 (for fallback data)
+      return isValid(p.open) && isValid(p.high) && isValid(p.low) && isValid(p.close) && isValid(p.volume, true);
     });
     
     if (validData.length === 0) return null;

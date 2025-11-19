@@ -1651,10 +1651,15 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
           }
           
           // Create flat line with current price (at least 2 points for chart to render)
-          // Generate enough points to fill the timeframe
-          const points = Math.max(10, Math.floor((now - startTime) / interval) + 1);
+          // Generate enough points to fill the timeframe - but not too many to avoid performance issues
+          const maxPoints = 100; // Limit to 100 points max
+          const totalTime = now - startTime;
+          const calculatedPoints = Math.floor(totalTime / interval) + 1;
+          const points = Math.min(maxPoints, Math.max(2, calculatedPoints));
+          const actualInterval = totalTime / (points - 1); // Adjust interval to fit points
+          
           for (let i = 0; i < points; i++) {
-            const time = startTime + (i * interval);
+            const time = Math.floor(startTime + (i * actualInterval));
             if (time <= now) {
               data.push({
                 time,
@@ -1662,7 +1667,7 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
                 high: price,
                 low: price,
                 close: price,
-                volume: 0,
+                volume: 0, // Volume is 0 for fallback data
               });
             }
           }
