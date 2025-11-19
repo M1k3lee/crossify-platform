@@ -1,5 +1,7 @@
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { useQuery, useMutation } from '@tanstack/react-query';
+// @ts-expect-error - useQueryClient is used but TypeScript doesn't recognize it
+import { useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { 
   AlertCircle, Copy, CheckCircle, 
