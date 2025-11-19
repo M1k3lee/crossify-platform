@@ -2281,11 +2281,12 @@ export default function BuyWidget({
           <div>
             <p className="text-sm text-gray-400 mb-1">Current Price</p>
             <p className="text-3xl font-bold text-white">
-              ${realCurrentPrice !== null ? realCurrentPrice.toFixed(6) : currentPrice.toFixed(6)}
+              {/* Prefer currentPrice prop (from priceSync, uses global supply) over realCurrentPrice (from contract, uses local supply) */}
+              ${currentPrice > 0 ? currentPrice.toFixed(6) : (realCurrentPrice !== null ? realCurrentPrice.toFixed(6) : '0.000000')}
             </p>
-            {realCurrentPrice !== null && realCurrentPrice !== currentPrice && (
-              <p className="text-xs text-yellow-400 mt-1">
-                (Displayed: ${currentPrice.toFixed(6)} may be outdated)
+            {realCurrentPrice !== null && Math.abs(realCurrentPrice - currentPrice) > 0.0001 && (
+              <p className="text-xs text-blue-400 mt-1">
+                (Contract price: ${realCurrentPrice.toFixed(6)} - using unified global price for display)
               </p>
             )}
             {debugInfo && (
