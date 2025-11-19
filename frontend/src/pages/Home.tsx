@@ -124,7 +124,7 @@ export default function Home() {
           
           <p className="text-lg text-gray-400 mb-8 max-w-2xl mx-auto">
             Automatic price synchronization across all chains keeps your token's value consistent, 
-            eliminating arbitrage and creating a seamless cross-chain experience powered by <span className="text-primary-400 font-semibold">LayerZero</span>.
+            eliminating arbitrage and creating a seamless cross-chain experience powered by <span className="text-primary-400 font-semibold">LayerZero</span> and <span className="text-purple-400 font-semibold">Supra</span>.
           </p>
           
           <div className="flex flex-wrap justify-center gap-3 mb-12 max-w-3xl mx-auto">
@@ -210,6 +210,9 @@ export default function Home() {
                     <div className="px-2 py-1 bg-blue-500/20 border border-blue-500/50 rounded-full">
                       <span className="text-blue-400 text-xs font-semibold">Powered by LayerZero</span>
                     </div>
+                    <div className="px-2 py-1 bg-purple-500/20 border border-purple-500/50 rounded-full">
+                      <span className="text-purple-400 text-xs font-semibold">Powered by Supra</span>
+                    </div>
                     <div className="px-2 py-1 bg-green-500/20 border border-green-500/50 rounded-full">
                       <span className="text-green-400 text-xs font-semibold">Audited by Hedera</span>
                     </div>
@@ -263,7 +266,7 @@ export default function Home() {
             {
               icon: Zap,
               title: 'Real-Time Sync',
-              description: 'Buy or sell on any chain and watch prices update across all networks within seconds via LayerZero messaging.',
+              description: 'Buy or sell on any chain and watch prices update across all networks within seconds via LayerZero & Supra cross-chain messaging.',
               gradient: 'from-yellow-500 to-orange-600',
             },
             {
@@ -319,8 +322,8 @@ export default function Home() {
               },
               {
                 step: '03',
-                title: 'LayerZero Messaging',
-                description: 'Our smart contracts use LayerZero to broadcast price updates to all other chains in real-time.',
+                title: 'Cross-Chain Messaging',
+                description: 'Our smart contracts use LayerZero & Supra to broadcast price updates to all other chains in real-time.',
                 icon: Network,
               },
               {
