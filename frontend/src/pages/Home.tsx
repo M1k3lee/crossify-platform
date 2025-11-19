@@ -179,7 +179,8 @@ export default function Home() {
                   One Launch, All Chains, Perfect Price Sync
                 </h2>
                 <p className="text-lg text-gray-300">
-                  When someone buys your token on Ethereum, the price automatically updates on BSC, Base, and Solana. 
+                  When someone buys your token on Ethereum, the price automatically updates on BSC, Base, Solana, and Hedera. 
+                  Our unified price system ensures consistent pricing across all chains based on global supply. 
                   No arbitrage. No price discrepancies. Just seamless cross-chain harmony.
                 </p>
               </div>

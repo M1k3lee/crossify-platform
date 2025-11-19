@@ -304,7 +304,7 @@ export default function HowItWorks() {
                   One Token, Same Price Everywhere
                 </h2>
                 <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-                  When someone buys your token on Ethereum, the price automatically updates on BSC, Base, Solana, and Hedera. No arbitrage. No confusion. Just perfect synchronization.
+                  When someone buys your token on Ethereum, the price automatically updates on BSC, Base, Solana, and Hedera. Our unified price system ensures all chains display the same price based on global supply. No arbitrage. No confusion. Just perfect synchronization.
                 </p>
                 <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
                   <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 rounded-full border border-blue-500/30">

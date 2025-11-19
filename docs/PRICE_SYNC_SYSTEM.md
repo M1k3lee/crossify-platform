@@ -15,6 +15,15 @@ Crossify implements a sophisticated cross-chain price synchronization system tha
 2. **BondingCurve** - Uses global supply for price calculation instead of local supply
 3. **Auto-Configuration Service** - Automatically configures bonding curves to use global supply
 4. **Price Sync Service** - Backend service that monitors and syncs prices
+5. **Unified Price Display** - Frontend system that ensures consistent price display across all UI elements
+
+### Price Display System
+
+The platform uses a **unified price display system** that:
+- Calculates expected prices based on global supply and token parameters
+- Displays consistent prices across buy widget, cross-chain sync, and charts
+- Handles parameter mismatches gracefully (shows info, not errors)
+- Provides fallback data for charts when no transactions exist
 
 ### How It Works
 
