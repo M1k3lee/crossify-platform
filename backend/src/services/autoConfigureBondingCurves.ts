@@ -40,13 +40,13 @@ function getChainConfig(chain: string): ChainConfig | null {
     },
     'base-sepolia': {
       rpcUrl: process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
-      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_V2_BASE_SEPOLIA || process.env.GLOBAL_SUPPLY_TRACKER_BASESEPOLIA,
+      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_V2_BASE_SEPOLIA || process.env.GLOBAL_SUPPLY_TRACKER_BASE_SEPOLIA || process.env.GLOBAL_SUPPLY_TRACKER_BASESEPOLIA,
       privateKey: process.env.BASE_PRIVATE_KEY || process.env.PRIVATE_KEY,
       chainName: 'base-sepolia',
     },
     'bsc-testnet': {
       rpcUrl: process.env.BSC_RPC_URL || 'https://bsc-testnet.publicnode.com',
-      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_V2_BSC_TESTNET || process.env.GLOBAL_SUPPLY_TRACKER_BSCTESTNET,
+      globalSupplyTrackerAddress: process.env.GLOBAL_SUPPLY_TRACKER_V2_BSC_TESTNET || process.env.GLOBAL_SUPPLY_TRACKER_BSC_TESTNET || process.env.GLOBAL_SUPPLY_TRACKER_BSCTESTNET,
       privateKey: process.env.BSC_PRIVATE_KEY || process.env.PRIVATE_KEY,
       chainName: 'bsc-testnet',
     },
