@@ -1596,9 +1596,10 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
             const slope = parseFloat(token.slope || '0');
             
             // Price formula: basePrice + (slope * globalSupply)
-            // Convert to USD (assuming ETH = $3000)
-            const priceWei = basePrice + (slope * globalSupplyValue);
-            price = (priceWei / Math.pow(10, 18)) * 3000;
+            // basePrice and slope are in wei (1e18), so convert globalSupplyValue to wei first
+            const globalSupplyWei = globalSupplyValue * Math.pow(10, 18);
+            const priceWei = basePrice + (slope * globalSupplyWei);
+            price = (priceWei / Math.pow(10, 18)) * 3000; // Convert to USD (assuming ETH = $3000)
           } else if (deployments[0].market_cap && deployments[0].current_supply) {
             // Fallback to market cap calculation
             const supply = parseFloat(deployments[0].current_supply || '1');
