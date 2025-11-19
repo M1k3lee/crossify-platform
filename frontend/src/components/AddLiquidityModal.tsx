@@ -224,12 +224,27 @@ export default function AddLiquidityModal({
       setAmount('');
       onSuccess?.();
       
-      // Show explorer link
+      // Show transaction link in toast instead of auto-opening
       const testnetInfo = getTestnetInfo(chain as any);
       if (testnetInfo) {
-        setTimeout(() => {
-          window.open(`${testnetInfo.explorer}/tx/${receipt.hash}`, '_blank');
-        }, 2000);
+        const txUrl = `${testnetInfo.explorer}/tx/${receipt.hash}`;
+        toast.success(
+          (t) => (
+            <div className="flex flex-col gap-2">
+              <span>Transaction confirmed!</span>
+              <a
+                href={txUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => toast.dismiss(t.id)}
+                className="text-primary-400 hover:text-primary-300 underline text-sm"
+              >
+                View on explorer →
+              </a>
+            </div>
+          ),
+          { id: 'buy-tx-success', duration: 8000 }
+        );
       }
     } catch (error: any) {
       console.error('Buy error:', error);
@@ -360,11 +375,27 @@ export default function AddLiquidityModal({
       setAmount('');
       onSuccess?.();
       
+      // Show transaction link in toast instead of auto-opening
       const testnetInfo = getTestnetInfo(chain as any);
       if (testnetInfo) {
-        setTimeout(() => {
-          window.open(`${testnetInfo.explorer}/tx/${receipt.hash}`, '_blank');
-        }, 2000);
+        const txUrl = `${testnetInfo.explorer}/tx/${receipt.hash}`;
+        toast.success(
+          (t) => (
+            <div className="flex flex-col gap-2">
+              <span>Transaction confirmed!</span>
+              <a
+                href={txUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => toast.dismiss(t.id)}
+                className="text-primary-400 hover:text-primary-300 underline text-sm"
+              >
+                View on explorer →
+              </a>
+            </div>
+          ),
+          { id: 'sell-tx-success', duration: 8000 }
+        );
       }
     } catch (error: any) {
       console.error('Sell error:', error);

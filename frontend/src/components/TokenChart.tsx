@@ -70,12 +70,24 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
     };
   }, [priceHistory]);
 
-  if (isLoading || !chartData || priceHistory.length === 0) {
+  if (isLoading) {
     return (
       <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">
-            {isLoading ? 'Loading chart data...' : 'No price data available yet'}
+        <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+          <div className="text-gray-400">Loading chart data...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!chartData || priceHistory.length === 0) {
+    return (
+      <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
+        <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <div className="text-gray-400 text-center">
+            <p className="font-semibold mb-2">No price data available yet</p>
+            <p className="text-sm text-gray-500">Make a buy or sell transaction to see price history</p>
           </div>
         </div>
       </div>
