@@ -143,6 +143,41 @@ export async function configureBondingCurve(
     if (!needsTrackerUpdate && !needsEnableGlobalSupply && !needsAuthorization) {
       result.success = true;
       result.message = 'Already configured correctly';
+      // Still try to authorize if not already authorized (might have been authorized elsewhere)
+      if (!isAuthorized && !targetTrackerAuthorized && config.globalSupplyTrackerAddress && config.privateKey) {
+        // Check if we can authorize (wallet is tracker owner)
+        try {
+          const trackerContract = new ethers.Contract(
+            config.globalSupplyTrackerAddress,
+            GLOBAL_SUPPLY_TRACKER_ABI,
+            provider
+          );
+          const trackerOwner = await trackerContract.owner().catch(() => null);
+          const wallet = new ethers.Wallet(config.privateKey, provider);
+          
+          if (trackerOwner && trackerOwner.toLowerCase() === wallet.address.toLowerCase()) {
+            // Try to authorize even though config says it's already configured
+            // This handles the case where authorization failed silently
+            console.log(`🔧 Attempting to authorize bonding curve (even though config says already configured)...`);
+            const trackerWithSigner = new ethers.Contract(
+              config.globalSupplyTrackerAddress,
+              GLOBAL_SUPPLY_TRACKER_ABI,
+              wallet
+            );
+            const tx3 = await trackerWithSigner.authorizeUpdater(curveAddress, {
+              gasLimit: 200000,
+            }).catch(() => null);
+            if (tx3) {
+              await tx3.wait();
+              result.changes.push('Authorized in GlobalSupplyTracker');
+              console.log(`✅ Authorized: ${tx3.hash}`);
+            }
+          }
+        } catch (error: any) {
+          // Authorization might fail if already authorized - that's okay
+          console.log(`⚠️ Authorization check: ${error.message}`);
+        }
+      }
       return result;
     }
 
