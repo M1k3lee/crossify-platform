@@ -35,6 +35,7 @@ This platform didn't happen overnight. It started with a simple idea: "What if l
 This wiki contains everything you need to understand Crossify:
 
 - **[Architecture Overview](Architecture)** - How the entire system works together
+- **[Supra Integration](Supra-Integration)** - Complete guide to Supra HyperNova integration
 - **[Dual Cross-Chain Architecture](Dual-Cross-Chain-Architecture)** - LayerZero + Supra parallel system
 - **[Smart Contracts](Contracts)** - Deep dive into every contract we built
 - **[Development Process](Development-Process)** - How we built and tested each component

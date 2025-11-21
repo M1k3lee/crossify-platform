@@ -64,6 +64,9 @@ Crossify.io is a multichain token launch platform that enables users to create a
 - **Blockchain Service**: Abstraction layer for multichain operations
 - **Price Sync Service**: Monitors and syncs prices across chains
 - **IPFS Service**: Handles logo uploads and metadata storage
+- **Cross-Chain Service**: Unified interface for LayerZero and Supra HyperNova protocols
+  - See [Supra Integration](./SUPRA_INTEGRATION.md) for complete details
+  - See [Dual Cross-Chain Architecture](./DUAL_CROSS_CHAIN_ARCHITECTURE.md) for technical architecture
 
 ### 3. Frontend
 
@@ -115,9 +118,26 @@ Crossify.io is a multichain token launch platform that enables users to create a
    - Transaction signing confirmation
    - Error handling
 
+## Cross-Chain Infrastructure
+
+Crossify.io uses a dual-protocol cross-chain architecture for enhanced security, performance, and redundancy:
+
+- **LayerZero v2**: Battle-tested cross-chain messaging with proven security (~30s latency)
+- **Supra HyperNova**: Next-generation bridgeless cross-chain technology (600-900ms latency)
+- **UnifiedCrossChainSync**: Abstraction layer that routes messages to either or both protocols
+- **Automatic Failover**: If one protocol fails, the other handles cross-chain messages
+- **Performance Comparison**: Real-time metrics to compare protocol performance
+
+For complete details, see:
+- **[Supra Integration](./SUPRA_INTEGRATION.md)** - Complete Supra HyperNova integration guide
+- **[Dual Cross-Chain Architecture](./DUAL_CROSS_CHAIN_ARCHITECTURE.md)** - Technical architecture details
+
 ## Future Enhancements
 
-- [ ] Cross-chain bridge integration (Wormhole/Synapse)
+- [x] Dual-protocol cross-chain support (LayerZero + Supra) ✅
+- [ ] Supra DORA 2.0 Oracle integration (Q2 2025)
+- [ ] SupraEVM token deployment (Q3 2025)
+- [ ] Supra AutoFi automation (Q4 2025)
 - [ ] Advanced bonding curve formulas (quadratic, etc.)
 - [ ] Staking mechanisms
 - [ ] Governance features

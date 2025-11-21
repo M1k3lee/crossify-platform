@@ -318,6 +318,14 @@ The dual cross-chain architecture represents a significant upgrade to Crossify's
 
 ---
 
+## Related Documentation
+
+- **[Supra Integration](Supra-Integration)** - Complete Supra HyperNova integration guide
+- **[Architecture](Architecture)** - System architecture overview
+- **[Contracts](Contracts)** - Smart contract reference
+
+---
+
 **- MikeLee**
 
 *For general architecture, see [Architecture](Architecture)*  

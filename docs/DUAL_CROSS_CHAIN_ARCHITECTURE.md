@@ -880,3 +880,10 @@ The system is designed to be **backward compatible** with existing LayerZero inf
 4. Collect metrics
 5. Make go/no-go decision for Phase 2
 
+---
+
+## Related Documentation
+
+- **[Supra Integration Guide](../docs/SUPRA_INTEGRATION.md)** - Complete Supra HyperNova integration documentation
+- **[Architecture Overview](../docs/ARCHITECTURE.md)** - System architecture overview
+

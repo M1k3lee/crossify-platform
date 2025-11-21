@@ -68,6 +68,7 @@ crossify-platform/
 
 ### Core Documentation
 
+- **Supra Integration**: `docs/SUPRA_INTEGRATION.md` - Complete guide to Supra HyperNova integration
 - **Price Synchronization System**: `docs/PRICE_SYNC_SYSTEM.md` - Complete guide to cross-chain price sync
 - **API Reference**: `docs/API_REFERENCE.md` - Comprehensive API documentation
 - **Recent Updates**: `docs/RECENT_UPDATES.md` - Latest changes and improvements
@@ -85,7 +86,9 @@ crossify-platform/
 ### GitHub Wiki
 
 - [Architecture](https://github.com/M1k3lee/crossify-platform/wiki/Architecture) - System architecture overview
+- [Supra Integration](https://github.com/M1k3lee/crossify-platform/wiki/Supra-Integration) - Complete Supra HyperNova integration guide
 - [Contracts](https://github.com/M1k3lee/crossify-platform/wiki/Contracts) - Smart contract documentation
+- [Dual Cross-Chain Architecture](https://github.com/M1k3lee/crossify-platform/wiki/Dual-Cross-Chain-Architecture) - LayerZero + Supra parallel system
 - [Price Synchronization](https://github.com/M1k3lee/crossify-platform/wiki/Price-Synchronization) - Price sync guide
 - [Development Process](https://github.com/M1k3lee/crossify-platform/wiki/Development-Process) - Development workflow
 - [Testing](https://github.com/M1k3lee/crossify-platform/wiki/Testing) - Testing guidelines
