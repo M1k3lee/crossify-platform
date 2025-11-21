@@ -1,6 +1,6 @@
 # Supra Integration
 
-**Last Updated:** January 2025  
+**Last Updated:** November 2025  
 **Status:** Active Integration
 
 ## Overview

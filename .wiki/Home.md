@@ -67,7 +67,7 @@ Feel free to reach out! This is a living project, and I'm always happy to discus
 
 ---
 
-*Last Updated: January 2025*
+*Last Updated: November 2025*
 
 ## Recent Major Updates
 

@@ -1,7 +1,7 @@
 # Supra Integration Documentation
 
 **Version:** 1.0  
-**Last Updated:** January 2025  
+**Last Updated:** November 2025  
 **Status:** Active Integration
 
 ## Overview
