@@ -34,3 +34,6 @@ steps:
 images:
   - 'gcr.io/$PROJECT_ID/crossify-backend'
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+
