@@ -92,6 +92,45 @@ export default function CreatorDashboard() {
   // Get deployments from token data (it's already included in the token response)
   const deployments = token?.deployments || [];
   
+  // Prepare all chains display data
+  const allChainsDisplay = useMemo(() => {
+    // Define all supported chains
+    const allChains = [
+      { name: 'ethereum', displayName: 'Ethereum Sepolia', chainId: 'sepolia' },
+      { name: 'bsc', displayName: 'BSC Testnet', chainId: 'bsc-testnet' },
+      { name: 'base', displayName: 'Base Sepolia', chainId: 'base-sepolia' },
+      { name: 'hedera', displayName: 'Hedera Testnet', chainId: 'hedera-testnet' },
+      { name: 'unichain', displayName: 'Unichain Sepolia', chainId: 'unichain-sepolia' },
+    ];
+    
+    // Create a map of existing deployments by chain name
+    const deploymentMap = new Map<string, any>();
+    deployments?.forEach((dep: any) => {
+      // Map various chain name formats to standard names
+      const chainKey = dep.chain?.toLowerCase() || '';
+      const normalizedChain = 
+        chainKey.includes('sepolia') && !chainKey.includes('base') && !chainKey.includes('unichain') ? 'ethereum' :
+        chainKey.includes('bsc') || chainKey.includes('binance') ? 'bsc' :
+        chainKey.includes('base') ? 'base' :
+        chainKey.includes('hedera') ? 'hedera' :
+        chainKey.includes('unichain') ? 'unichain' :
+        chainKey;
+      deploymentMap.set(normalizedChain, dep);
+    });
+    
+    return allChains.map((chainInfo) => {
+      const dep = deploymentMap.get(chainInfo.name);
+      const hasDeployment = !!dep;
+      const deploymentChain = dep?.chain || chainInfo.chainId;
+      return {
+        ...chainInfo,
+        deployment: dep,
+        hasDeployment,
+        deploymentChain,
+      };
+    });
+  }, [deployments]);
+  
   // Debug: Log deployments to help diagnose issues
   useEffect(() => {
     if (token && id) {
@@ -998,63 +1037,37 @@ export default function CreatorDashboard() {
           <h2 className="text-2xl font-bold text-white mb-6">Deployments Across Chains</h2>
           
           {/* All supported chains - show deployed and missing ones */}
-          {(() => {
-            // Define all supported chains
-            const allChains = [
-              { name: 'ethereum', displayName: 'Ethereum Sepolia', chainId: 'sepolia' },
-              { name: 'bsc', displayName: 'BSC Testnet', chainId: 'bsc-testnet' },
-              { name: 'base', displayName: 'Base Sepolia', chainId: 'base-sepolia' },
-              { name: 'hedera', displayName: 'Hedera Testnet', chainId: 'hedera-testnet' },
-              { name: 'unichain', displayName: 'Unichain Sepolia', chainId: 'unichain-sepolia' },
-            ];
-            
-            // Create a map of existing deployments by chain name
-            const deploymentMap = new Map<string, any>();
-            deployments?.forEach((dep: any) => {
-              // Map various chain name formats to standard names
-              const chainKey = dep.chain?.toLowerCase() || '';
-              const normalizedChain = 
-                chainKey.includes('sepolia') && !chainKey.includes('base') && !chainKey.includes('unichain') ? 'ethereum' :
-                chainKey.includes('bsc') || chainKey.includes('binance') ? 'bsc' :
-                chainKey.includes('base') ? 'base' :
-                chainKey.includes('hedera') ? 'hedera' :
-                chainKey.includes('unichain') ? 'unichain' :
-                chainKey;
-              deploymentMap.set(normalizedChain, dep);
-            });
-            
-            return (
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {allChains.map((chainInfo) => {
-                  const dep = deploymentMap.get(chainInfo.name);
-                  const hasDeployment = !!dep;
-                  const deploymentChain = dep?.chain || chainInfo.chainId;
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {allChainsDisplay.map((chainInfo) => {
+              const dep = chainInfo.deployment;
+              const hasDeployment = chainInfo.hasDeployment;
+              const deploymentChain = chainInfo.deploymentChain;
+              
+              return (
+                <div
+                  key={chainInfo.name}
+                  className="bg-gray-700/50 rounded-xl p-4 border border-gray-600"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-white">{chainInfo.displayName}</h3>
+                    {hasDeployment ? (
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        dep.status === 'deployed' ? 'bg-green-500/20 text-green-400' : 
+                        dep.status === 'failed' ? 'bg-red-500/20 text-red-400' : 
+                        'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {dep.status}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 rounded text-xs bg-gray-500/20 text-gray-400">
+                        Not Deployed
+                      </span>
+                    )}
+                  </div>
                   
-                  return (
-                    <div
-                      key={chainInfo.name}
-                      className="bg-gray-700/50 rounded-xl p-4 border border-gray-600"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-white">{chainInfo.displayName}</h3>
-                        {hasDeployment ? (
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            dep.status === 'deployed' ? 'bg-green-500/20 text-green-400' : 
-                            dep.status === 'failed' ? 'bg-red-500/20 text-red-400' : 
-                            'bg-yellow-500/20 text-yellow-400'
-                          }`}>
-                            {dep.status}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 rounded text-xs bg-gray-500/20 text-gray-400">
-                            Not Deployed
-                          </span>
-                        )}
-                      </div>
-                      
-                      {/* Show retry button for failed deployments */}
-                      {hasDeployment && dep.status === 'failed' && (
-                        <div className="space-y-2 mb-3">
+                  {/* Show retry button for failed deployments */}
+                  {hasDeployment && dep.status === 'failed' && (
+                    <div className="space-y-2 mb-3">
                           {isOwner ? (
                             <button
                               onClick={() => handleRetryDeployment(dep)}
@@ -1085,99 +1098,97 @@ export default function CreatorDashboard() {
                               {dep.error.length > 150 ? `${dep.error.substring(0, 150)}...` : dep.error}
                             </div>
                           )}
-                        </div>
-                      )}
-                      
-                      {/* Show "Deploy Now" button for chains without deployment */}
-                      {!hasDeployment && isOwner && (
-                        <div className="space-y-2 mb-3">
-                          <button
-                            onClick={() => handleRetryDeployment({ chain: deploymentChain, status: 'pending' })}
-                            disabled={retryingDeployment !== null || !isConnected}
-                            className="block w-full px-3 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition text-center flex items-center justify-center gap-2"
-                          >
-                            {retryingDeployment === deploymentChain ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Deploying...
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-4 h-4" />
-                                Deploy Now
-                              </>
-                            )}
-                          </button>
-                          {!isConnected && (
-                            <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
-                              Connect wallet to deploy
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Show deployment details if tokenAddress exists */}
-                      {hasDeployment && dep.tokenAddress && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-400">Token:</span>
-                            <button
-                              onClick={() => copyToClipboard(dep.tokenAddress, 'Token address')}
-                              className="flex items-center gap-1 text-primary-400 hover:text-primary-300"
-                            >
-                              <span className="font-mono text-xs">{dep.tokenAddress.slice(0, 6)}...{dep.tokenAddress.slice(-4)}</span>
-                              {copiedAddress === dep.tokenAddress ? (
-                                <CheckCircle className="w-3 h-3" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </button>
-                          </div>
-                          {dep.curveAddress && (
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-400">Curve:</span>
-                              <button
-                                onClick={() => copyToClipboard(dep.curveAddress, 'Curve address')}
-                                className="flex items-center gap-1 text-primary-400 hover:text-primary-300"
-                              >
-                                <span className="font-mono text-xs">{dep.curveAddress.slice(0, 6)}...{dep.curveAddress.slice(-4)}</span>
-                                {copiedAddress === dep.curveAddress ? (
-                                  <CheckCircle className="w-3 h-3" />
-                                ) : (
-                                  <Copy className="w-3 h-3" />
-                                )}
-                              </button>
-                            </div>
-                          )}
-                          {dep.marketCap && (
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-400">Market Cap:</span>
-                              <span className="text-white font-semibold">${(dep.marketCap / 1e6).toFixed(2)}M</span>
-                            </div>
-                          )}
-                          {dep.status === 'deployed' && dep.curveAddress && (
-                            <Link
-                              to={`/token/${id}?chain=${dep.chain}`}
-                              className="block w-full mt-3 px-3 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition text-center"
-                            >
-                              Trade on {chainInfo.displayName}
-                            </Link>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Show error message for failed deployments without tokenAddress */}
-                      {hasDeployment && dep.status === 'failed' && !dep.tokenAddress && dep.error && (
-                        <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
-                          {dep.error.length > 150 ? `${dep.error.substring(0, 150)}...` : dep.error}
+                    </div>
+                  )}
+                  
+                  {/* Show "Deploy Now" button for chains without deployment */}
+                  {!hasDeployment && isOwner && (
+                    <div className="space-y-2 mb-3">
+                      <button
+                        onClick={() => handleRetryDeployment({ chain: deploymentChain, status: 'pending' })}
+                        disabled={retryingDeployment !== null || !isConnected}
+                        className="block w-full px-3 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition text-center flex items-center justify-center gap-2"
+                      >
+                        {retryingDeployment === deploymentChain ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Deploying...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            Deploy Now
+                          </>
+                        )}
+                      </button>
+                      {!isConnected && (
+                        <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
+                          Connect wallet to deploy
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
+                  )}
+                  
+                  {/* Show deployment details if tokenAddress exists */}
+                  {hasDeployment && dep.tokenAddress && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Token:</span>
+                        <button
+                          onClick={() => copyToClipboard(dep.tokenAddress, 'Token address')}
+                          className="flex items-center gap-1 text-primary-400 hover:text-primary-300"
+                        >
+                          <span className="font-mono text-xs">{dep.tokenAddress.slice(0, 6)}...{dep.tokenAddress.slice(-4)}</span>
+                          {copiedAddress === dep.tokenAddress ? (
+                            <CheckCircle className="w-3 h-3" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                      {dep.curveAddress && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">Curve:</span>
+                          <button
+                            onClick={() => copyToClipboard(dep.curveAddress, 'Curve address')}
+                            className="flex items-center gap-1 text-primary-400 hover:text-primary-300"
+                          >
+                            <span className="font-mono text-xs">{dep.curveAddress.slice(0, 6)}...{dep.curveAddress.slice(-4)}</span>
+                            {copiedAddress === dep.curveAddress ? (
+                              <CheckCircle className="w-3 h-3" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+                      {dep.marketCap && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-400">Market Cap:</span>
+                          <span className="text-white font-semibold">${(dep.marketCap / 1e6).toFixed(2)}M</span>
+                        </div>
+                      )}
+                      {dep.status === 'deployed' && dep.curveAddress && (
+                        <Link
+                          to={`/token/${id}?chain=${dep.chain}`}
+                          className="block w-full mt-3 px-3 py-2 bg-gradient-to-r from-primary-600 to-blue-600 hover:from-primary-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition text-center"
+                        >
+                          Trade on {chainInfo.displayName}
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Show error message for failed deployments without tokenAddress */}
+                  {hasDeployment && dep.status === 'failed' && !dep.tokenAddress && dep.error && (
+                    <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                      {dep.error.length > 150 ? `${dep.error.substring(0, 150)}...` : dep.error}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </motion.div>
       </div>
     </div>
