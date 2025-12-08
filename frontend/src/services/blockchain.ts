@@ -927,11 +927,6 @@ export async function deployTokenOnEVM(
   }
 
   // Deploy token - THIS SHOULD TRIGGER METAMASK POPUP
-  console.log(`📝 Calling createToken function - MetaMask should pop up now...`);
-  if (gasEstimate) {
-    console.log(`⛽ Using gas limit: ${gasEstimate.toString()}`);
-  }
-  
   // Get current gas price to ensure transaction can be mined
   // Set minimum gas prices per chain (in Gwei) - optimized for testnets
   // These are minimums; actual network prices may be lower
@@ -961,6 +956,11 @@ export async function deployTokenOnEVM(
     unichain: BigInt(3_500_000), // Unichain: 3.5M max (optimized)
     hedera: BigInt(4_000_000), // Hedera: 4M max
   };
+  
+  console.log(`📝 Calling createToken function - MetaMask should pop up now...`);
+  if (gasEstimate) {
+    console.log(`⛽ Using gas limit: ${gasEstimate.toString()}`);
+  }
   
   let feeData;
   try {
