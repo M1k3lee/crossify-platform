@@ -11,7 +11,7 @@ Write-Host ""
 # Cloud SQL connection (you may need to update the IP)
 # Get IP from: https://console.cloud.google.com/sql/instances/crossify-db/connections
 $CloudSqlIp = "34.142.XXX.XXX"  # TODO: Replace with actual IP from Cloud SQL Connections tab
-$CloudSqlUrl = "postgresql://postgres:@@Mixmaster@20@${CloudSqlIp}:5432/crossify-db"
+$CloudSqlUrl = "postgresql://postgres:YOUR_PASSWORD@${CloudSqlIp}:5432/crossify-db"
 
 Write-Host "📋 Railway URL: $($RailwayDatabaseUrl.Substring(0, [Math]::Min(50, $RailwayDatabaseUrl.Length)))..." -ForegroundColor Gray
 Write-Host "📋 Cloud SQL URL: $($CloudSqlUrl.Substring(0, [Math]::Min(50, $CloudSqlUrl.Length)))..." -ForegroundColor Gray

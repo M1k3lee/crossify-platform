@@ -10,8 +10,8 @@
 const { Client, PrivateKey, AccountId, AccountInfoQuery } = require("@hashgraph/sdk");
 
 async function testKey() {
-  const accountId = process.env.HEDERA_ACCOUNT_ID || "0.0.7271342";
-  const privateKeyStr = process.env.HEDERA_PRIVATE_KEY || "8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c";
+  const accountId = process.env.HEDERA_ACCOUNT_ID || "YOUR_HEDERA_ACCOUNT_ID";
+  const privateKeyStr = process.env.HEDERA_PRIVATE_KEY || "YOUR_HEDERA_PRIVATE_KEY";
   
   console.log("🔍 Testing Hedera Private Key");
   console.log("Account ID:", accountId);

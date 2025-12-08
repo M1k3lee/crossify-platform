@@ -40,6 +40,22 @@ lerna-debug.log*
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+*.env
+*.env.*
+
+# Secrets and credentials
+secrets/
+credentials/
+*.key
+*.pem
+*.p12
+*_private_key*
+*_secret*
+*_password*
+*credentials*
+*secrets*
 
 # Database
 *.db
