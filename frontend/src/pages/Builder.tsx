@@ -907,7 +907,7 @@ export default function Builder() {
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="My Awesome Token"
+                  placeholder="Name Your Token"
                 />
               </div>
 
@@ -922,7 +922,7 @@ export default function Builder() {
                     handleInputChange('symbol', cleaned);
                   }}
                   className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="MAT"
+                  placeholder="NYT"
                   maxLength={10}
                 />
                 <p className="text-xs text-gray-500 mt-1">

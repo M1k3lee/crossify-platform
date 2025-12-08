@@ -193,10 +193,10 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
   return (
     <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h3 className="text-xl font-bold text-white mb-1">Price Chart</h3>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-white">${currentPrice.toFixed(6)}</span>
               <span className={`text-sm font-semibold flex items-center gap-1 ${
@@ -213,13 +213,13 @@ export default function TokenChart({ tokenId, chain }: TokenChartProps) {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg p-1">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-0.5 md:gap-1 bg-gray-700/50 rounded-lg p-0.5 md:p-1">
             {(['line', 'candlestick'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => setChartType(type)}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition ${
+                className={`px-2 md:px-3 py-1 md:py-1.5 rounded text-xs md:text-sm font-medium transition whitespace-nowrap ${
                   chartType === type
                     ? 'bg-primary-500 text-white'
                     : 'text-gray-400 hover:text-white'

@@ -985,11 +985,11 @@ export default function TokenDetail() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             </div>
           )}
-          <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+          <div className="absolute bottom-4 md:bottom-6 left-4 md:left-6 right-4 md:right-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2">
             <div className="flex items-center gap-3">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <h1 className="text-4xl font-bold text-white drop-shadow-lg">{tokenName}</h1>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white drop-shadow-lg">{tokenName}</h1>
                   {token?.verified && (
                     <div className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 border border-blue-500/50 rounded-lg">
                       <CheckCircle className="w-4 h-4 text-blue-300" />
@@ -997,10 +997,10 @@ export default function TokenDetail() {
                     </div>
                   )}
                 </div>
-                <p className="text-xl text-gray-200 drop-shadow-lg">{tokenSymbol}</p>
+                <p className="text-lg sm:text-xl text-gray-200 drop-shadow-lg">{tokenSymbol}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Edit Button - Only show if user is creator */}
               {isCreator && !isEditing && (
                 <button
