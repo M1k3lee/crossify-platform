@@ -39,12 +39,14 @@ export function getChainLogo(chainName: string): string | null {
   const normalized = chainName.toLowerCase().trim();
   
   // Try exact match first
-  if (CHAIN_LOGOS[normalized]) {
-    return CHAIN_LOGOS[normalized];
+  const exactMatch = CHAIN_LOGOS[normalized];
+  if (exactMatch) {
+    return exactMatch;
   }
   
   // Try partial matches (e.g., "base-sepolia" matches "base")
-  for (const [key, url] of Object.entries(CHAIN_LOGOS) as [string, string][]) {
+  const entries: Array<[string, string]> = Object.entries(CHAIN_LOGOS);
+  for (const [key, url] of entries) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return url;
     }
