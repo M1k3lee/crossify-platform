@@ -6,6 +6,14 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Debug: Log all environment variables (for troubleshooting)
+console.log('🔍 Debug: Checking environment variables...');
+console.log('   All env vars starting with DATABASE:', Object.keys(process.env).filter(k => k.includes('DATABASE')).join(', '));
+console.log('   DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('   DATABASE_URL value (first 50 chars):', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'NOT SET');
+console.log('   CLOUD_SQL_DATABASE_URL exists:', !!process.env.CLOUD_SQL_DATABASE_URL);
+console.log('');
+
 const railwayPool = process.env.DATABASE_URL
   ? new Pool({ connectionString: process.env.DATABASE_URL })
   : null;
