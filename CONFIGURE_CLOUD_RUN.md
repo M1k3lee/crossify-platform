@@ -33,7 +33,7 @@ After connecting Cloud SQL, you need to get the connection string:
 
 #### Database (After connecting Cloud SQL)
 - **Name:** `DATABASE_URL`
-- **Value:** `postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west2:crossify-db`
+- **Value:** `postgresql://postgres:@@Mixmaster@20@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west2:crossify-db`
 
 #### Basic Configuration
 - **Name:** `PORT` → **Value:** `3001`
@@ -52,19 +52,19 @@ After connecting Cloud SQL, you need to get the connection string:
 - **Name:** `HEDERA_FACTORY` → **Value:** `0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D`
 
 #### Private Keys
-- **Name:** `PRIVATE_KEY` → **Value:** `YOUR_PRIVATE_KEY`
-- **Name:** `ETHEREUM_PRIVATE_KEY` → **Value:** `YOUR_ETHEREUM_PRIVATE_KEY`
-- **Name:** `HEDERA_PRIVATE_KEY` → **Value:** `YOUR_HEDERA_PRIVATE_KEY`
+- **Name:** `PRIVATE_KEY` → **Value:** `fe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee`
+- **Name:** `ETHEREUM_PRIVATE_KEY` → **Value:** `b25f128af2a36a5434e92eb95d5d29cb78181746752c96dbfcf25ebd36a558ec`
+- **Name:** `HEDERA_PRIVATE_KEY` → **Value:** `8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c`
 
 #### Hedera Configuration
-- **Name:** `HEDERA_ACCOUNT_ID` → **Value:** `YOUR_HEDERA_ACCOUNT_ID`
-- **Name:** `HEDERA_HCS_TOPIC_ID` → **Value:** `YOUR_HEDERA_HCS_TOPIC_ID`
+- **Name:** `HEDERA_ACCOUNT_ID` → **Value:** `0.0.7271342`
+- **Name:** `HEDERA_HCS_TOPIC_ID` → **Value:** `0.0.7277191`
 - **Name:** `HEDERA_NETWORK` → **Value:** `testnet`
 
 #### Cloudinary (Image Upload)
-- **Name:** `CLOUDINARY_CLOUD_NAME` → **Value:** `YOUR_CLOUDINARY_CLOUD_NAME`
-- **Name:** `CLOUDINARY_API_KEY` → **Value:** `YOUR_CLOUDINARY_API_KEY`
-- **Name:** `CLOUDINARY_API_SECRET` → **Value:** `YOUR_CLOUDINARY_API_SECRET`
+- **Name:** `CLOUDINARY_CLOUD_NAME` → **Value:** `dgfmot6eo`
+- **Name:** `CLOUDINARY_API_KEY` → **Value:** `156865466263218`
+- **Name:** `CLOUDINARY_API_SECRET` → **Value:** `hmMhdSWPV0GZKMnIgQ0EmdBW9uU`
 
 #### CORS
 - **Name:** `CORS_ORIGIN` → **Value:** `https://crossify.io,https://www.crossify.io,https://M1k3lee.github.io`
@@ -80,8 +80,8 @@ After connecting Cloud SQL, you need to get the connection string:
 - **Name:** `GLOBAL_SUPPLY_TRACKER_HEDERA_TESTNET` → **Value:** `0xc443F7e5F0e62C4803030E938d5Cc762F0829A02`
 - **Name:** `GLOBAL_SUPPLY_TRACKER_SEPOLIA` → **Value:** `0x130195A8D09dfd99c36D5903B94088EDBD66533e`
 
-###***REMOVED***
-- **Name:** `WALLETCONNECT_PROJECT_ID` → **Value:** `YOUR_WALLETCONNECT_PROJECT_ID`
+#### WalletConnect
+- **Name:** `WALLETCONNECT_PROJECT_ID` → **Value:** `38a3f6702a1aafea9420aa8a4a58bb26`
 
 ## Step 4: Deploy
 
@@ -103,5 +103,5 @@ After deployment:
 
 **Cloud SQL Database:** https://console.cloud.google.com/sql/instances/crossify-db?project=voltaic-wall-480423-u9
 
-**Database Password:** `YOUR_PASSWORD` (the one you set when creating the database)
+**Database Password:** `@@Mixmaster@20` (the one you set when creating the database)
 

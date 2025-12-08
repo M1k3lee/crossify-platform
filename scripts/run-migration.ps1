@@ -43,7 +43,7 @@ if (-not $env:CLOUD_SQL_DATABASE_URL) {
         # Try to construct from known values
         $publicIp = Read-Host "Enter Cloud SQL Public IP address"
         if ($publicIp) {
-            $env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:YOUR_PASSWORD@${publicIp}:5432/crossify-db"
+            $env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:@@Mixmaster@20@${publicIp}:5432/crossify-db"
             Write-Host "✅ Using: $($env:CLOUD_SQL_DATABASE_URL)" -ForegroundColor Green
         } else {
             Write-Host "❌ Cannot proceed without Cloud SQL connection info" -ForegroundColor Red

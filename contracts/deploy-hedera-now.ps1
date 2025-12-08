@@ -8,7 +8,7 @@ Write-Host ""
 if (-not (Test-Path .env)) {
     Write-Host "❌ ERROR: .env file not found!" -ForegroundColor Red
     Write-Host "Please create contracts/.env with:" -ForegroundColor Yellow
-    Write-Host "  PRIVATE_KEY=0xYOUR_PRIVATE_KEY" -ForegroundColor Yellow
+    Write-Host "  PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee" -ForegroundColor Yellow
     Write-Host "  HEDERA_TESTNET_RPC_URL=https://testnet.hashio.io/api" -ForegroundColor Yellow
     exit 1
 }
@@ -20,7 +20,7 @@ if ($envContent -notmatch "PRIVATE_KEY") {
     Write-Host "Adding Hedera configuration..." -ForegroundColor Yellow
     Add-Content .env "`n# Hedera Configuration"
     Add-Content .env "HEDERA_TESTNET_RPC_URL=https://testnet.hashio.io/api"
-    Add-Content .env "PRIVATE_KEY=0xYOUR_PRIVATE_KEY"
+    Add-Content .env "PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee"
     Write-Host "✅ Configuration added!" -ForegroundColor Green
 }
 

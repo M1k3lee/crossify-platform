@@ -17,7 +17,7 @@ HashPack wallet uses **WalletConnect** for dApp pairing. The "Pair with dApp" mo
 4. Click **"Create"**
 
 ### Step 3: Get Your Project ID
-1. After creating the project, you'll see your **Project ID** (a long string like `YOUR_WALLETCONNECT_PROJECT_ID`)
+1. After creating the project, you'll see your **Project ID** (a long string like `38a3f6702a1aafea9420aa8a4a58bb26`)
 2. Copy this Project ID
 
 **Note**: If you already have a project ID, you can skip steps 1-3 and go directly to Step 4.
@@ -27,10 +27,10 @@ HashPack wallet uses **WalletConnect** for dApp pairing. The "Pair with dApp" mo
 **For Local Development:**
 Create or update `frontend/.env.local`:
 ```env
-VITE_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID
+VITE_WALLETCONNECT_PROJECT_ID=38a3f6702a1aafea9420aa8a4a58bb26
 ```
 
-**Example**: Your project ID is `YOUR_WALLETCONNECT_PROJECT_ID` - use this value.
+**Example**: Your project ID is `38a3f6702a1aafea9420aa8a4a58bb26` - use this value.
 
 **For Production (Railway/Vercel):**
 Add the environment variable in your deployment platform:

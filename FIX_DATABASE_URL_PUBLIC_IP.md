@@ -19,7 +19,7 @@ The public IP format is simpler and more reliable:
 
    **Breakdown:**
    - `postgres` = username
-   - `%40%40Mixmaster%4020` = URL-encoded password (`YOUR_PASSWORD`)
+   - `%40%40Mixmaster%4020` = URL-encoded password (`@@Mixmaster@20`)
    - `34.147.140.176` = Cloud SQL public IP
    - `5432` = PostgreSQL port
    - `crossify-db` = database name

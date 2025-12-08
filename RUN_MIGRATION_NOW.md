@@ -24,7 +24,7 @@ Once you have both URLs, run:
 $env:RAILWAY_DATABASE_URL = "postgresql://postgres:PASSWORD@HOST:PORT/railway"
 
 # Set Cloud SQL URL (replace XXX.XXX with actual IP)
-$env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:YOUR_PASSWORD@34.142.XXX.XXX:5432/crossify-db"
+$env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:@@Mixmaster@20@34.142.XXX.XXX:5432/crossify-db"
 
 # Run migration
 cd backend

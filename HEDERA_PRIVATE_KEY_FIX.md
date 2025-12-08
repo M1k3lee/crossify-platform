@@ -20,7 +20,7 @@ The private key doesn't match the Hedera account ID `0.0.7268944`. This could be
 
 The private key in Railway is:
 ```
-0xYOUR_PRIVATE_KEY
+0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee
 ```
 
 **Check if this is correct:**

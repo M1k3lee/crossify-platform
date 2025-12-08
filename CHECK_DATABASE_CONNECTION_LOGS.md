@@ -20,7 +20,7 @@ In the Cloud Run logs, look for:
 
 The DATABASE_URL should be:
 ```
-postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west2:crossify-db
+postgresql://postgres:@@Mixmaster@20@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west2:crossify-db
 ```
 
 **Common mistakes:**
@@ -53,7 +53,7 @@ You can verify Cloud SQL has the data:
 If Unix socket doesn't work, try the public IP format in DATABASE_URL:
 
 ```
-postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db?sslmode=require
+postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db?sslmode=require
 ```
 
 This bypasses the Unix socket and connects directly via public IP.

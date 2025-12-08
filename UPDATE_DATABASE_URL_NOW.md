@@ -20,17 +20,17 @@ Go back to **"Variables & Secrets" tab** and update `DATABASE_URL`:
 
 **Current (probably):**
 ```
-postgresql://postgres:YOUR_PASSWORD@/crossify-db
+postgresql://postgres:@@Mixmaster@20@/crossify-db
 ```
 
 **Change to (Cloud SQL Unix socket format):**
 ```
-postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
+postgresql://postgres:@@Mixmaster@20@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
 ```
 
 **Important parts:**
 - `postgres` = username
-- `YOUR_PASSWORD` = password
+- `@@Mixmaster@20` = password
 - `/crossify-db` = database name
 - `?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db` = Cloud SQL connection
 
@@ -47,7 +47,7 @@ postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/voltaic-wall-480
 If the `/cloudsql/` format doesn't work, try the public IP format:
 
 ```
-postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db?sslmode=require
+postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db?sslmode=require
 ```
 
 But the Unix socket format is preferred and more secure.

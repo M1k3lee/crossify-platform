@@ -57,7 +57,7 @@ VITE_ETH_FACTORY=0x...              # Same as ETHEREUM_FACTORY_ADDRESS in Railwa
 VITE_BSC_FACTORY=0x...              # Same as BSC_FACTORY_ADDRESS in Railway
 VITE_BASE_FACTORY=0x...             # Same as BASE_FACTORY_ADDRESS in Railway
 VITE_HEDERA_FACTORY=0x...           # Your TokenFactory on Hedera (if using)
-VITE_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID
+VITE_WALLETCONNECT_PROJECT_ID=38a3f6702a1aafea9420aa8a4a58bb26
 ```
 
 ### Contract Testing Secrets (for contracts.yml - Optional)
@@ -97,7 +97,7 @@ ETHEREUM_PRIVATE_KEY=0x...                           # Only needed if deploying 
 - [ ] `VITE_BSC_FACTORY` (same as Railway BSC_FACTORY_ADDRESS)
 - [ ] `VITE_BASE_FACTORY` (same as Railway BASE_FACTORY_ADDRESS)
 - [ ] `VITE_HEDERA_FACTORY` (if using Hedera)
-- [ ] `VITE_WALLETCONNECT_PROJECT_ID` (already have: `YOUR_WALLETCONNECT_PROJECT_ID`)
+- [ ] `VITE_WALLETCONNECT_PROJECT_ID` (already have: `38a3f6702a1aafea9420aa8a4a58bb26`)
 
 ---
 

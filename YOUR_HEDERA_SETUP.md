@@ -4,7 +4,7 @@
 
 **Account ID:** `0.0.7268944`  
 **EVM Address:** `0x30314630feb44e1b1df77397906240ff5c40f6d2`  
-**Private Key:** `0xYOUR_PRIVATE_KEY`
+**Private Key:** `0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee`
 
 **View on HashScan:** https://hashscan.io/testnet/account/0.0.7268944
 
@@ -56,7 +56,7 @@ After deployment, add to `backend/.env`:
 HEDERA_RPC_URL=https://testnet.hashio.io/api
 HEDERA_TESTNET_RPC_URL=https://testnet.hashio.io/api
 HEDERA_ACCOUNT_ID=0.0.7268944
-HEDERA_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+HEDERA_PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee
 HEDERA_FACTORY_ADDRESS=0x... # ← From deployment output above
 ```
 

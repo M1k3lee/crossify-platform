@@ -50,7 +50,7 @@ Run the migration again with the public URL:
 
 ```powershell
 $env:RAILWAY_DATABASE_URL = "postgresql://postgres:PASSWORD@PUBLIC_HOST:5432/railway"
-$env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db"
+$env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db"
 cd backend
 npx ts-node scripts/migrate-railway-to-cloudsql.ts
 ```

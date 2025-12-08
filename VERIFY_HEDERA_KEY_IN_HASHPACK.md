@@ -1,14 +1,14 @@
 # Verify and Export Hedera Private Key from HashPack
 
 ## The Problem
-The private key `YOUR_HEDERA_PRIVATE_KEY` does not match account `YOUR_HEDERA_ACCOUNT_ID`. The Hedera network is rejecting transactions with `INVALID_SIGNATURE`.
+The private key `8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c` does not match account `0.0.7271342`. The Hedera network is rejecting transactions with `INVALID_SIGNATURE`.
 
 ## Step-by-Step Verification
 
 ### 1. Verify Account in HashPack
 1. Open HashPack wallet
 2. Make sure you're on **Testnet** (not Mainnet)
-3. Check that account `YOUR_HEDERA_ACCOUNT_ID-knsbb` is visible
+3. Check that account `0.0.7271342-knsbb` is visible
 4. Try sending a small transaction (0.1 HBAR) to another account
    - If this works, the account is valid
    - If this fails, the account might be rekeyed or invalid
@@ -33,7 +33,7 @@ The private key `YOUR_HEDERA_PRIVATE_KEY` does not match account `YOUR_HEDERA_AC
 
 The private key should be:
 - **64 hex characters** (32 bytes) for ED25519
-- Example: `YOUR_HEDERA_PRIVATE_KEY`
+- Example: `8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c`
 - **No `0x` prefix** (or remove it if present)
 
 ### 4. Test the Private Key Locally
@@ -49,7 +49,7 @@ node test-hedera-key.js
 Or set environment variables:
 ```bash
 cd backend
-HEDERA_ACCOUNT_ID=YOUR_HEDERA_ACCOUNT_ID HEDERA_PRIVATE_KEY=your_key_here node test-hedera-key.js
+HEDERA_ACCOUNT_ID=0.0.7271342 HEDERA_PRIVATE_KEY=your_key_here node test-hedera-key.js
 ```
 
 The script will:
@@ -75,7 +75,7 @@ The script will:
 - Try exporting again and check the format
 
 **Issue 4: Account doesn't exist**
-- Verify the account exists: https://hashscan.io/testnet/account/YOUR_HEDERA_ACCOUNT_ID
+- Verify the account exists: https://hashscan.io/testnet/account/0.0.7271342
 - If it doesn't exist, you need to create it first
 
 ### 6. Alternative: Create a New Account
@@ -105,7 +105,7 @@ Once you have the correct private key:
 
 1. Go to Railway → Your Service → Variables
 2. Update `HEDERA_PRIVATE_KEY` with the new key
-3. Make sure `HEDERA_ACCOUNT_ID` is `YOUR_HEDERA_ACCOUNT_ID` (without checksum)
+3. Make sure `HEDERA_ACCOUNT_ID` is `0.0.7271342` (without checksum)
 4. Restart the service
 
 ## Next Steps

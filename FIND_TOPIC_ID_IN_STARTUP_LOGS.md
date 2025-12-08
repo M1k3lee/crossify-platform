@@ -71,7 +71,7 @@ When Hedera initializes successfully, you should see:
    - Look for any errors after that message
 
 2. **Credentials not updated**
-   - Make sure you updated `HEDERA_ACCOUNT_ID` to `YOUR_HEDERA_ACCOUNT_ID`
+   - Make sure you updated `HEDERA_ACCOUNT_ID` to `0.0.7271342`
    - Make sure you updated `HEDERA_PRIVATE_KEY` to the new key
    - Railway should have redeployed after updating
 

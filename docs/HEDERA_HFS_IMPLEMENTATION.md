@@ -108,7 +108,7 @@ File IDs are stored in the `tokens` table:
 ```env
 # Hedera Account (required for HFS)
 HEDERA_ACCOUNT_ID=0.0.7268944
-HEDERA_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+HEDERA_PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee
 
 # Optional: Network selection
 HEDERA_MAINNET=false  # Set to 'true' for mainnet

@@ -53,9 +53,9 @@ SOLANA_RPC_URL=https://api.devnet.solana.com
 #### Hedera Configuration
 **Your Hedera config is already correct for testnet:**
 - ✅ `HEDERA_NETWORK=testnet` (keep this!)
-- ✅ `HEDERA_ACCOUNT_ID=YOUR_HEDERA_ACCOUNT_ID` (testnet account)
+- ✅ `HEDERA_ACCOUNT_ID=0.0.7271342` (testnet account)
 - ✅ `HEDERA_PRIVATE_KEY=...` (testnet key)
-- ✅ `HEDERA_HCS_TOPIC_ID=YOUR_HEDERA_HCS_TOPIC_ID` (testnet topic)
+- ✅ `HEDERA_HCS_TOPIC_ID=0.0.7277191` (testnet topic)
 
 **✅ DO NOT change these to mainnet** - they're correct for testnet launch!
 
@@ -115,7 +115,7 @@ BASE_PRIVATE_KEY=0x...         # For BaseSwap SEPOLIA pool creation
 
 ### ✅ Keep These (Already Correct):
 - `VITE_API_BASE=https://crossify-platform-production.up.railway.app` ✅
-- `VITE_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID` ✅
+- `VITE_WALLETCONNECT_PROJECT_ID=38a3f6702a1aafea9420aa8a4a58bb26` ✅
 - `VITE_ETH_FACTORY=0x8eF1A74d477448630282EFC130ac9D17f495Bca4` ✅ (testnet - correct!)
 - `VITE_BSC_FACTORY=0xFF8c690B5b65905da20D8de87Cd6298c223a40B6` ✅ (testnet - correct!)
 - `VITE_BASE_FACTORY=0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58` ✅ (testnet - correct!)

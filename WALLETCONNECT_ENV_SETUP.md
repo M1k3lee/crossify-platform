@@ -1,8 +1,8 @@
-***REMOVED*** Project ID - Where to Add It
+# WalletConnect Project ID - Where to Add It
 
 ## Your Project ID
 ```
-YOUR_WALLETCONNECT_PROJECT_ID
+38a3f6702a1aafea9420aa8a4a58bb26
 ```
 
 ## ✅ Already Done
@@ -19,7 +19,7 @@ YOUR_WALLETCONNECT_PROJECT_ID
 4. Click **"Add New"**
 5. Enter:
    - **Key**: `VITE_WALLETCONNECT_PROJECT_ID`
-   - **Value**: `YOUR_WALLETCONNECT_PROJECT_ID`
+   - **Value**: `38a3f6702a1aafea9420aa8a4a58bb26`
    - **Environment**: Select **Production**, **Preview**, and **Development** (all three)
 6. Click **"Save"**
 7. **Redeploy** your frontend
@@ -33,7 +33,7 @@ YOUR_WALLETCONNECT_PROJECT_ID
 4. Click **"Add a variable"**
 5. Enter:
    - **Key**: `VITE_WALLETCONNECT_PROJECT_ID`
-   - **Value**: `YOUR_WALLETCONNECT_PROJECT_ID`
+   - **Value**: `38a3f6702a1aafea9420aa8a4a58bb26`
    - **Scopes**: Select **All scopes** (Production, Deploy previews, Branch deploys)
 6. Click **"Save"**
 7. **Trigger a new deploy**

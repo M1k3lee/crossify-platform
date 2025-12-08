@@ -76,7 +76,7 @@ ETHEREUM_LIQUIDITY_BRIDGE_ADDRESS=0x... # Sepolia address
 BSC_LIQUIDITY_BRIDGE_ADDRESS=0x... # BSC Testnet address
 BASE_LIQUIDITY_BRIDGE_ADDRESS=0x... # Base Sepolia address
 
-***REMOVED*** for bridge operations
+# Private keys for bridge operations
 ETHEREUM_PRIVATE_KEY=0x... # Same as contracts PRIVATE_KEY or separate
 BSC_PRIVATE_KEY=0x...
 BASE_PRIVATE_KEY=0x...

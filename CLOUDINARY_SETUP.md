@@ -6,8 +6,8 @@ Cloudinary provides persistent cloud storage for images, solving the Railway eph
 ## Your Cloudinary Credentials
 
 You've provided:
-- **API Key**: `YOUR_CLOUDINARY_API_KEY`
-- **API Secret**: `YOUR_CLOUDINARY_API_SECRET`
+- **API Key**: `156865466263218`
+- **API Secret**: `hmMhdSWPV0GZKMnIgQ0EmdBW9uU`
 
 You still need to get your **Cloud Name** from your Cloudinary dashboard.
 
@@ -27,8 +27,8 @@ You still need to get your **Cloud Name** from your Cloudinary dashboard.
 
    ```
    CLOUDINARY_CLOUD_NAME=your-cloud-name-here
-   CLOUDINARY_API_KEY=YOUR_CLOUDINARY_API_KEY
-   CLOUDINARY_API_SECRET=YOUR_CLOUDINARY_API_SECRET
+   CLOUDINARY_API_KEY=156865466263218
+   CLOUDINARY_API_SECRET=hmMhdSWPV0GZKMnIgQ0EmdBW9uU
    ```
 
    **Important**: Replace `your-cloud-name-here` with your actual Cloud Name from Step 1.

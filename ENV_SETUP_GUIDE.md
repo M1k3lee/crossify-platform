@@ -104,7 +104,7 @@ VITE_ETH_FACTORY=0x39fB28323572610eC0Df1EF075f4acDD51f77e2E
 # Backend API URL (Railway URL)
 VITE_API_URL=https://crossify-platform-production.up.railway.app
 
-***REMOVED*** (if using)
+# WalletConnect (if using)
 VITE_WALLETCONNECT_PROJECT_ID=your_project_id
 ```
 

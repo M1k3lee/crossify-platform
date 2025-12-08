@@ -2,8 +2,8 @@
 
 ## ✅ New Credentials
 
-**Account ID:** `YOUR_HEDERA_ACCOUNT_ID`  
-**Private Key:** `YOUR_HEDERA_PRIVATE_KEY`
+**Account ID:** `0.0.7271342`  
+**Private Key:** `8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c`
 
 ## 📋 Steps to Update in Railway
 
@@ -12,7 +12,7 @@
 1. Go to **Railway Dashboard** → **Backend Service** → **Variables**
 2. Find `HEDERA_ACCOUNT_ID`
 3. Click the **three dots** (⋮) → **Edit**
-4. Change value from `0.0.7268944` to `YOUR_HEDERA_ACCOUNT_ID`
+4. Change value from `0.0.7268944` to `0.0.7271342`
 5. Click **Save**
 
 ### Step 2: Update HEDERA_PRIVATE_KEY
@@ -20,7 +20,7 @@
 1. Still in **Variables** tab
 2. Find `HEDERA_PRIVATE_KEY`
 3. Click the **three dots** (⋮) → **Edit**
-4. Replace the entire value with: `YOUR_HEDERA_PRIVATE_KEY`
+4. Replace the entire value with: `8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c`
 5. Click **Save**
 
 ### Step 3: Verify
@@ -66,15 +66,15 @@ After updating:
 ## 🔍 Verify Account
 
 You can check the account on HashScan:
-- **Testnet**: https://hashscan.io/testnet/account/YOUR_HEDERA_ACCOUNT_ID
+- **Testnet**: https://hashscan.io/testnet/account/0.0.7271342
 
 Make sure the account has some testnet HBAR for topic creation (usually costs ~$0.01 worth of HBAR).
 
 ## 📝 Summary
 
 **Update these two variables:**
-1. `HEDERA_ACCOUNT_ID` → `YOUR_HEDERA_ACCOUNT_ID`
-2. `HEDERA_PRIVATE_KEY` → `YOUR_HEDERA_PRIVATE_KEY`
+1. `HEDERA_ACCOUNT_ID` → `0.0.7271342`
+2. `HEDERA_PRIVATE_KEY` → `8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c`
 
 **Then:**
 3. Check logs for topic ID

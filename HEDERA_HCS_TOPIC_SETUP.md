@@ -49,7 +49,7 @@ In **Railway** → Your Backend Service → **Variables** tab, make sure you hav
 
 ```env
 HEDERA_ACCOUNT_ID=0.0.7268944
-HEDERA_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+HEDERA_PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee
 ```
 
 ### Step 2: Deploy/Restart Backend
@@ -149,7 +149,7 @@ You should see:
 ### Required for HCS to Work
 ```env
 HEDERA_ACCOUNT_ID=0.0.7268944
-HEDERA_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+HEDERA_PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee
 ```
 
 ### Optional (but Recommended)

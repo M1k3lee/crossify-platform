@@ -25,12 +25,12 @@ Your backend is currently still running on Railway. We need to connect Cloud Run
 3. **Find `DATABASE_URL`** in the environment variables
 4. **Update it to use Cloud SQL connection string:**
    ```
-   postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/crossify-db-connection-name
+   postgresql://postgres:@@Mixmaster@20@/crossify-db?host=/cloudsql/crossify-db-connection-name
    ```
    
    **OR** use the simpler format (if Cloud SQL connection is set up):
    ```
-   postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db?sslmode=require
+   postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db?sslmode=require
    ```
 
 5. **Actually, better approach**: Use the Cloud SQL connection format:
@@ -38,7 +38,7 @@ Your backend is currently still running on Railway. We need to connect Cloud Run
    - For you: `voltaic-wall-480423-u9:europe-west1:crossify-db`
    - Update `DATABASE_URL` to:
      ```
-     postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
+     postgresql://postgres:@@Mixmaster@20@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
      ```
 
 6. **Click "DEPLOY"**
@@ -70,7 +70,7 @@ Once everything is working:
 - **Connection Name**: `voltaic-wall-480423-u9:europe-west1:crossify-db`
 - **Database Name**: `crossify-db`
 - **Database User**: `postgres`
-- **Database Password**: `YOUR_PASSWORD`
+- **Database Password**: `@@Mixmaster@20`
 
 ---
 

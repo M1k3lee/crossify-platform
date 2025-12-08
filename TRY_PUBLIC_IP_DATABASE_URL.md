@@ -16,7 +16,7 @@ The Unix socket format might not be working. Let's try the public IP format inst
 3. **Find `DATABASE_URL`**
 4. **Change it to (Public IP format):**
    ```
-   postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db?sslmode=require
+   postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db?sslmode=require
    ```
    
    **Important parts:**

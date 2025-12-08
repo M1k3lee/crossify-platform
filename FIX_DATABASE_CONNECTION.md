@@ -30,7 +30,7 @@ After Cloud SQL is connected:
 2. **Find `DATABASE_URL`** (or add it if missing)
 3. **Update to use Cloud SQL connection:**
    ```
-   postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
+   postgresql://postgres:@@Mixmaster@20@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
    ```
    
    **Important:** 
@@ -38,7 +38,7 @@ After Cloud SQL is connected:
    - The connection name is: `voltaic-wall-480423-u9:europe-west1:crossify-db`
    - Database name: `crossify-db`
    - User: `postgres`
-   - Password: `YOUR_PASSWORD`
+   - Password: `@@Mixmaster@20`
 
 4. **Click "Deploy"**
 
@@ -60,7 +60,7 @@ After deployment (wait 1-2 minutes):
 If the `/cloudsql/` format doesn't work, try the public IP format:
 
 ```
-postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db?sslmode=require
+postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db?sslmode=require
 ```
 
 But the Unix socket format (`/cloudsql/`) is preferred and more secure.

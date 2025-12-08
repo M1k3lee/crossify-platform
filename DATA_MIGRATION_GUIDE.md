@@ -21,7 +21,7 @@ Your Railway database contains all your tokens, transactions, and platform data.
 3. Under **"Public IP"**, you'll see connection instructions
 4. The connection string format is:
    ```
-   postgresql://postgres:YOUR_PASSWORD@34.142.XXX.XXX:5432/crossify-db
+   postgresql://postgres:@@Mixmaster@20@34.142.XXX.XXX:5432/crossify-db
    ```
    (Replace XXX.XXX with your actual IP address)
 
@@ -32,7 +32,7 @@ Your Railway database contains all your tokens, transactions, and platform data.
 1. Create a `.env.migration` file in the project root:
    ```bash
    RAILWAY_DATABASE_URL=postgresql://postgres:PASSWORD@HOST:PORT/railway
-   CLOUD_SQL_DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@34.142.XXX.XXX:5432/crossify-db
+   CLOUD_SQL_DATABASE_URL=postgresql://postgres:@@Mixmaster@20@34.142.XXX.XXX:5432/crossify-db
    ```
 
 2. Run the migration:

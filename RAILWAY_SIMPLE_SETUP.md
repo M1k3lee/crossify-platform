@@ -26,7 +26,7 @@ Since your migration files are already in the `backend` folder:
 2. Click **"+ New Variable"**
 3. Add:
    - **Name:** `CLOUD_SQL_DATABASE_URL`
-   - **Value:** `postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db`
+   - **Value:** `postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db`
 4. Save
 
 ### Step 4: Make Sure Files Are in GitHub

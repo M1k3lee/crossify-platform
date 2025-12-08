@@ -69,7 +69,7 @@ In **Deploy Logs**, search for:
 - Fix the error and restart
 
 ### Option 3: Credentials Not Updated
-- Verify `HEDERA_ACCOUNT_ID` is `YOUR_HEDERA_ACCOUNT_ID`
+- Verify `HEDERA_ACCOUNT_ID` is `0.0.7271342`
 - Verify `HEDERA_PRIVATE_KEY` is the new key
 - Restart service after updating
 

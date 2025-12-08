@@ -26,7 +26,7 @@ The error should show:
 **Cause:** Private key doesn't match the account
 
 **Fix:**
-- Verify private key in HashPack for account `YOUR_HEDERA_ACCOUNT_ID`
+- Verify private key in HashPack for account `0.0.7271342`
 - Update Railway with correct private key
 - Restart service
 
@@ -36,7 +36,7 @@ The error should show:
 **Cause:** Account doesn't have enough HBAR for topic creation
 
 **Fix:**
-- Fund account `YOUR_HEDERA_ACCOUNT_ID` with testnet HBAR
+- Fund account `0.0.7271342` with testnet HBAR
 - Get testnet HBAR from: https://portal.hedera.com/faucet
 - Need at least 0.1 HBAR (topic creation costs ~$0.01)
 
@@ -46,13 +46,13 @@ The error should show:
 **Cause:** Account doesn't exist or is invalid
 
 **Fix:**
-- Verify account exists: https://hashscan.io/testnet/account/YOUR_HEDERA_ACCOUNT_ID
+- Verify account exists: https://hashscan.io/testnet/account/0.0.7271342
 - Create new account if needed
 
 ## 📝 Next Steps
 
 1. **Share the complete error message** from Deploy Logs
-2. **Check account on HashScan**: https://hashscan.io/testnet/account/YOUR_HEDERA_ACCOUNT_ID
+2. **Check account on HashScan**: https://hashscan.io/testnet/account/0.0.7271342
 3. **Verify account has HBAR** (check balance on HashScan)
 4. **Check private key** matches the account in HashPack
 

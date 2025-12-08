@@ -83,6 +83,11 @@ export class UnichainService implements BlockchainService {
     throw new Error('Migrate to DEX not yet implemented');
   }
 
+  async getPrice(tokenAddress: string): Promise<number> {
+    // Fetch price from Uniswap v4 or Chainlink
+    throw new Error('Price fetching not yet implemented');
+  }
+
   async getBalance(address: string): Promise<string> {
     const balance = await this.provider.getBalance(address);
     return ethers.formatEther(balance);

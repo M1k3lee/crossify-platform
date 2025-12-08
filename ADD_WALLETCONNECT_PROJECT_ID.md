@@ -2,7 +2,7 @@
 
 ## Your Project ID
 ```
-YOUR_WALLETCONNECT_PROJECT_ID
+38a3f6702a1aafea9420aa8a4a58bb26
 ```
 
 ## Step 1: Add to Vercel (Production)
@@ -13,7 +13,7 @@ YOUR_WALLETCONNECT_PROJECT_ID
 4. Click **"Add New"**
 5. Enter:
    - **Key**: `VITE_WALLETCONNECT_PROJECT_ID`
-   - **Value**: `YOUR_WALLETCONNECT_PROJECT_ID`
+   - **Value**: `38a3f6702a1aafea9420aa8a4a58bb26`
    - **Environment**: Select **Production**, **Preview**, and **Development** (all three)
 6. Click **"Save"**
 
@@ -38,7 +38,7 @@ After redeploy, check the browser console (F12). You should see:
 If you want to test locally, create `frontend/.env.local`:
 
 ```env
-VITE_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID
+VITE_WALLETCONNECT_PROJECT_ID=38a3f6702a1aafea9420aa8a4a58bb26
 ```
 
 Then restart your dev server:

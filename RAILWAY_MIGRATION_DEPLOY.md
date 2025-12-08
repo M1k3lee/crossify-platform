@@ -14,7 +14,7 @@ Since we can't connect to Railway's internal database from outside, we'll deploy
 
 In the migration service, add:
 - `DATABASE_URL` - Railway will auto-provide this (it's the resolved value)
-- `CLOUD_SQL_DATABASE_URL` = `postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db`
+- `CLOUD_SQL_DATABASE_URL` = `postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db`
 
 ### Step 3: Configure Service
 

@@ -76,7 +76,7 @@ railway up
 3. **Click "+ New Variable"**
 4. **Add:**
    - **Name:** `CLOUD_SQL_DATABASE_URL`
-   - **Value:** `postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db`
+   - **Value:** `postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db`
 5. **Save**
 
 **Note:** Railway will automatically provide `DATABASE_URL` - you don't need to add it!

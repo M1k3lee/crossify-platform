@@ -34,7 +34,7 @@ After connecting Cloud SQL:
 2. **Find or add `DATABASE_URL`**
 3. **Set it to:**
    ```
-   postgresql://postgres:YOUR_PASSWORD@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
+   postgresql://postgres:@@Mixmaster@20@/crossify-db?host=/cloudsql/voltaic-wall-480423-u9:europe-west1:crossify-db
    ```
 4. **Click "Deploy"**
 

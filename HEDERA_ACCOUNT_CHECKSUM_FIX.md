@@ -2,14 +2,14 @@
 
 ## 🔍 What You're Seeing
 
-In HashPack, the account shows as: `YOUR_HEDERA_ACCOUNT_ID-knsbb`
+In HashPack, the account shows as: `0.0.7271342-knsbb`
 
-The `-knsbb` part is a **checksum** for display purposes. The actual account ID is `YOUR_HEDERA_ACCOUNT_ID`.
+The `-knsbb` part is a **checksum** for display purposes. The actual account ID is `0.0.7271342`.
 
 ## ✅ Account ID in Railway
 
 Make sure in Railway you have:
-- `HEDERA_ACCOUNT_ID=YOUR_HEDERA_ACCOUNT_ID` (without the checksum)
+- `HEDERA_ACCOUNT_ID=0.0.7271342` (without the checksum)
 
 This should be correct already.
 
@@ -20,7 +20,7 @@ The `INVALID_SIGNATURE` error suggests the private key format might be wrong. Ha
 ### Try These Steps:
 
 1. **In HashPack:**
-   - Click on account `YOUR_HEDERA_ACCOUNT_ID-knsbb`
+   - Click on account `0.0.7271342-knsbb`
    - Go to **Settings** or **Account Details**
    - Look for **"Export Private Key"** or **"Show Private Key"**
    - **Copy the private key** exactly as shown
@@ -55,13 +55,13 @@ To verify the key works:
 
 ## 📝 Current Status
 
-- ✅ Account ID: `YOUR_HEDERA_ACCOUNT_ID` (checksum `-knsbb` is just for display)
+- ✅ Account ID: `0.0.7271342` (checksum `-knsbb` is just for display)
 - ❌ Private Key: Still getting `INVALID_SIGNATURE`
 - 🔍 Need: Correct private key format from HashPack
 
 ## 🎯 Next Steps
 
-1. **Export private key from HashPack** for account `YOUR_HEDERA_ACCOUNT_ID-knsbb`
+1. **Export private key from HashPack** for account `0.0.7271342-knsbb`
 2. **Copy it exactly** (don't modify)
 3. **Update Railway** with the exact key from HashPack
 4. **Restart service**

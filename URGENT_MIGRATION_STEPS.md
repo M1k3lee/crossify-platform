@@ -39,7 +39,7 @@ Your tokens and all platform data are in Railway's database. We need to migrate 
 ```powershell
 # Set environment variables
 $env:RAILWAY_DATABASE_URL = "postgresql://postgres:password@hostname:5432/railway"
-$env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:YOUR_PASSWORD@34.142.XXX.XXX:5432/crossify-db"
+$env:CLOUD_SQL_DATABASE_URL = "postgresql://postgres:@@Mixmaster@20@34.142.XXX.XXX:5432/crossify-db"
 
 # Run migration
 cd backend

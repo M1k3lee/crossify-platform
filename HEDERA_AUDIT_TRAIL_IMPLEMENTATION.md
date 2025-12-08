@@ -125,7 +125,7 @@ Each audit log includes:
 1. **Set Required Environment Variables in Railway**:
    ```env
    HEDERA_ACCOUNT_ID=0.0.7268944
-   HEDERA_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+   HEDERA_PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee
    ```
 
 2. **Deploy/Restart Backend**:
@@ -146,7 +146,7 @@ If you already have a topic ID:
 1. Add all three variables to Railway:
    ```env
    HEDERA_ACCOUNT_ID=0.0.7268944
-   HEDERA_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+   HEDERA_PRIVATE_KEY=0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee
    HEDERA_HCS_TOPIC_ID=0.0.xxxxx
    ```
 2. Deploy - it will use the existing topic

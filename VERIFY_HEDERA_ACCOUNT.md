@@ -3,14 +3,14 @@
 ## ❌ Current Issue
 
 Still getting `INVALID_SIGNATURE` error, which means:
-- The private key `YOUR_HEDERA_PRIVATE_KEY`
-- Does NOT match account `YOUR_HEDERA_ACCOUNT_ID`
+- The private key `8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c`
+- Does NOT match account `0.0.7271342`
 
 ## ✅ Verification Steps
 
 ### Step 1: Check Account on HashScan
 
-1. Go to: https://hashscan.io/testnet/account/YOUR_HEDERA_ACCOUNT_ID
+1. Go to: https://hashscan.io/testnet/account/0.0.7271342
 2. **Verify the account exists**
 3. **Check the account has HBAR balance** (needs at least 0.1 HBAR for topic creation)
 4. **Check recent transactions** - if there are any, the account is active
@@ -21,7 +21,7 @@ Still getting `INVALID_SIGNATURE` error, which means:
 
 1. Open **HashPack wallet**
 2. Make sure you're on **Testnet** (not Mainnet)
-3. Find account `YOUR_HEDERA_ACCOUNT_ID` in your wallet
+3. Find account `0.0.7271342` in your wallet
 4. Click on the account
 5. Go to **Settings** or **Account Details**
 6. Click **Export Private Key** or **Show Private Key**
@@ -69,11 +69,11 @@ Unfortunately, we can't verify the key without making a transaction. But you can
 
 **Current Status:**
 - ✅ Private key parsing works (`fromStringED25519()`)
-- ❌ Private key doesn't match account `YOUR_HEDERA_ACCOUNT_ID`
+- ❌ Private key doesn't match account `0.0.7271342`
 
 **Next Steps:**
 1. Verify account exists on HashScan
-2. Get private key from HashPack for account `YOUR_HEDERA_ACCOUNT_ID`
+2. Get private key from HashPack for account `0.0.7271342`
 3. Update Railway with correct key
 4. Restart service
 

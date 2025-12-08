@@ -22,7 +22,7 @@ In the new service, Railway will create a directory. Add these files:
 
 **File 3: `.env` or set environment variables:**
 ```
-CLOUD_SQL_DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db
+CLOUD_SQL_DATABASE_URL=postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db
 ```
 
 **Note:** Railway will automatically provide `DATABASE_URL` to the service!

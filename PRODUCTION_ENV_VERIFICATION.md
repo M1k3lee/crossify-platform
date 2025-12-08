@@ -151,11 +151,11 @@ This document lists **all environment variables** required for production deploy
 
 **Note:** Should **NOT** include `/api` suffix - frontend adds it automatically.
 
-##***REMOVED***
+### WalletConnect
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `VITE_WALLETCONNECT_PROJECT_ID` | ✅ **YES** | WalletConnect Cloud Project ID | `YOUR_WALLETCONNECT_PROJECT_ID` |
+| `VITE_WALLETCONNECT_PROJECT_ID` | ✅ **YES** | WalletConnect Cloud Project ID | `38a3f6702a1aafea9420aa8a4a58bb26` |
 
 **Get from:** https://cloud.walletconnect.com
 
@@ -362,7 +362,7 @@ BASE_PRIVATE_KEY=0x...
 
 ```env
 VITE_API_BASE=https://crossify-platform-production.up.railway.app
-VITE_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID
+VITE_WALLETCONNECT_PROJECT_ID=38a3f6702a1aafea9420aa8a4a58bb26
 
 # TokenFactory Addresses (Mainnet)
 VITE_ETH_FACTORY=0x...

@@ -29,8 +29,8 @@ After creating the database:
 If you want to use the default "postgres" database instead:
 
 1. **Update CLOUD_SQL_DATABASE_URL in Railway:**
-   - Change from: `postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/crossify-db`
-   - To: `postgresql://postgres:YOUR_PASSWORD@34.147.140.176:5432/postgres`
+   - Change from: `postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/crossify-db`
+   - To: `postgresql://postgres:@@Mixmaster@20@34.147.140.176:5432/postgres`
 
 2. **Redeploy migration**
 
