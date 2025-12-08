@@ -1610,15 +1610,13 @@ export default function TokenDetail() {
 
 
         {/* Wallet Holdings Section - Show if wallet is connected */}
-        {selectedDeployment && selectedDeployment.tokenAddress && (
+        {deployments && deployments.length > 0 && deployments.some((dep: any) => dep?.tokenAddress) && (
           <div className="mb-6">
             <WalletHoldings
               tokenId={id || ''}
-              chain={selectedChain}
-              tokenAddress={selectedDeployment.tokenAddress}
+              deployments={deployments.filter((dep: any) => dep?.tokenAddress && dep?.chain)}
               tokenSymbol={tokenSymbol}
-              currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
-              curveAddress={selectedDeployment.curveAddress}
+              currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment?.marketCap / 1000000 || 0.001}
               onSell={() => {
                 // Scroll to buy widget when sell is clicked
                 setTimeout(() => {

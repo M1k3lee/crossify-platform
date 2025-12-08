@@ -1,20 +1,34 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ethers, BrowserProvider } from 'ethers';
-import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2, ChevronDown, ChevronUp, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { API_BASE } from '../config/api';
 import { getPreferredEVMProvider } from '../services/blockchain';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+interface Deployment {
+  chain: string;
+  tokenAddress: string;
+  curveAddress?: string;
+  status?: string;
+}
 
 interface WalletHoldingsProps {
   tokenId: string;
-  chain: string;
-  tokenAddress: string;
+  deployments: Deployment[];
   tokenSymbol: string;
   currentPrice: number;
-  curveAddress?: string; // Optional - kept for future use
   onSell?: () => void;
+}
+
+interface ChainBalance {
+  chain: string;
+  balance: string;
+  sellableValue: number | null;
+  loading: boolean;
+  error: string | null;
 }
 
 interface Transaction {
@@ -26,25 +40,23 @@ interface Transaction {
 
 export default function WalletHoldings({
   tokenId,
-  chain,
-  tokenAddress,
+  deployments,
   tokenSymbol,
   currentPrice,
-  curveAddress,
   onSell,
 }: WalletHoldingsProps) {
   const { isConnected, address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const [balance, setBalance] = useState<string>('0');
-  const [actualSellableValue, setActualSellableValue] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [chainBalances, setChainBalances] = useState<Record<string, ChainBalance>>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Get RPC URL for the chain
   const getRpcUrl = (chainName: string): string => {
     const chainLower = chainName.toLowerCase().trim();
     
-    // Use publicnode.com RPCs to avoid CORS issues
     // Handle Unichain Sepolia testnet (most specific first)
     if (chainLower === 'unichain-sepolia' || (chainLower.includes('unichain') && chainLower.includes('sepolia'))) {
       return 'https://sepolia.unichain.org';
@@ -76,97 +88,152 @@ export default function WalletHoldings({
     return 'https://base-sepolia-rpc.publicnode.com';
   };
 
-  // Fetch wallet balance and actual sellable value
+  // Chain name mapping for display
+  const getChainDisplayName = (chain: string): string => {
+    const chainLower = chain.toLowerCase();
+    if (chainLower.includes('base-sepolia')) return 'Base Sepolia';
+    if (chainLower.includes('bsc-testnet')) return 'BSC Testnet';
+    if (chainLower.includes('unichain-sepolia')) return 'Unichain Sepolia';
+    if (chainLower.includes('hedera-testnet')) return 'Hedera Testnet';
+    if (chainLower.includes('sepolia') && !chainLower.includes('base') && !chainLower.includes('unichain')) return 'Sepolia';
+    if (chainLower.includes('base')) return 'Base';
+    if (chainLower.includes('bsc') || chainLower.includes('binance')) return 'BSC';
+    if (chainLower.includes('hedera')) return 'Hedera';
+    if (chainLower.includes('unichain')) return 'Unichain';
+    return chain;
+  };
+
+  // Chain colors for UI
+  const getChainColor = (chain: string): string => {
+    const chainLower = chain.toLowerCase();
+    if (chainLower.includes('base')) return '#0052FF';
+    if (chainLower.includes('bsc') || chainLower.includes('binance')) return '#F3BA2F';
+    if (chainLower.includes('unichain')) return '#FF007A';
+    if (chainLower.includes('hedera')) return '#008CFF';
+    if (chainLower.includes('sepolia') && !chainLower.includes('base') && !chainLower.includes('unichain')) return '#627EEA';
+    return '#8B5CF6';
+  };
+
+  // Fetch balance for a single chain
+  const fetchChainBalance = async (deployment: Deployment): Promise<ChainBalance> => {
+    if (!deployment.tokenAddress || !deployment.chain) {
+      return {
+        chain: deployment.chain,
+        balance: '0',
+        sellableValue: null,
+        loading: false,
+        error: 'No token address',
+      };
+    }
+
+    try {
+      const rpcUrl = getRpcUrl(deployment.chain);
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      
+      const tokenABI = ['function balanceOf(address account) external view returns (uint256)'];
+      const tokenContract = new ethers.Contract(deployment.tokenAddress, tokenABI, provider);
+      
+      const balanceWei = await tokenContract.balanceOf(address);
+      const balanceFormatted = ethers.formatUnits(balanceWei, 18);
+      
+      let sellableValue: number | null = null;
+      
+      // Calculate sellable value if curve address exists
+      if (deployment.curveAddress && parseFloat(balanceFormatted) > 0) {
+        try {
+          const bondingCurveABI = [
+            'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
+            'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
+          ];
+          const curveContract = new ethers.Contract(deployment.curveAddress, bondingCurveABI, provider);
+          
+          const tokenAmountWei = balanceWei;
+          let sellPriceWei: bigint;
+          
+          try {
+            sellPriceWei = await curveContract.getPriceForAmountLocal(tokenAmountWei);
+          } catch (err) {
+            try {
+              sellPriceWei = await curveContract.getPriceForAmount(tokenAmountWei);
+            } catch (fallbackErr) {
+              console.warn('Could not get sell price from bonding curve:', fallbackErr);
+              sellableValue = null;
+            }
+          }
+          
+          if (sellPriceWei) {
+            const sellPriceEth = parseFloat(ethers.formatEther(sellPriceWei));
+            sellableValue = sellPriceEth * 3000; // Convert to USD
+          }
+        } catch (curveErr) {
+          console.warn('Error calculating sellable value:', curveErr);
+        }
+      }
+      
+      return {
+        chain: deployment.chain,
+        balance: balanceFormatted,
+        sellableValue,
+        loading: false,
+        error: null,
+      };
+    } catch (error: any) {
+      console.error(`Error fetching balance for ${deployment.chain}:`, error);
+      return {
+        chain: deployment.chain,
+        balance: '0',
+        sellableValue: null,
+        loading: false,
+        error: error.message || 'Failed to fetch',
+      };
+    }
+  };
+
+  // Fetch balances for all chains in parallel
   useEffect(() => {
-    const fetchBalance = async () => {
-      if (!isConnected || !address || !tokenAddress) {
-        setBalance('0');
-        setActualSellableValue(null);
-        setLoading(false);
+    const fetchAllBalances = async () => {
+      if (!isConnected || !address || !deployments || deployments.length === 0) {
+        setChainBalances({});
         return;
       }
 
-      try {
-        setLoading(true);
-        
-        // Try to use wallet provider first (avoids CORS and ensures correct chain)
-        let provider: ethers.Provider;
-        try {
-          if (walletClient) {
-            // Use wallet provider if available
-            const ethereumProvider = getPreferredEVMProvider();
-            provider = new BrowserProvider(ethereumProvider);
-          } else {
-            // Fallback to RPC provider
-            const rpcUrl = getRpcUrl(chain);
-            provider = new ethers.JsonRpcProvider(rpcUrl);
-          }
-        } catch (providerErr) {
-          // Fallback to RPC if wallet provider fails
-          const rpcUrl = getRpcUrl(chain);
-          provider = new ethers.JsonRpcProvider(rpcUrl);
-        }
-        
-        const tokenABI = ['function balanceOf(address account) external view returns (uint256)'];
-        const tokenContract = new ethers.Contract(tokenAddress, tokenABI, provider);
-        
-        const balanceWei = await tokenContract.balanceOf(address);
-        const balanceFormatted = ethers.formatUnits(balanceWei, 18);
-        setBalance(balanceFormatted);
-        
-        // Calculate actual sellable value using bonding curve
-        if (curveAddress && parseFloat(balanceFormatted) > 0) {
-          try {
-            const bondingCurveABI = [
-              'function getPriceForAmountLocal(uint256 tokenAmount) external view returns (uint256)',
-              'function getPriceForAmount(uint256 tokenAmount) external view returns (uint256)',
-            ];
-            const curveContract = new ethers.Contract(curveAddress, bondingCurveABI, provider);
-            
-            const tokenAmountWei = balanceWei; // Use full balance
-            let sellPriceWei: bigint;
-            
-            try {
-              // Try getPriceForAmountLocal first (more accurate)
-              sellPriceWei = await curveContract.getPriceForAmountLocal(tokenAmountWei);
-            } catch (err) {
-              // Fallback to getPriceForAmount
-              try {
-                sellPriceWei = await curveContract.getPriceForAmount(tokenAmountWei);
-              } catch (fallbackErr) {
-                console.warn('Could not get sell price from bonding curve:', fallbackErr);
-                setActualSellableValue(null);
-                return;
-              }
-            }
-            
-            // Convert to ETH and then to USD (assuming ETH = $3000)
-            const sellPriceEth = parseFloat(ethers.formatEther(sellPriceWei));
-            const sellPriceUSD = sellPriceEth * 3000;
-            setActualSellableValue(sellPriceUSD);
-          } catch (curveErr) {
-            console.warn('Error calculating sellable value:', curveErr);
-            setActualSellableValue(null);
-          }
-        } else {
-          setActualSellableValue(null);
-        }
-      } catch (error) {
-        console.error('Error fetching balance:', error);
-        setBalance('0');
-        setActualSellableValue(null);
-      } finally {
-        setLoading(false);
-      }
+      // Filter out Solana (not EVM compatible)
+      const evmDeployments = deployments.filter(
+        (dep) => dep.chain && !dep.chain.toLowerCase().includes('solana')
+      );
+
+      // Initialize loading state for all chains
+      const initialBalances: Record<string, ChainBalance> = {};
+      evmDeployments.forEach((dep) => {
+        initialBalances[dep.chain] = {
+          chain: dep.chain,
+          balance: '0',
+          sellableValue: null,
+          loading: true,
+          error: null,
+        };
+      });
+      setChainBalances(initialBalances);
+
+      // Fetch all balances in parallel
+      const balancePromises = evmDeployments.map((dep) => fetchChainBalance(dep));
+      const balances = await Promise.all(balancePromises);
+
+      // Update state with results
+      const balancesMap: Record<string, ChainBalance> = {};
+      balances.forEach((balance) => {
+        balancesMap[balance.chain] = balance;
+      });
+      setChainBalances(balancesMap);
     };
 
-    fetchBalance();
-    // Refresh balance every 5 seconds (more frequent to catch updates)
-    const interval = setInterval(fetchBalance, 5000);
+    fetchAllBalances();
+    // Refresh balances every 5 seconds
+    const interval = setInterval(fetchAllBalances, 5000);
     return () => clearInterval(interval);
-  }, [isConnected, address, tokenAddress, chain, curveAddress, walletClient]);
+  }, [isConnected, address, deployments, tokenId]);
 
-  // Fetch user transactions for this token
+  // Fetch user transactions across all chains
   useEffect(() => {
     const fetchTransactions = async () => {
       if (!isConnected || !address || !tokenId) {
@@ -175,22 +242,32 @@ export default function WalletHoldings({
       }
 
       try {
-        const response = await axios.get(`${API_BASE}/transactions`, {
-          params: {
-            tokenId,
-            chain: chain.toLowerCase(),
-          },
+        // Fetch transactions for all chains
+        const chainPromises = deployments.map((dep) =>
+          axios.get(`${API_BASE}/transactions`, {
+            params: {
+              tokenId,
+              chain: dep.chain.toLowerCase(),
+            },
+          })
+        );
+
+        const responses = await Promise.all(chainPromises);
+        const allTransactions: Transaction[] = [];
+
+        responses.forEach((response) => {
+          const userTxs = (response.data.transactions || []).filter(
+            (tx: any) => tx.fromAddress?.toLowerCase() === address?.toLowerCase()
+          ) as Transaction[];
+          allTransactions.push(...userTxs);
         });
 
-        // Filter transactions for this user's address
-        // For buys: fromAddress = user (sending native token)
-        // For sells: fromAddress = user (sending tokens)
-        // So we only need to check fromAddress
-        const userTxs = (response.data.transactions || []).filter(
-          (tx: any) => tx.fromAddress?.toLowerCase() === address?.toLowerCase()
-        ) as Transaction[];
+        // Sort by creation date (newest first)
+        allTransactions.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
 
-        setTransactions(userTxs);
+        setTransactions(allTransactions);
       } catch (error) {
         console.error('Error fetching transactions:', error);
         setTransactions([]);
@@ -198,19 +275,40 @@ export default function WalletHoldings({
     };
 
     fetchTransactions();
-    // Refresh transactions every 30 seconds
     const interval = setInterval(fetchTransactions, 30000);
     return () => clearInterval(interval);
-  }, [isConnected, address, tokenId, chain]);
+  }, [isConnected, address, tokenId, deployments]);
 
-  // Calculate average cost and profit/loss
+  // Calculate totals across all chains
+  const totals = useMemo(() => {
+    let totalBalance = 0;
+    let totalValue = 0;
+    let hasAnyBalance = false;
+
+    Object.values(chainBalances).forEach((chainBalance) => {
+      const balance = parseFloat(chainBalance.balance);
+      totalBalance += balance;
+      
+      if (chainBalance.sellableValue !== null) {
+        totalValue += chainBalance.sellableValue;
+      } else {
+        totalValue += balance * currentPrice;
+      }
+      
+      if (balance > 0) {
+        hasAnyBalance = true;
+      }
+    });
+
+    return { totalBalance, totalValue, hasAnyBalance };
+  }, [chainBalances, currentPrice]);
+
+  // Calculate average cost and profit/loss from transactions
   const holdings = useMemo(() => {
-    // If no transactions, return zeros
     if (transactions.length === 0) {
       return {
         averageCost: 0,
         totalCost: 0,
-        currentValue: 0,
         profit: 0,
         profitPercent: 0,
       };
@@ -219,14 +317,12 @@ export default function WalletHoldings({
     let totalTokens = 0;
     let totalCostBasis = 0;
 
-    // Calculate cost basis from buy transactions
     for (const tx of transactions) {
       if (tx.type === 'buy') {
         const amount = parseFloat(tx.amount);
         totalTokens += amount;
         totalCostBasis += amount * tx.price;
       } else if (tx.type === 'sell') {
-        // For sells, reduce tokens using FIFO
         const amount = parseFloat(tx.amount);
         if (totalTokens > 0) {
           const ratio = Math.min(amount / totalTokens, 1);
@@ -236,29 +332,42 @@ export default function WalletHoldings({
       }
     }
 
-    // Calculate average cost per token
     const avgCost = totalTokens > 0 ? totalCostBasis / totalTokens : 0;
-    // Use actual sellable value if available, otherwise fall back to currentPrice * balance
-    const currentValue = actualSellableValue !== null ? actualSellableValue : (parseFloat(balance) * currentPrice);
-    const costBasis = parseFloat(balance) * avgCost;
-    const profit = currentValue - costBasis;
+    const costBasis = totals.totalBalance * avgCost;
+    const profit = totals.totalValue - costBasis;
     const profitPercent = costBasis > 0 ? (profit / costBasis) * 100 : 0;
 
     return {
       averageCost: avgCost,
       totalCost: costBasis,
-      currentValue,
       profit,
       profitPercent,
     };
-  }, [transactions, balance, currentPrice, actualSellableValue]);
+  }, [transactions, totals]);
 
-  // Handle quick sell
-  const handleQuickSell = () => {
-    if (parseFloat(balance) === 0) {
-      return;
+  // Handle quick sell - switch to selected chain and open sell tab
+  const handleQuickSell = (chain?: string) => {
+    if (chain) {
+      // Switch to the specific chain
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('chain', chain);
+      navigate(`?${newParams.toString()}`, { replace: true });
+      
+      // Scroll and open sell tab
+      setTimeout(() => {
+        const buyWidget = document.querySelector('[data-buy-widget]');
+        if (buyWidget) {
+          buyWidget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            const sellButton = document.querySelector('[data-sell-tab]') as HTMLButtonElement;
+            if (sellButton) {
+              sellButton.click();
+            }
+          }, 500);
+        }
+      }, 100);
     }
-    // Trigger sell in parent component
+    
     if (onSell) {
       onSell();
     }
@@ -269,15 +378,17 @@ export default function WalletHoldings({
     return null;
   }
 
-  // Show if user has balance OR has transactions (even if balance is 0 now)
-  const hasBalance = parseFloat(balance) > 0;
-  const hasTransactions = transactions.length > 0;
-  
-  if (!hasBalance && !hasTransactions) {
+  // Check if we have any balances or transactions
+  const hasAnyData = totals.hasAnyBalance || transactions.length > 0;
+  const chainsWithBalance = Object.values(chainBalances).filter(
+    (cb) => parseFloat(cb.balance) > 0
+  );
+
+  if (!hasAnyData) {
     return null;
   }
 
-  const { averageCost, totalCost, currentValue, profit, profitPercent } = holdings;
+  const { averageCost, totalCost, profit, profitPercent } = holdings;
   const hasProfit = profit >= 0;
   const ProfitIcon = hasProfit ? TrendingUp : TrendingDown;
 
@@ -294,49 +405,116 @@ export default function WalletHoldings({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-white">Your Holdings</h3>
-            <p className="text-sm text-gray-400">On {chain}</p>
+            <p className="text-sm text-gray-400">Across all chains</p>
           </div>
         </div>
+        {chainsWithBalance.length > 1 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-gray-400 hover:text-white transition flex items-center gap-1 text-sm"
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="w-4 h-4" />
+                Hide
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-4 h-4" />
+                Show All
+              </>
+            )}
+          </button>
+        )}
       </div>
 
+      {/* Total Balance - Always Visible */}
       <div className="space-y-4">
-        {/* Balance */}
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400">Balance</span>
-          {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-          ) : (
-            <span className="text-xl font-bold text-white">
-              {parseFloat(balance).toLocaleString(undefined, {
+        <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400">Total Balance</span>
+            <Globe className="w-4 h-4 text-gray-400" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-bold text-white">
+              {totals.totalBalance.toLocaleString(undefined, {
                 maximumFractionDigits: 4,
               })}{' '}
               {tokenSymbol}
             </span>
-          )}
+          </div>
+          <div className="mt-2 pt-2 border-t border-gray-700/50">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Total Value</span>
+              <span className="text-lg font-semibold text-white">
+                ${totals.totalValue.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Current Value */}
-        <div className="flex items-center justify-between">
-          <span className="text-gray-400">
-            {actualSellableValue !== null ? 'Sellable Value' : 'Current Value'}
-          </span>
-          <span className="text-lg font-semibold text-white">
-            ${currentValue.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
-        </div>
-        {actualSellableValue !== null && (
-          <div className="text-xs text-gray-500 italic">
-            Based on bonding curve sell price for full balance
+        {/* Chain Breakdown - Expandable */}
+        {expanded && chainsWithBalance.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-400 mb-2">Breakdown by Chain</p>
+            {Object.values(chainBalances)
+              .filter((cb) => parseFloat(cb.balance) > 0)
+              .map((chainBalance) => {
+                const chainColor = getChainColor(chainBalance.chain);
+                const displayName = getChainDisplayName(chainBalance.chain);
+                const balance = parseFloat(chainBalance.balance);
+                const value = chainBalance.sellableValue !== null 
+                  ? chainBalance.sellableValue 
+                  : balance * currentPrice;
+
+                return (
+                  <div
+                    key={chainBalance.chain}
+                    className="bg-gray-900/30 rounded-lg p-3 border border-gray-700/30 hover:border-gray-600/50 transition"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: chainColor }}
+                        />
+                        <span className="text-sm font-medium text-white">{displayName}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-white">
+                          {balance.toLocaleString(undefined, {
+                            maximumFractionDigits: 4,
+                          })}{' '}
+                          {tokenSymbol}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          ${value.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleQuickSell(chainBalance.chain)}
+                      className="mt-2 w-full text-xs px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition flex items-center justify-center gap-1"
+                    >
+                      <ArrowUpRight className="w-3 h-3" />
+                      Trade on {displayName}
+                    </button>
+                  </div>
+                );
+              })}
           </div>
         )}
 
-        {/* Average Cost (if we have transactions) */}
+        {/* Profit/Loss Section */}
         {transactions.length > 0 && averageCost > 0 && (
-          <>
-            <div className="flex items-center justify-between">
+          <div className="pt-4 border-t border-gray-700/50">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-gray-400">Avg. Cost</span>
               <span className="text-sm text-gray-300">
                 ${averageCost.toLocaleString(undefined, {
@@ -345,8 +523,7 @@ export default function WalletHoldings({
                 })}
               </span>
             </div>
-
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-gray-400">Cost Basis</span>
               <span className="text-sm text-gray-300">
                 ${totalCost.toLocaleString(undefined, {
@@ -355,54 +532,50 @@ export default function WalletHoldings({
                 })}
               </span>
             </div>
-
-            {/* Profit/Loss */}
-            <div className="pt-4 border-t border-gray-700/50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-400">Profit/Loss</span>
-                <div className="flex items-center gap-2">
-                  <ProfitIcon
-                    className={`w-5 h-5 ${
-                      hasProfit ? 'text-green-400' : 'text-red-400'
-                    }`}
-                  />
-                  <span
-                    className={`text-lg font-bold ${
-                      hasProfit ? 'text-green-400' : 'text-red-400'
-                    }`}
-                  >
-                    {hasProfit ? '+' : ''}
-                    ${profit.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-end">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400">Profit/Loss</span>
+              <div className="flex items-center gap-2">
+                <ProfitIcon
+                  className={`w-5 h-5 ${
+                    hasProfit ? 'text-green-400' : 'text-red-400'
+                  }`}
+                />
                 <span
-                  className={`text-sm font-semibold ${
+                  className={`text-lg font-bold ${
                     hasProfit ? 'text-green-400' : 'text-red-400'
                   }`}
                 >
                   {hasProfit ? '+' : ''}
-                  {profitPercent.toLocaleString(undefined, {
+                  ${profit.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
-                  %
                 </span>
               </div>
             </div>
-          </>
+            <div className="flex items-center justify-end mt-1">
+              <span
+                className={`text-sm font-semibold ${
+                  hasProfit ? 'text-green-400' : 'text-red-400'
+                }`}
+              >
+                {hasProfit ? '+' : ''}
+                {profitPercent.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                %
+              </span>
+            </div>
+          </div>
         )}
 
         {/* Quick Sell Button */}
-        {parseFloat(balance) > 0 && (
+        {totals.hasAnyBalance && (
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={handleQuickSell}
+            onClick={() => handleQuickSell()}
             className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
           >
             <ArrowUpRight className="w-5 h-5" />
@@ -413,4 +586,3 @@ export default function WalletHoldings({
     </motion.div>
   );
 }
-
