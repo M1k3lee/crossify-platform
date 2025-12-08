@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ethers, BrowserProvider } from 'ethers';
-import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2, ChevronDown, ChevronUp, Globe } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { API_BASE } from '../config/api';
@@ -49,7 +49,6 @@ export default function WalletHoldings({
   const { data: walletClient } = useWalletClient();
   const [chainBalances, setChainBalances] = useState<Record<string, ChainBalance>>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [expanded, setExpanded] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -454,185 +453,148 @@ export default function WalletHoldings({
   const hasProfit = profit >= 0;
   const ProfitIcon = hasProfit ? TrendingUp : TrendingDown;
 
+  // Sort chains by balance (highest first), then by chain name for stable ordering
+  const sortedChains = useMemo(() => {
+    return Object.values(chainBalances).sort((a, b) => {
+      const balanceA = parseFloat(a.balance);
+      const balanceB = parseFloat(b.balance);
+      if (balanceB !== balanceA) {
+        return balanceB - balanceA; // Higher balance first
+      }
+      return a.chain.localeCompare(b.chain); // Then alphabetically
+    });
+  }, [chainBalances]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg border border-gray-700/50 rounded-xl p-6 shadow-xl"
+      className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-lg border border-gray-700/50 rounded-xl p-5 shadow-xl"
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <Wallet className="w-5 h-5 text-blue-400" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white">Your Holdings</h3>
-            <p className="text-sm text-gray-400">Across all chains</p>
-          </div>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-blue-500/20 rounded-lg">
+          <Wallet className="w-5 h-5 text-blue-400" />
         </div>
-        {(Object.keys(chainBalances).length > 0 || isLoadingAnyChain) && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-gray-400 hover:text-white transition flex items-center gap-1 text-sm"
-          >
-            {expanded ? (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                Hide
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                Show All
-              </>
-            )}
-          </button>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-white">Your Holdings</h3>
+          <p className="text-xs text-gray-400">Across all chains</p>
+        </div>
+        {(isInitialLoading || isLoadingAnyChain) && Object.keys(chainBalances).length === 0 ? (
+          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        ) : (
+          <div className="text-right">
+            <div className="text-xl font-bold text-white">
+              {totals.totalBalance.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}{' '}
+              {tokenSymbol}
+            </div>
+            <div className="text-sm text-gray-400">
+              ${totals.totalValue.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Total Balance - Always Visible */}
-      <div className="space-y-4">
-        <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700/50">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400">Total Balance</span>
-            <Globe className="w-4 h-4 text-gray-400" />
-          </div>
-          <div className="flex items-center justify-between">
-            {(isInitialLoading || isLoadingAnyChain) && Object.keys(chainBalances).length === 0 ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                <span className="text-lg text-gray-400">Loading balances...</span>
-              </div>
-            ) : (
-              <span className="text-2xl font-bold text-white">
-                {totals.totalBalance.toLocaleString(undefined, {
-                  maximumFractionDigits: 4,
-                })}{' '}
-                {tokenSymbol}
-              </span>
-            )}
-          </div>
-          <div className="mt-2 pt-2 border-t border-gray-700/50">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-400">Total Value</span>
-              <span className="text-lg font-semibold text-white">
-                ${totals.totalValue.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* Chain Breakdown - Always Visible, Compact Grid */}
+      {Object.keys(chainBalances).length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
+          {sortedChains.map((chainBalance) => {
+            const chainColor = getChainColor(chainBalance.chain);
+            const displayName = getChainDisplayName(chainBalance.chain);
+            const balance = parseFloat(chainBalance.balance);
+            const value = chainBalance.sellableValue !== null 
+              ? chainBalance.sellableValue 
+              : balance * currentPrice;
+            const hasBalance = balance > 0;
 
-        {/* Chain Breakdown - Expandable */}
-        {expanded && Object.keys(chainBalances).length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-400 mb-2">Breakdown by Chain</p>
-            {Object.values(chainBalances)
-              .sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance)) // Sort by balance, highest first
-              .map((chainBalance) => {
-                const chainColor = getChainColor(chainBalance.chain);
-                const displayName = getChainDisplayName(chainBalance.chain);
-                const balance = parseFloat(chainBalance.balance);
-                const value = chainBalance.sellableValue !== null 
-                  ? chainBalance.sellableValue 
-                  : balance * currentPrice;
-                const hasBalance = balance > 0;
-
-                return (
-                  <div
-                    key={chainBalance.chain}
-                    className={`bg-gray-900/30 rounded-lg p-3 border transition ${
-                      hasBalance 
-                        ? 'border-gray-700/30 hover:border-gray-600/50' 
-                        : 'border-gray-800/20 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: chainColor }}
-                        />
-                        <span className="text-sm font-medium text-white">{displayName}</span>
-                        {chainBalance.loading && (
-                          <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
-                        )}
-                        {chainBalance.error && (
-                          <span className="text-xs text-red-400">Error</span>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        {chainBalance.loading ? (
-                          <div className="flex items-center gap-1 text-xs text-gray-400">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Loading...
-                          </div>
-                        ) : (
-                          <>
-                            <div className={`text-sm font-semibold ${hasBalance ? 'text-white' : 'text-gray-500'}`}>
-                              {balance.toLocaleString(undefined, {
-                                maximumFractionDigits: 4,
-                              })}{' '}
-                              {tokenSymbol}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              ${value.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    {hasBalance && !chainBalance.loading && (
-                      <button
-                        onClick={() => handleQuickSell(chainBalance.chain)}
-                        className="mt-2 w-full text-xs px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition flex items-center justify-center gap-1"
-                      >
-                        <ArrowUpRight className="w-3 h-3" />
-                        Trade on {displayName}
-                      </button>
+            return (
+              <div
+                key={chainBalance.chain}
+                className={`bg-gray-900/40 rounded-lg p-2.5 border transition ${
+                  hasBalance 
+                    ? 'border-gray-700/40 hover:border-gray-600/60 cursor-pointer' 
+                    : 'border-gray-800/30 opacity-50'
+                }`}
+                onClick={hasBalance && !chainBalance.loading ? () => handleQuickSell(chainBalance.chain) : undefined}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: chainColor }}
+                    />
+                    <span className="text-xs font-medium text-white truncate">{displayName}</span>
+                    {chainBalance.loading && (
+                      <Loader2 className="w-2.5 h-2.5 animate-spin text-gray-400 flex-shrink-0" />
                     )}
                   </div>
-                );
-              })}
-          </div>
-        )}
+                  <div className="text-right flex-shrink-0">
+                    {chainBalance.loading && !hasBalance ? (
+                      <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                    ) : (
+                      <>
+                        <div className={`text-xs font-semibold ${hasBalance ? 'text-white' : 'text-gray-500'}`}>
+                          {balance.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                        {hasBalance && (
+                          <div className="text-[10px] text-gray-400">
+                            ${value.toLocaleString(undefined, {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-        {/* Profit/Loss Section */}
-        {transactions.length > 0 && averageCost > 0 && (
-          <div className="pt-4 border-t border-gray-700/50">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400">Avg. Cost</span>
-              <span className="text-sm text-gray-300">
+      {/* Profit/Loss Section */}
+      {transactions.length > 0 && averageCost > 0 && (
+        <div className="pt-3 mt-4 border-t border-gray-700/50">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-gray-400 text-xs">Avg. Cost</span>
+              <div className="text-white font-medium">
                 ${averageCost.toLocaleString(undefined, {
                   minimumFractionDigits: 6,
                   maximumFractionDigits: 6,
                 })}
-              </span>
+              </div>
             </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-400">Cost Basis</span>
-              <span className="text-sm text-gray-300">
+            <div>
+              <span className="text-gray-400 text-xs">Cost Basis</span>
+              <div className="text-white font-medium">
                 ${totalCost.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
-              </span>
+              </div>
             </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-gray-700/30">
             <div className="flex items-center justify-between">
-              <span className="text-gray-400">Profit/Loss</span>
+              <span className="text-gray-400 text-sm">Profit/Loss</span>
               <div className="flex items-center gap-2">
                 <ProfitIcon
-                  className={`w-5 h-5 ${
+                  className={`w-4 h-4 ${
                     hasProfit ? 'text-green-400' : 'text-red-400'
                   }`}
                 />
                 <span
-                  className={`text-lg font-bold ${
+                  className={`font-bold ${
                     hasProfit ? 'text-green-400' : 'text-red-400'
                   }`}
                 >
@@ -642,38 +604,36 @@ export default function WalletHoldings({
                     maximumFractionDigits: 2,
                   })}
                 </span>
+                <span
+                  className={`text-sm font-semibold ${
+                    hasProfit ? 'text-green-400' : 'text-red-400'
+                  }`}
+                >
+                  ({hasProfit ? '+' : ''}
+                  {profitPercent.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                  %)
+                </span>
               </div>
             </div>
-            <div className="flex items-center justify-end mt-1">
-              <span
-                className={`text-sm font-semibold ${
-                  hasProfit ? 'text-green-400' : 'text-red-400'
-                }`}
-              >
-                {hasProfit ? '+' : ''}
-                {profitPercent.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-                %
-              </span>
-            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Quick Sell Button */}
-        {totals.hasAnyBalance && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => handleQuickSell()}
-            className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
-          >
-            <ArrowUpRight className="w-5 h-5" />
-            <span>Sell {tokenSymbol}</span>
-          </motion.button>
-        )}
-      </div>
+      {/* Quick Sell Button */}
+      {totals.hasAnyBalance && (
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleQuickSell()}
+          className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
+        >
+          <ArrowUpRight className="w-5 h-5" />
+          <span>Sell {tokenSymbol}</span>
+        </motion.button>
+      )}
     </motion.div>
   );
 }
