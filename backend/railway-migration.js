@@ -52,7 +52,20 @@ async function migrate() {
     throw new Error('CLOUD_SQL_DATABASE_URL not set');
   }
 
-  const cloudSqlPool = new Pool({ connectionString: cloudSqlUrl });
+  // Cloud SQL requires SSL - add SSL parameters if not already in URL
+  let cloudSqlConnectionString = cloudSqlUrl;
+  if (!cloudSqlUrl.includes('sslmode=')) {
+    // Add SSL mode to connection string
+    const separator = cloudSqlUrl.includes('?') ? '&' : '?';
+    cloudSqlConnectionString = `${cloudSqlUrl}${separator}sslmode=require`;
+  }
+  
+  const cloudSqlPool = new Pool({ 
+    connectionString: cloudSqlConnectionString,
+    ssl: {
+      rejectUnauthorized: false // Cloud SQL uses self-signed certs
+    }
+  });
 
   try {
     // Test connections
