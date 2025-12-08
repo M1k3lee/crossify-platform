@@ -22,10 +22,12 @@ export function initializePostgreSQL(): Pool {
 
   pool = new Pool({
     connectionString,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: process.env.NODE_ENV === 'production' ? { 
+      rejectUnauthorized: false // Cloud SQL uses self-signed certs, disable verification
+    } : false,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000, // Increased timeout for Railway
+    connectionTimeoutMillis: 10000,
   });
 
   pool.on('error', (err) => {

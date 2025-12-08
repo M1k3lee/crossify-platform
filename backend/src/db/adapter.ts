@@ -12,6 +12,14 @@ let usePostgreSQL = false;
  * Initialize database (SQLite or PostgreSQL)
  */
 export async function initializeDatabase(): Promise<void> {
+  // Debug: Log what we're actually receiving
+  console.log('🔍 DEBUG: Checking DATABASE_URL...');
+  console.log('   DATABASE_URL exists:', !!process.env.DATABASE_URL);
+  console.log('   DATABASE_URL type:', typeof process.env.DATABASE_URL);
+  console.log('   DATABASE_URL length:', process.env.DATABASE_URL?.length || 0);
+  console.log('   DATABASE_URL first 50 chars:', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) : 'NOT SET');
+  console.log('   DATABASE_URL starts with "postgres":', process.env.DATABASE_URL?.startsWith('postgres') || false);
+  
   usePostgreSQL = isPostgreSQLConfigured();
   
   if (usePostgreSQL) {
@@ -19,8 +27,12 @@ export async function initializeDatabase(): Promise<void> {
     console.log('📋 DATABASE_URL is set:', process.env.DATABASE_URL ? 'Yes' : 'No');
     if (process.env.DATABASE_URL) {
       // Log first part of connection string (without password) for debugging
-      const url = new URL(process.env.DATABASE_URL);
-      console.log(`📋 Connecting to: postgresql://${url.username}@${url.hostname}:${url.port}${url.pathname}`);
+      try {
+        const url = new URL(process.env.DATABASE_URL);
+        console.log(`📋 Connecting to: postgresql://${url.username}@${url.hostname}:${url.port}${url.pathname}`);
+      } catch (e) {
+        console.error('❌ Failed to parse DATABASE_URL:', e);
+      }
     }
     try {
       initializePostgreSQL();
