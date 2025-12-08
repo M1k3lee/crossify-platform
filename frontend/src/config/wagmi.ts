@@ -41,11 +41,38 @@ const hederaTestnet: Chain = {
   testnet: true,
 } as Chain;
 
+// Define Unichain Sepolia chain (not included in wagmi/chains by default)
+// Chain ID: 1301 (0x515 in hex)
+const unichainSepolia: Chain = {
+  id: 1301,
+  name: 'Unichain Sepolia',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'ETH',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://sepolia.unichain.org'],
+    },
+    public: {
+      http: ['https://sepolia.unichain.org'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Uniscan',
+      url: 'https://sepolia.uniscan.xyz',
+    },
+  },
+  testnet: true,
+} as Chain;
+
 // Configure RainbowKit with wallet options that prioritize injected providers
 export const config = getDefaultConfig({
   appName: 'Crossify.io',
   projectId: hasValidProjectId ? projectId : '0000000000000000000000000000000000000000',
-  chains: [sepolia, baseSepolia, bscTestnet, hederaTestnet],
+  chains: [sepolia, baseSepolia, bscTestnet, hederaTestnet, unichainSepolia],
   ssr: false,
   // Note: HashPack custom wallet removed due to RainbowKit v2 API limitations
   // HashPack connection is handled via the fallback button in BuyWidget

@@ -14,16 +14,20 @@ import { API_BASE } from '../config/api';
 // Map chainId to chain name for blockchain sync
 function getChainNamesFromChainId(chainId: number): string[] {
   // Default to testnet chains since we're on testnet
-  const testnetChains = ['base-sepolia', 'sepolia', 'bsc-testnet'];
+  const testnetChains = ['base-sepolia', 'sepolia', 'bsc-testnet', 'unichain-sepolia'];
   
   // Map specific chain IDs if needed
   switch (chainId) {
     case 84532: // Base Sepolia
-      return ['base-sepolia', 'sepolia', 'bsc-testnet'];
+      return ['base-sepolia', 'sepolia', 'bsc-testnet', 'unichain-sepolia'];
     case 11155111: // Sepolia
-      return ['sepolia', 'base-sepolia', 'bsc-testnet'];
+      return ['sepolia', 'base-sepolia', 'bsc-testnet', 'unichain-sepolia'];
     case 97: // BSC Testnet
-      return ['bsc-testnet', 'base-sepolia', 'sepolia'];
+      return ['bsc-testnet', 'base-sepolia', 'sepolia', 'unichain-sepolia'];
+    case 1301: // Unichain Sepolia
+      return ['unichain-sepolia', 'base-sepolia', 'sepolia', 'bsc-testnet'];
+    case 296: // Hedera Testnet
+      return ['hedera-testnet', 'base-sepolia', 'sepolia', 'bsc-testnet', 'unichain-sepolia'];
     default:
       // Default to testnet chains
       return testnetChains;

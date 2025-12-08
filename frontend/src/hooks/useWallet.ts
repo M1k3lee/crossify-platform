@@ -17,6 +17,8 @@ export function useMultiChainWallet() {
       case 'ethereum':
       case 'bsc':
       case 'base':
+      case 'hedera':
+      case 'unichain':
         return evmAddress;
       case 'solana':
         return solanaWallet.publicKey?.toString();
@@ -33,6 +35,10 @@ export function useMultiChainWallet() {
         return chainId === 97; // BSC Testnet
       case 'base':
         return chainId === 84532; // Base Sepolia
+      case 'hedera':
+        return chainId === 296; // Hedera Testnet
+      case 'unichain':
+        return chainId === 1301; // Unichain Sepolia
       case 'solana':
         return solanaWallet.connected;
       default:
