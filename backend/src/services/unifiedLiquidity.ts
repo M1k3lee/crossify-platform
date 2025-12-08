@@ -123,7 +123,20 @@ export async function getChainPrice(
  * Get prices across all chains for a token
  */
 export async function getAllChainPrices(tokenId: string): Promise<ChainPrice[]> {
-  const chains = ['ethereum', 'bsc', 'base', 'solana', 'hedera'];
+  // Query database for actual chains where token is deployed (instead of hardcoded list)
+  // This ensures we include all chains including Unichain, and handles testnet names correctly
+  const deployments = await dbAll(
+    `SELECT DISTINCT chain FROM token_deployments WHERE token_id = ? AND status = 'deployed'`,
+    [tokenId]
+  ) as Array<{ chain: string }>;
+  
+  const chains = deployments.map(d => d.chain);
+  
+  // Fallback to common chains if no deployments found (shouldn't happen in normal flow)
+  if (chains.length === 0) {
+    chains.push('ethereum', 'bsc', 'base', 'solana', 'hedera', 'unichain-sepolia');
+  }
+  
   const prices: ChainPrice[] = [];
 
   for (const chain of chains) {
