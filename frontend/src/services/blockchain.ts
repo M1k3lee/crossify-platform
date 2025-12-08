@@ -813,7 +813,7 @@ export async function deployTokenOnEVM(
           // This handles cases where RPC nodes have issues with complex contract deployments
           console.warn(`⚠️  Gas estimation failed, but static call succeeded. Using default gas limit.`);
           console.warn(`   Gas estimation error:`, gasEstError.message);
-          // Use a more generous gas limit for deploying token + bonding curve
+          // Use chain-specific default gas limit when estimation fails
           // CrossChainToken deployment ~600k-800k (larger contract with LayerZero integration)
           // BondingCurve deployment ~400k-500k
           // Token transfers ~200k
@@ -821,13 +821,13 @@ export async function deployTokenOnEVM(
           // transferOwnership call ~50k
           // authorizeUpdater call ~100k
           // Overhead and safety margin ~1M
-          // Total: ~2.5M-2.7M, use 5M for safety with cross-chain tokens
-          gasEstimate = BigInt(5_000_000); // Increased to 5M for cross-chain tokens
-          console.log(`📦 Using default gas limit: ${gasEstimate.toString()} gas units`);
+          // Total: ~2.5M-2.7M, use chain-specific defaults for testnets
+          gasEstimate = DEFAULT_GAS_LIMITS[chain] || BigInt(3_000_000); // Chain-specific default
+          console.log(`📦 Using default gas limit for ${chain}: ${gasEstimate.toString()} gas units`);
         }
       } catch (populateError: any) {
         console.warn(`⚠️  Could not populate transaction, using default gas limit`);
-        gasEstimate = BigInt(5_000_000); // Increased to 5M for safety
+        gasEstimate = DEFAULT_GAS_LIMITS[chain] || BigInt(3_000_000); // Chain-specific default
       }
     }
   } catch (estimateError: any) {
@@ -933,13 +933,33 @@ export async function deployTokenOnEVM(
   }
   
   // Get current gas price to ensure transaction can be mined
-  // Set minimum gas prices per chain (in Gwei)
+  // Set minimum gas prices per chain (in Gwei) - optimized for testnets
+  // These are minimums; actual network prices may be lower
   const MIN_GAS_PRICES: Record<string, bigint> = {
-    ethereum: ethers.parseUnits('20', 'gwei'), // Sepolia: 20 Gwei
-    bsc: ethers.parseUnits('3', 'gwei'), // BSC Testnet: 3 Gwei
-    base: ethers.parseUnits('1', 'gwei'), // Base Sepolia: 1 Gwei
-    unichain: ethers.parseUnits('0.001', 'gwei'), // Unichain Sepolia: Very low (0.001 Gwei) - testnet
-    hedera: ethers.parseUnits('1', 'gwei'), // Hedera Testnet: 1 Gwei
+    ethereum: ethers.parseUnits('0.1', 'gwei'), // Sepolia: 0.1 Gwei (testnet, very low)
+    bsc: ethers.parseUnits('1', 'gwei'), // BSC Testnet: 1 Gwei (reduced from 3)
+    base: ethers.parseUnits('0.01', 'gwei'), // Base Sepolia: 0.01 Gwei (reduced from 1)
+    unichain: ethers.parseUnits('0.001', 'gwei'), // Unichain Sepolia: 0.001 Gwei (very low - testnet)
+    hedera: ethers.parseUnits('0.1', 'gwei'), // Hedera Testnet: 0.1 Gwei (reduced from 1)
+  };
+  
+  // Chain-specific default gas limits (when estimation fails)
+  // These are conservative estimates for token + bonding curve deployment
+  const DEFAULT_GAS_LIMITS: Record<string, bigint> = {
+    ethereum: BigInt(3_500_000), // Sepolia: 3.5M (testnet, can be lower)
+    bsc: BigInt(3_000_000), // BSC Testnet: 3M
+    base: BigInt(3_000_000), // Base Sepolia: 3M
+    unichain: BigInt(2_500_000), // Unichain: 2.5M (optimized for v4)
+    hedera: BigInt(3_000_000), // Hedera: 3M
+  };
+  
+  // Chain-specific max gas limits (safety cap)
+  const MAX_GAS_LIMITS: Record<string, bigint> = {
+    ethereum: BigInt(5_000_000), // Sepolia: 5M max
+    bsc: BigInt(5_000_000), // BSC Testnet: 5M max
+    base: BigInt(4_000_000), // Base Sepolia: 4M max
+    unichain: BigInt(3_500_000), // Unichain: 3.5M max (optimized)
+    hedera: BigInt(4_000_000), // Hedera: 4M max
   };
   
   let feeData;
@@ -1007,14 +1027,13 @@ export async function deployTokenOnEVM(
     console.log(`📋 Function selector: ${functionData.slice(0, 10)}`);
     
     // Use the gas estimate we got (or default if estimation failed)
-    // For Unichain, use a lower gas limit since it's optimized for Uniswap v4
-    // Increase gas limit by 10% to account for variations (reduced buffer since we're using generous defaults)
-    // Cap at 8M to prevent excessive gas usage (lower for Unichain)
+    // Increase gas limit by 10% to account for variations
+    // Cap at chain-specific max to prevent excessive gas usage
     let adjustedGasLimit: bigint | undefined;
     if (gasEstimate) {
       const bufferGasLimit = (gasEstimate * BigInt(110)) / BigInt(100);
-      // Unichain is optimized, so use lower max gas limit
-      const maxGasLimit = chain === 'unichain' ? BigInt(4_000_000) : BigInt(8_000_000);
+      // Use chain-specific max gas limit
+      const maxGasLimit = MAX_GAS_LIMITS[chain] || BigInt(5_000_000);
       adjustedGasLimit = bufferGasLimit > maxGasLimit ? maxGasLimit : bufferGasLimit;
       txOptions.gasLimit = adjustedGasLimit;
       console.log(`⛽ Adjusted gas limit: ${adjustedGasLimit.toString()} (10% buffer added, max ${maxGasLimit.toString()})`);
