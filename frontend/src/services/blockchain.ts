@@ -958,34 +958,7 @@ export async function deployTokenOnEVM(
 
   // Deploy token - THIS SHOULD TRIGGER METAMASK POPUP
   // Get current gas price to ensure transaction can be mined
-  // Set minimum gas prices per chain (in Gwei) - optimized for testnets
-  // These are minimums; actual network prices may be lower
-  const MIN_GAS_PRICES: Record<string, bigint> = {
-    ethereum: ethers.parseUnits('0.1', 'gwei'), // Sepolia: 0.1 Gwei (testnet, very low)
-    bsc: ethers.parseUnits('1', 'gwei'), // BSC Testnet: 1 Gwei (reduced from 3)
-    base: ethers.parseUnits('0.01', 'gwei'), // Base Sepolia: 0.01 Gwei (reduced from 1)
-    unichain: ethers.parseUnits('0.001', 'gwei'), // Unichain Sepolia: 0.001 Gwei (very low - testnet)
-    hedera: ethers.parseUnits('0.1', 'gwei'), // Hedera Testnet: 0.1 Gwei (reduced from 1)
-  };
-  
-  // Chain-specific default gas limits (when estimation fails)
-  // These are conservative estimates for token + bonding curve deployment
-  const DEFAULT_GAS_LIMITS: Record<string, bigint> = {
-    ethereum: BigInt(3_500_000), // Sepolia: 3.5M (testnet, can be lower)
-    bsc: BigInt(3_000_000), // BSC Testnet: 3M
-    base: BigInt(3_000_000), // Base Sepolia: 3M
-    unichain: BigInt(2_500_000), // Unichain: 2.5M (optimized for v4)
-    hedera: BigInt(3_000_000), // Hedera: 3M
-  };
-  
-  // Chain-specific max gas limits (safety cap)
-  const MAX_GAS_LIMITS: Record<string, bigint> = {
-    ethereum: BigInt(5_000_000), // Sepolia: 5M max
-    bsc: BigInt(5_000_000), // BSC Testnet: 5M max
-    base: BigInt(4_000_000), // Base Sepolia: 4M max
-    unichain: BigInt(3_500_000), // Unichain: 3.5M max (optimized)
-    hedera: BigInt(4_000_000), // Hedera: 4M max
-  };
+  // (Constants are declared at the start of the function)
   
   console.log(`📝 Calling createToken function - MetaMask should pop up now...`);
   if (gasEstimate) {
