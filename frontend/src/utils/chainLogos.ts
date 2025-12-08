@@ -44,19 +44,7 @@ export function getChainLogo(chainName: string): string | null {
   }
   
   // Try partial matches (e.g., "base-sepolia" matches "base")
-  for (const [key, url] of Object.entries(CHAIN_LOGOS)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return url;
-    }
-  }
-  
-  // Try fallback
-  if (CHAIN_LOGOS_FALLBACK[normalized]) {
-    return CHAIN_LOGOS_FALLBACK[normalized];
-  }
-  
-  // Try fallback partial matches
-  for (const [key, url] of Object.entries(CHAIN_LOGOS_FALLBACK)) {
+  for (const [key, url] of Object.entries(CHAIN_LOGOS) as [string, string][]) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return url;
     }
@@ -64,4 +52,5 @@ export function getChainLogo(chainName: string): string | null {
   
   return null;
 }
+
 
