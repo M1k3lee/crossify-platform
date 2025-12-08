@@ -28,6 +28,7 @@ import { API_BASE } from '../config/api';
 import { deployTokenOnEVM, getTestnetInfo } from '../services/blockchain';
 import BannerUpload from '../components/BannerUpload';
 import ColorPicker from '../components/ColorPicker';
+import { getChainLogo } from '../utils/chainLogos';
 
 const CHAIN_COLORS: Record<string, string> = {
   ethereum: '#627EEA',
@@ -1834,10 +1835,46 @@ export default function TokenDetail() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white"
+                        className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden relative"
                         style={{ backgroundColor: `${chainColor}20` }}
                       >
-                        {chainDisplayName?.charAt(0) || chainName.charAt(0).toUpperCase()}
+                        {(() => {
+                          const logoUrl = getChainLogo(normalizedChainName) || getChainLogo(chainName);
+                          const fallbackLetter = chainDisplayName?.charAt(0) || chainName.charAt(0).toUpperCase();
+                          
+                          if (logoUrl) {
+                            return (
+                              <>
+                                <img
+                                  src={logoUrl}
+                                  alt={chainDisplayName}
+                                  className="w-full h-full object-contain p-1"
+                                  onError={(e) => {
+                                    // Hide image and show fallback letter
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const fallback = target.nextElementSibling as HTMLElement;
+                                    if (fallback) {
+                                      fallback.style.display = 'flex';
+                                    }
+                                  }}
+                                />
+                                <span 
+                                  className="font-bold text-white absolute inset-0 items-center justify-center hidden"
+                                  style={{ display: 'none' }}
+                                >
+                                  {fallbackLetter}
+                                </span>
+                              </>
+                            );
+                          }
+                          // Fallback to letter if no logo found
+                          return (
+                            <span className="font-bold text-white">
+                              {fallbackLetter}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-white">{chainDisplayName}</h3>
