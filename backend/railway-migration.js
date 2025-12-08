@@ -23,12 +23,23 @@ const TABLES = [
 
 async function migrate() {
   console.log('🚀 Starting Railway → Cloud SQL Migration\n');
+  
+  // Debug: Show what environment variables are available
+  console.log('🔍 Environment Check:');
+  console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '✅ Set (' + process.env.DATABASE_URL.substring(0, 30) + '...)' : '❌ Not set');
+  console.log('   CLOUD_SQL_DATABASE_URL:', process.env.CLOUD_SQL_DATABASE_URL ? '✅ Set' : '❌ Not set');
+  console.log('');
 
   if (!railwayPool) {
+    console.error('❌ DATABASE_URL environment variable is missing!');
+    console.error('   Please add DATABASE_URL to the migration-temp service variables in Railway.');
+    console.error('   Get it from: Postgres service → Variables tab → DATABASE_URL');
     throw new Error('DATABASE_URL not set');
   }
 
   if (!cloudSqlUrl) {
+    console.error('❌ CLOUD_SQL_DATABASE_URL environment variable is missing!');
+    console.error('   Please add CLOUD_SQL_DATABASE_URL to the migration-temp service variables.');
     throw new Error('CLOUD_SQL_DATABASE_URL not set');
   }
 
