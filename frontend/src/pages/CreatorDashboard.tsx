@@ -27,14 +27,18 @@ interface TokenCapabilities {
 }
 
 // Helper function to map deployment chain names to expected chain names
-const mapChainName = (chain: string): 'ethereum' | 'bsc' | 'base' | null => {
-  const chainMap: Record<string, 'ethereum' | 'bsc' | 'base'> = {
+const mapChainName = (chain: string): 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain' | null => {
+  const chainMap: Record<string, 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain'> = {
     'sepolia': 'ethereum',
     'ethereum': 'ethereum',
     'bsc-testnet': 'bsc',
     'bsc': 'bsc',
     'base-sepolia': 'base',
     'base': 'base',
+    'hedera-testnet': 'hedera',
+    'hedera': 'hedera',
+    'unichain-sepolia': 'unichain',
+    'unichain': 'unichain',
   };
   return chainMap[chain.toLowerCase()] || null;
 };
@@ -456,10 +460,11 @@ export default function CreatorDashboard() {
       toast.loading(`Retrying deployment to ${dep.chain}...`, { id: `retry-${dep.chain}` });
       
       const chain = dep.chain.toLowerCase();
-      const evmChain = chain.includes('sepolia') && !chain.includes('base') ? 'ethereum' :
+      const evmChain = chain.includes('sepolia') && !chain.includes('base') && !chain.includes('unichain') ? 'ethereum' :
                       chain.includes('base') ? 'base' :
                       chain.includes('bsc') ? 'bsc' :
-                      chain.includes('hedera') ? 'hedera' : null;
+                      chain.includes('hedera') ? 'hedera' :
+                      chain.includes('unichain') ? 'unichain' : null;
 
       if (!evmChain) {
         toast.error(`Deployment to ${dep.chain} is not yet supported`, { id: `retry-${dep.chain}` });
@@ -494,7 +499,7 @@ export default function CreatorDashboard() {
       };
 
       // Deploy to blockchain
-      const result = await deployTokenOnEVM(evmChain as 'ethereum' | 'bsc' | 'base' | 'hedera', {
+      const result = await deployTokenOnEVM(evmChain as 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain', {
         chain: evmChain as any,
         tokenData,
         curveData,
