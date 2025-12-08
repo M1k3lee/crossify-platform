@@ -9,7 +9,13 @@
     "dev:frontend": "cd frontend && npm run dev",
     "build:backend": "cd backend && npm run build",
     "build:frontend": "cd frontend && npm run build",
-    "build:contracts": "cd contracts && npm run compile"
+    "build:contracts": "cd contracts && npm run compile",
+    "migrate": "cd backend && node railway-migration.js",
+    "start": "cd backend && node railway-migration.js"
+  },
+  "dependencies": {
+    "pg": "^8.16.3",
+    "dotenv": "^16.3.1"
   },
   "author": {
     "name": "M1k3lee",
