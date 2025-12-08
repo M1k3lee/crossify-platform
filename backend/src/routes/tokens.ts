@@ -2110,11 +2110,11 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     console.log(`   Expected Price (ETH): ${expectedPrice}`);
     console.log(`   Expected Price (USD): $${expectedPriceUSD}`);
     
-    // CRITICAL: For price display, we'll use the EXPECTED price (based on token's intended parameters)
-    // This ensures consistent prices across chains even if curves have different parameters
-    // We'll still detect parameter mismatches but won't let them affect the displayed prices
+    // For price display, we'll prefer ACTUAL prices from contracts for accuracy
+    // This shows real-time blockchain state, which is more valuable to users
+    // We'll use expected price only as a fallback if contract fetch fails
     const curveParameters: Record<string, { basePrice: number; slope: number; actualPrice: number }> = {};
-    const USE_EXPECTED_PRICE = true; // Always use expected price for consistency
+    const USE_EXPECTED_PRICE = false; // Use actual prices from contracts for better accuracy
     
     for (const dep of deployments) {
       let actualPrice = 0;
@@ -2131,53 +2131,84 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
             'base-sepolia': process.env.BASE_RPC_URL || 'https://base-sepolia-rpc.publicnode.com',
             'hedera': process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
             'hedera-testnet': process.env.HEDERA_RPC_URL || 'https://testnet.hashio.io/api',
+            'unichain': process.env.UNICHAIN_RPC_URL || 'https://sepolia.unichain.org',
+            'unichain-sepolia': process.env.UNICHAIN_RPC_URL || process.env.UNICHAIN_SEPOLIA_RPC_URL || 'https://sepolia.unichain.org',
           };
           
           const chainLower = dep.chain.toLowerCase();
-          const rpcUrl = rpcUrls[chainLower] || rpcUrls['base-sepolia'];
+          // Try to find RPC URL - check exact match first, then partial matches
+          let rpcUrl = rpcUrls[chainLower];
+          if (!rpcUrl) {
+            // Try partial matches for testnet chains
+            if (chainLower.includes('unichain')) {
+              rpcUrl = rpcUrls['unichain-sepolia'] || rpcUrls['unichain'];
+            } else if (chainLower.includes('base')) {
+              rpcUrl = rpcUrls['base-sepolia'] || rpcUrls['base'];
+            } else if (chainLower.includes('bsc')) {
+              rpcUrl = rpcUrls['bsc-testnet'] || rpcUrls['bsc'];
+            } else if (chainLower.includes('sepolia') && !chainLower.includes('base') && !chainLower.includes('unichain')) {
+              rpcUrl = rpcUrls['sepolia'];
+            } else if (chainLower.includes('hedera')) {
+              rpcUrl = rpcUrls['hedera-testnet'] || rpcUrls['hedera'];
+            }
+          }
+          
+          // Fallback to base-sepolia if still no URL found
+          if (!rpcUrl) {
+            rpcUrl = rpcUrls['base-sepolia'];
+          }
           
           if (rpcUrl) {
-            const provider = new ethers.JsonRpcProvider(rpcUrl);
-            
-            // Query actual bonding curve contract - get price AND parameters
-            const bondingCurveABI = [
-              'function getCurrentPrice() external view returns (uint256)',
-              'function basePrice() external view returns (uint256)',
-              'function slope() external view returns (uint256)',
-            ];
-            
-            const curveContract = new ethers.Contract(dep.curve_address, bondingCurveABI, provider);
-            const [currentPriceWei, basePriceWei, slopeWei] = await Promise.all([
-              curveContract.getCurrentPrice().catch(() => null),
-              curveContract.basePrice().catch(() => null),
-              curveContract.slope().catch(() => null),
-            ]);
-            
-            let fetchedActualPrice = 0;
-            if (currentPriceWei) {
-              fetchedActualPrice = parseFloat(ethers.formatEther(currentPriceWei));
-              console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${fetchedActualPrice} ETH`);
-            }
-            
-            // Store parameters for mismatch detection (but we'll use expected price for display)
-            if (basePriceWei && slopeWei) {
-              const curveBasePrice = parseFloat(ethers.formatEther(basePriceWei));
-              const curveSlope = parseFloat(ethers.formatEther(slopeWei));
-              if (!curveParameters[dep.chain]) {
-                curveParameters[dep.chain] = { basePrice: 0, slope: 0, actualPrice: 0 };
+            try {
+              const provider = new ethers.JsonRpcProvider(rpcUrl);
+              
+              // Query actual bonding curve contract - get price AND parameters
+              const bondingCurveABI = [
+                'function getCurrentPrice() external view returns (uint256)',
+                'function basePrice() external view returns (uint256)',
+                'function slope() external view returns (uint256)',
+              ];
+              
+              const curveContract = new ethers.Contract(dep.curve_address, bondingCurveABI, provider);
+              const [currentPriceWei, basePriceWei, slopeWei] = await Promise.all([
+                curveContract.getCurrentPrice().catch(() => null),
+                curveContract.basePrice().catch(() => null),
+                curveContract.slope().catch(() => null),
+              ]);
+              
+              let fetchedActualPrice = 0;
+              if (currentPriceWei) {
+                fetchedActualPrice = parseFloat(ethers.formatEther(currentPriceWei));
+                console.log(`✅ Fetched actual price from bonding curve for ${dep.chain}: ${fetchedActualPrice} ETH ($${(fetchedActualPrice * 3000).toFixed(6)})`);
               }
-              curveParameters[dep.chain].basePrice = curveBasePrice;
-              curveParameters[dep.chain].slope = curveSlope;
-              curveParameters[dep.chain].actualPrice = fetchedActualPrice;
-              console.log(`   Base Price: ${curveBasePrice.toFixed(8)} ETH, Slope: ${curveSlope.toFixed(12)} ETH/token`);
-            }
-            
-            // Use expected price instead of actual price for consistent display
-            if (USE_EXPECTED_PRICE) {
+              
+              // Store parameters for mismatch detection
+              if (basePriceWei && slopeWei) {
+                const curveBasePrice = parseFloat(ethers.formatEther(basePriceWei));
+                const curveSlope = parseFloat(ethers.formatEther(slopeWei));
+                if (!curveParameters[dep.chain]) {
+                  curveParameters[dep.chain] = { basePrice: 0, slope: 0, actualPrice: 0 };
+                }
+                curveParameters[dep.chain].basePrice = curveBasePrice;
+                curveParameters[dep.chain].slope = curveSlope;
+                curveParameters[dep.chain].actualPrice = fetchedActualPrice;
+                console.log(`   Base Price: ${curveBasePrice.toFixed(8)} ETH, Slope: ${curveSlope.toFixed(12)} ETH/token`);
+              }
+              
+              // Prefer actual price from contract for accuracy, fall back to expected if needed
+              if (fetchedActualPrice > 0) {
+                // Use actual price for more accurate display - this reflects real blockchain state
+                actualPrice = fetchedActualPrice;
+                console.log(`   Using actual contract price: ${actualPrice} ETH (expected: ${expectedPrice} ETH)`);
+              } else {
+                // No valid price from contract, use expected
+                actualPrice = expectedPrice;
+                console.log(`   No contract price available, using expected price: ${expectedPrice} ETH`);
+              }
+            } catch (error: any) {
+              console.error(`❌ Error fetching price from bonding curve for ${dep.chain}:`, error.message);
+              // Use expected price based on global supply as fallback
               actualPrice = expectedPrice;
-              console.log(`   Using expected price for display: ${expectedPrice} ETH (actual from contract: ${fetchedActualPrice} ETH)`);
-            } else {
-              actualPrice = fetchedActualPrice || expectedPrice;
             }
           } else {
             console.warn(`⚠️ No RPC URL for chain ${dep.chain}, using expected price calculation`);
@@ -2194,15 +2225,48 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
         actualPrice = expectedPrice;
       }
       
-      // Always use expected price for display consistency (even if we fetched actual price)
-      // This ensures all chains show the same price based on global supply
-      if (USE_EXPECTED_PRICE) {
+      // For display, prefer actual price from contract if available and valid
+      // This gives users real-time accurate prices even if global supply sync is delayed
+      // Only use expected price if we couldn't fetch actual price or if it's invalid
+      if (actualPrice <= 0 || isNaN(actualPrice) || !isFinite(actualPrice)) {
+        console.warn(`⚠️ Invalid price calculated for ${dep.chain}, using expected price`);
         actualPrice = expectedPrice;
       }
       
       // Convert to USD (assuming ETH = $3000)
       const priceUSD = actualPrice * 3000;
-      prices[dep.chain] = priceUSD;
+      
+      // Store price using both exact chain name and normalized lowercase for better matching
+      // Frontend might use different chain name formats, so we provide both
+      const chainLower = dep.chain.toLowerCase();
+      const normalizedChain = chainLower.includes('unichain-sepolia') || (chainLower.includes('unichain') && chainLower.includes('sepolia')) ? 'unichain-sepolia' :
+                            chainLower.includes('base-sepolia') ? 'base-sepolia' :
+                            chainLower.includes('bsc-testnet') ? 'bsc-testnet' :
+                            chainLower.includes('hedera-testnet') ? 'hedera-testnet' :
+                            chainLower.includes('sepolia') && !chainLower.includes('base') && !chainLower.includes('unichain') ? 'sepolia' :
+                            chainLower.includes('base') ? 'base' :
+                            chainLower.includes('bsc') ? 'bsc' :
+                            chainLower.includes('hedera') ? 'hedera' :
+                            chainLower.includes('unichain') ? 'unichain' : chainLower;
+      
+      // Only set price if it's valid and greater than 0
+      if (priceUSD > 0 && isFinite(priceUSD) && !isNaN(priceUSD)) {
+        // Store with exact chain name (from database)
+        prices[dep.chain] = priceUSD;
+        // Also store with normalized lowercase for frontend matching
+        prices[chainLower] = priceUSD;
+        prices[normalizedChain] = priceUSD;
+        console.log(`✅ Set price for ${dep.chain} (normalized: ${normalizedChain}): $${priceUSD.toFixed(6)}`);
+      } else {
+        console.warn(`⚠️ Invalid price USD for ${dep.chain}: ${priceUSD}, using fallback`);
+        // Fallback: use a minimal price based on base price if actual calculation failed
+        const fallbackPrice = (basePrice / Math.pow(10, 18)) * 3000;
+        const validFallback = fallbackPrice > 0 ? fallbackPrice : 0.0001;
+        prices[dep.chain] = validFallback;
+        prices[chainLower] = validFallback;
+        prices[normalizedChain] = validFallback;
+        console.log(`⚠️ Using fallback price for ${dep.chain}: $${validFallback.toFixed(6)}`);
+      }
       
       // Use global supply for market cap calculation to show consistent value
       const supplyForMarketCap = globalSupplyValue > 0 ? globalSupplyValue : parseFloat(dep.current_supply || '0');

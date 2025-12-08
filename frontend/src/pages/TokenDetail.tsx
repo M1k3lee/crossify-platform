@@ -1911,7 +1911,12 @@ export default function TokenDetail() {
                                           chainName.includes('bsc') ? 'bsc' :
                                           chainName.includes('ethereum') ? 'ethereum' :
                                           chainName.includes('hedera') ? 'hedera' : chainName;
-                const price = priceSync?.prices?.[chainName] || (dep.marketCap ? dep.marketCap / 1000000 : 0.001);
+                // Try multiple formats to find the price from priceSync
+                const price = priceSync?.prices?.[chainName] || 
+                             priceSync?.prices?.[normalizedChainName] || 
+                             priceSync?.prices?.[dep.chain] || 
+                             priceSync?.prices?.[dep.chain?.toLowerCase()] ||
+                             (dep.marketCap ? dep.marketCap / 1000000 : 0.001);
                 const liquidity = (dep.marketCap || 0) * 0.7;
                 const volume24h = (dep.marketCap || 0) * 0.1;
                 const priceImpact = 0.08 + (idx % 10) * 0.03; // Deterministic
