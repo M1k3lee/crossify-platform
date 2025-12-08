@@ -50,6 +50,7 @@ export default function WalletHoldings({
   const [chainBalances, setChainBalances] = useState<Record<string, ChainBalance>>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [expanded, setExpanded] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -225,8 +226,10 @@ export default function WalletHoldings({
         balancesMap[balance.chain] = balance;
       });
       setChainBalances(balancesMap);
+      setIsInitialLoading(false);
     };
 
+    setIsInitialLoading(true);
     fetchAllBalances();
     // Refresh balances every 5 seconds
     const interval = setInterval(fetchAllBalances, 5000);
@@ -383,8 +386,13 @@ export default function WalletHoldings({
   const chainsWithBalance = Object.values(chainBalances).filter(
     (cb) => parseFloat(cb.balance) > 0
   );
+  
+  // Check if we're still loading balances
+  const isLoadingAnyChain = Object.values(chainBalances).some((cb) => cb.loading);
+  const hasAnyChainData = Object.keys(chainBalances).length > 0;
 
-  if (!hasAnyData) {
+  // Don't hide while loading or if we have deployments to check
+  if (!isInitialLoading && !hasAnyData && !isLoadingAnyChain && !hasAnyChainData) {
     return null;
   }
 
@@ -408,7 +416,7 @@ export default function WalletHoldings({
             <p className="text-sm text-gray-400">Across all chains</p>
           </div>
         </div>
-        {chainsWithBalance.length > 1 && (
+        {(Object.keys(chainBalances).length > 0 || isLoadingAnyChain) && (
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-gray-400 hover:text-white transition flex items-center gap-1 text-sm"
@@ -436,12 +444,19 @@ export default function WalletHoldings({
             <Globe className="w-4 h-4 text-gray-400" />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-white">
-              {totals.totalBalance.toLocaleString(undefined, {
-                maximumFractionDigits: 4,
-              })}{' '}
-              {tokenSymbol}
-            </span>
+            {(isInitialLoading || isLoadingAnyChain) && Object.keys(chainBalances).length === 0 ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                <span className="text-lg text-gray-400">Loading balances...</span>
+              </div>
+            ) : (
+              <span className="text-2xl font-bold text-white">
+                {totals.totalBalance.toLocaleString(undefined, {
+                  maximumFractionDigits: 4,
+                })}{' '}
+                {tokenSymbol}
+              </span>
+            )}
           </div>
           <div className="mt-2 pt-2 border-t border-gray-700/50">
             <div className="flex items-center justify-between">
@@ -457,11 +472,11 @@ export default function WalletHoldings({
         </div>
 
         {/* Chain Breakdown - Expandable */}
-        {expanded && chainsWithBalance.length > 0 && (
+        {expanded && Object.keys(chainBalances).length > 0 && (
           <div className="space-y-2">
             <p className="text-sm text-gray-400 mb-2">Breakdown by Chain</p>
             {Object.values(chainBalances)
-              .filter((cb) => parseFloat(cb.balance) > 0)
+              .sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance)) // Sort by balance, highest first
               .map((chainBalance) => {
                 const chainColor = getChainColor(chainBalance.chain);
                 const displayName = getChainDisplayName(chainBalance.chain);
@@ -469,11 +484,16 @@ export default function WalletHoldings({
                 const value = chainBalance.sellableValue !== null 
                   ? chainBalance.sellableValue 
                   : balance * currentPrice;
+                const hasBalance = balance > 0;
 
                 return (
                   <div
                     key={chainBalance.chain}
-                    className="bg-gray-900/30 rounded-lg p-3 border border-gray-700/30 hover:border-gray-600/50 transition"
+                    className={`bg-gray-900/30 rounded-lg p-3 border transition ${
+                      hasBalance 
+                        ? 'border-gray-700/30 hover:border-gray-600/50' 
+                        : 'border-gray-800/20 opacity-60'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -482,29 +502,46 @@ export default function WalletHoldings({
                           style={{ backgroundColor: chainColor }}
                         />
                         <span className="text-sm font-medium text-white">{displayName}</span>
+                        {chainBalance.loading && (
+                          <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                        )}
+                        {chainBalance.error && (
+                          <span className="text-xs text-red-400">Error</span>
+                        )}
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-semibold text-white">
-                          {balance.toLocaleString(undefined, {
-                            maximumFractionDigits: 4,
-                          })}{' '}
-                          {tokenSymbol}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          ${value.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </div>
+                        {chainBalance.loading ? (
+                          <div className="flex items-center gap-1 text-xs text-gray-400">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Loading...
+                          </div>
+                        ) : (
+                          <>
+                            <div className={`text-sm font-semibold ${hasBalance ? 'text-white' : 'text-gray-500'}`}>
+                              {balance.toLocaleString(undefined, {
+                                maximumFractionDigits: 4,
+                              })}{' '}
+                              {tokenSymbol}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              ${value.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleQuickSell(chainBalance.chain)}
-                      className="mt-2 w-full text-xs px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition flex items-center justify-center gap-1"
-                    >
-                      <ArrowUpRight className="w-3 h-3" />
-                      Trade on {displayName}
-                    </button>
+                    {hasBalance && !chainBalance.loading && (
+                      <button
+                        onClick={() => handleQuickSell(chainBalance.chain)}
+                        className="mt-2 w-full text-xs px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded border border-red-500/30 transition flex items-center justify-center gap-1"
+                      >
+                        <ArrowUpRight className="w-3 h-3" />
+                        Trade on {displayName}
+                      </button>
+                    )}
                   </div>
                 );
               })}
