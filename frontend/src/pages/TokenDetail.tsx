@@ -789,11 +789,16 @@ export default function TokenDetail() {
     if (!selectedDeployment?.chain) return 'ethereum';
     const chain = selectedDeployment.chain.toLowerCase();
     // Map testnet chain names to component-friendly names
+    // IMPORTANT: Check more specific names first (unichain-sepolia, base-sepolia, hedera-testnet) before generic ones
+    if (chain.includes('unichain-sepolia') || (chain.includes('unichain') && chain.includes('sepolia'))) return 'unichain-sepolia';
     if (chain.includes('base-sepolia') || chain === 'base-sepolia') return 'base-sepolia';
     if (chain.includes('bsc-testnet') || chain === 'bsc-testnet') return 'bsc-testnet';
-    if (chain.includes('sepolia') && !chain.includes('base')) return 'sepolia';
+    if (chain.includes('hedera-testnet') || (chain.includes('hedera') && chain.includes('testnet'))) return 'hedera-testnet';
+    if (chain.includes('sepolia') && !chain.includes('base') && !chain.includes('unichain')) return 'sepolia';
+    if (chain.includes('unichain')) return 'unichain';
     if (chain.includes('base')) return 'base';
     if (chain.includes('bsc') || chain.includes('binance')) return 'bsc';
+    if (chain.includes('hedera')) return 'hedera';
     if (chain.includes('ethereum') || chain === 'eth') return 'ethereum';
     return chain;
   }, [selectedDeployment?.chain]);

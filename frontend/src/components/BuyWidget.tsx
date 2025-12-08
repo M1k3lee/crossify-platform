@@ -64,6 +64,17 @@ export default function BuyWidget({
     
     console.log(`🔍 Getting RPC URL for chain: "${chainName}" (normalized: "${chainLower}")`);
     
+    // Handle Unichain Sepolia testnet (most specific first - check before "sepolia" alone)
+    if (chainLower === 'unichain-sepolia' || (chainLower.includes('unichain') && chainLower.includes('sepolia'))) {
+      const envOverride = getEnvRpcUrl(['VITE_UNICHAIN_SEPOLIA_RPC_URL', 'VITE_UNICHAIN_RPC_URL', 'VITE_UNICHAIN_TESTNET_RPC_URL']);
+      if (envOverride) {
+        console.log(`   → Using Unichain Sepolia RPC override from ${envOverride.source}`);
+        return envOverride.url;
+      }
+      console.log(`   → Using Unichain Sepolia RPC`);
+      return 'https://sepolia.unichain.org';
+    }
+    
     // Handle Base Sepolia testnet (most specific first - check before "sepolia" alone)
     if (chainLower === 'base-sepolia' || (chainLower.includes('base') && chainLower.includes('sepolia'))) {
       console.log(`   → Using Base Sepolia RPC`);
@@ -82,8 +93,8 @@ export default function BuyWidget({
       return 'https://bsc-testnet.rpc.thirdweb.com';
     }
     
-    // Handle Ethereum/Sepolia testnet (check after base-sepolia to avoid false matches)
-    if (chainLower === 'sepolia' || chainLower.includes('sepolia')) {
+    // Handle Ethereum/Sepolia testnet (check after base-sepolia and unichain-sepolia to avoid false matches)
+    if (chainLower === 'sepolia' || (chainLower.includes('sepolia') && !chainLower.includes('base') && !chainLower.includes('unichain'))) {
       console.log(`   → Using Sepolia RPC`);
       return 'https://ethereum-sepolia-rpc.publicnode.com';
     }
@@ -113,6 +124,17 @@ export default function BuyWidget({
     if (chainLower === 'hedera-testnet' || chainLower.includes('hedera')) {
       console.log(`   → Using Hedera Testnet RPC`);
       return 'https://testnet.hashio.io/api';
+    }
+    
+    // Handle generic Unichain (fallback to testnet if mainnet not specified)
+    if (chainLower === 'unichain') {
+      const envOverride = getEnvRpcUrl(['VITE_UNICHAIN_RPC_URL', 'VITE_UNICHAIN_TESTNET_RPC_URL']);
+      if (envOverride) {
+        console.log(`   → Using Unichain RPC override from ${envOverride.source}`);
+        return envOverride.url;
+      }
+      console.log(`   → Using Unichain Sepolia RPC (defaulting to testnet)`);
+      return 'https://sepolia.unichain.org';
     }
     
     // Default to Base Sepolia (most common testnet)
