@@ -61,6 +61,18 @@ export function getChainConfig(chain: string): ChainConfig | null {
       privateKey: process.env.HEDERA_PRIVATE_KEY || process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY,
       chainName: 'hedera-testnet',
     },
+    'unichain-sepolia': {
+      rpcUrl: process.env.UNICHAIN_TESTNET_RPC_URL || process.env.UNICHAIN_RPC_URL || 'https://sepolia.unichain.org',
+      globalSupplyTrackerAddress: process.env.UNICHAIN_GLOBAL_SUPPLY_TRACKER,
+      privateKey: process.env.UNICHAIN_PRIVATE_KEY || process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY,
+      chainName: 'unichain-sepolia',
+    },
+    'unichain': {
+      rpcUrl: process.env.UNICHAIN_TESTNET_RPC_URL || process.env.UNICHAIN_RPC_URL || 'https://sepolia.unichain.org',
+      globalSupplyTrackerAddress: process.env.UNICHAIN_GLOBAL_SUPPLY_TRACKER,
+      privateKey: process.env.UNICHAIN_PRIVATE_KEY || process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY,
+      chainName: 'unichain-sepolia',
+    },
   };
   
   return configs[chainLower] || null;

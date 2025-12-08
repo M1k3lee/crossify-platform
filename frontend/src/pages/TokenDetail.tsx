@@ -37,6 +37,10 @@ const CHAIN_COLORS: Record<string, string> = {
   solana: '#9945FF',
   base: '#0052FF',
   'base-sepolia': '#0052FF',
+  hedera: '#008CFF',
+  'hedera-testnet': '#008CFF',
+  unichain: '#FF007A',
+  'unichain-sepolia': '#FF007A',
 };
 
 const CHAIN_NAMES: Record<string, string> = {
@@ -47,6 +51,10 @@ const CHAIN_NAMES: Record<string, string> = {
   solana: 'Solana',
   base: 'Base',
   'base-sepolia': 'Base Sepolia',
+  hedera: 'Hedera',
+  'hedera-testnet': 'Hedera Testnet',
+  unichain: 'Unichain',
+  'unichain-sepolia': 'Unichain Sepolia',
 };
 
 // Sync Price Button Component
