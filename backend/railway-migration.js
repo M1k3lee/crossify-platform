@@ -78,6 +78,49 @@ async function migrate() {
     await cloudSqlPool.query('SELECT NOW()');
     console.log('✅ Connected to Cloud SQL database\n');
 
+    // Initialize Cloud SQL schema (create tables if they don't exist)
+    console.log('📋 Initializing Cloud SQL schema...');
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      // Read and execute schema SQL
+      const schemaPath = path.join(__dirname, 'railway-migration-schema.sql');
+      if (fs.existsSync(schemaPath)) {
+        const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
+        // Split by semicolons and execute each statement
+        const statements = schemaSQL.split(';').filter(s => s.trim().length > 0);
+        for (const statement of statements) {
+          if (statement.trim()) {
+            try {
+              await cloudSqlPool.query(statement.trim());
+            } catch (err) {
+              // Ignore "already exists" errors
+              if (!err.message.includes('already exists') && !err.message.includes('duplicate')) {
+                console.warn(`   ⚠️  Schema warning: ${err.message}`);
+              }
+            }
+          }
+        }
+        console.log('✅ Cloud SQL schema initialized\n');
+      } else {
+        // Fallback: Create tables manually if SQL file doesn't exist
+        console.log('   ℹ️  Schema file not found, creating tables manually...');
+        await createTablesManually(cloudSqlPool);
+        console.log('✅ Cloud SQL schema initialized\n');
+      }
+    } catch (schemaError) {
+      console.warn('⚠️  Schema initialization warning:', schemaError.message);
+      console.log('   ℹ️  Attempting to create tables manually...');
+      try {
+        await createTablesManually(cloudSqlPool);
+        console.log('✅ Cloud SQL schema initialized\n');
+      } catch (manualError) {
+        console.error('❌ Failed to initialize schema:', manualError.message);
+        throw manualError;
+      }
+    }
+
     // Migrate each table
     let totalExported = 0;
     let totalImported = 0;
