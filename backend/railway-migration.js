@@ -507,12 +507,45 @@ async function migrate() {
               const values = columns.map(col => {
                 const value = row[col];
                 if (value === null || value === undefined) return null;
-                // Handle booleans
-                if (['is_graduated', 'archived', 'pinned', 'deleted', 
-                     'cross_chain_enabled', 'visible_in_marketplace', 'verified',
-                     'tokens_claimed', 'is_active', 'tge_released'].includes(col)) {
-                  return value === 1 || value === true;
+                
+                // Define which columns are INTEGER but store boolean values (0/1)
+                const integerBooleanColumns = [
+                  'archived', 'pinned', 'deleted', 
+                  'cross_chain_enabled', 'visible_in_marketplace', 'verified'
+                ];
+                
+                // Define which columns are actual BOOLEAN type
+                const booleanColumns = [
+                  'is_graduated', 'tokens_claimed', 'is_active', 'tge_released'
+                ];
+                
+                // Convert boolean values to integers for INTEGER columns
+                if (integerBooleanColumns.includes(col)) {
+                  if (typeof value === 'boolean') {
+                    return value ? 1 : 0;
+                  }
+                  // If already a number, ensure it's 0 or 1
+                  if (typeof value === 'number') {
+                    return value ? 1 : 0;
+                  }
+                  // If string "true"/"false", convert
+                  if (typeof value === 'string') {
+                    return (value.toLowerCase() === 'true' || value === '1') ? 1 : 0;
+                  }
+                  return value;
                 }
+                
+                // Keep boolean columns as booleans
+                if (booleanColumns.includes(col)) {
+                  if (typeof value === 'number') {
+                    return value === 1 || value === '1';
+                  }
+                  if (typeof value === 'string') {
+                    return value.toLowerCase() === 'true' || value === '1';
+                  }
+                  return value;
+                }
+                
                 return value;
               });
 
