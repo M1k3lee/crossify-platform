@@ -1792,12 +1792,17 @@ export default function TokenDetail() {
               try {
                 const chainName = dep.chain.toLowerCase();
                 // Normalize chain name for lookup (handle testnet names)
-                const normalizedChainName = chainName.includes('base-sepolia') ? 'base-sepolia' :
+                // IMPORTANT: Check more specific names first (unichain-sepolia, base-sepolia) before generic ones (sepolia)
+                const normalizedChainName = chainName.includes('unichain-sepolia') || (chainName.includes('unichain') && chainName.includes('sepolia')) ? 'unichain-sepolia' :
+                                          chainName.includes('base-sepolia') ? 'base-sepolia' :
                                           chainName.includes('bsc-testnet') ? 'bsc-testnet' :
+                                          chainName.includes('hedera-testnet') ? 'hedera-testnet' :
+                                          chainName.includes('unichain') ? 'unichain' :
                                           chainName.includes('sepolia') && !chainName.includes('base') ? 'sepolia' :
                                           chainName.includes('base') ? 'base' :
                                           chainName.includes('bsc') ? 'bsc' :
-                                          chainName.includes('ethereum') ? 'ethereum' : chainName;
+                                          chainName.includes('ethereum') ? 'ethereum' :
+                                          chainName.includes('hedera') ? 'hedera' : chainName;
                 const price = priceSync?.prices?.[chainName] || (dep.marketCap ? dep.marketCap / 1000000 : 0.001);
                 const liquidity = (dep.marketCap || 0) * 0.7;
                 const volume24h = (dep.marketCap || 0) * 0.1;
@@ -1923,12 +1928,17 @@ export default function TokenDetail() {
               {deployments.map((dep: any) => {
                 if (!dep || (!dep.tokenAddress && !dep.curveAddress)) return null;
                 const chainName = dep.chain?.toLowerCase() || '';
-                const normalizedChainName = chainName.includes('base-sepolia') ? 'base-sepolia' :
+                // IMPORTANT: Check more specific names first (unichain-sepolia, base-sepolia) before generic ones (sepolia)
+                const normalizedChainName = chainName.includes('unichain-sepolia') || (chainName.includes('unichain') && chainName.includes('sepolia')) ? 'unichain-sepolia' :
+                                          chainName.includes('base-sepolia') ? 'base-sepolia' :
                                           chainName.includes('bsc-testnet') ? 'bsc-testnet' :
+                                          chainName.includes('hedera-testnet') ? 'hedera-testnet' :
+                                          chainName.includes('unichain') ? 'unichain' :
                                           chainName.includes('sepolia') && !chainName.includes('base') ? 'sepolia' :
                                           chainName.includes('base') ? 'base' :
                                           chainName.includes('bsc') ? 'bsc' :
-                                          chainName.includes('ethereum') ? 'ethereum' : chainName;
+                                          chainName.includes('ethereum') ? 'ethereum' :
+                                          chainName.includes('hedera') ? 'hedera' : chainName;
                 const chainDisplayName = CHAIN_NAMES[normalizedChainName] || CHAIN_NAMES[chainName] || dep.chain;
                 const chainColor = CHAIN_COLORS[normalizedChainName] || CHAIN_COLORS[chainName] || '#FFFFFF';
                 const explorer = getTestnetInfo(normalizedChainName as any)?.explorer;
