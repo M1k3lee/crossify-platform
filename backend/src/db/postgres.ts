@@ -19,7 +19,9 @@ export function initializePostgreSQL(): Pool {
 
   // For Cloud SQL, ensure sslmode=no-verify is in the connection string
   // This prevents SSL certificate verification errors
-  if (process.env.NODE_ENV === 'production' && !connectionString.includes('sslmode=')) {
+  if (process.env.NODE_ENV === 'production') {
+    // Remove existing sslmode if present and replace with no-verify
+    connectionString = connectionString.replace(/[?&]sslmode=[^&]*/g, '');
     const separator = connectionString.includes('?') ? '&' : '?';
     connectionString = `${connectionString}${separator}sslmode=no-verify`;
     console.log('🔐 Added sslmode=no-verify to connection string for Cloud SQL');
@@ -28,11 +30,14 @@ export function initializePostgreSQL(): Pool {
   console.log('🔌 Initializing PostgreSQL connection pool...');
   console.log('📋 Connection string format:', connectionString.substring(0, 50) + '...');
 
+  // Always use SSL config for production (Cloud SQL requires SSL)
+  const sslConfig = process.env.NODE_ENV === 'production' ? { 
+      rejectUnauthorized: false // Cloud SQL uses self-signed certs, disable verification
+    } : false;
+
   pool = new Pool({
     connectionString,
-    ssl: process.env.NODE_ENV === 'production' ? { 
-      rejectUnauthorized: false // Cloud SQL uses self-signed certs, disable verification
-    } : false,
+    ssl: sslConfig,
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
