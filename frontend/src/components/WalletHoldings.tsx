@@ -148,7 +148,7 @@ export default function WalletHoldings({
           const curveContract = new ethers.Contract(deployment.curveAddress, bondingCurveABI, provider);
           
           const tokenAmountWei = balanceWei;
-          let sellPriceWei: bigint;
+          let sellPriceWei: bigint | null = null;
           
           try {
             sellPriceWei = await curveContract.getPriceForAmountLocal(tokenAmountWei);
@@ -157,11 +157,11 @@ export default function WalletHoldings({
               sellPriceWei = await curveContract.getPriceForAmount(tokenAmountWei);
             } catch (fallbackErr) {
               console.warn('Could not get sell price from bonding curve:', fallbackErr);
-              sellableValue = null;
+              sellPriceWei = null;
             }
           }
           
-          if (sellPriceWei) {
+          if (sellPriceWei !== null) {
             const sellPriceEth = parseFloat(ethers.formatEther(sellPriceWei));
             sellableValue = sellPriceEth * 3000; // Convert to USD
           }
