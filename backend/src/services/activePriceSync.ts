@@ -93,7 +93,7 @@ export async function syncSupplyForDeployment(
     if (!config) {
       return {
         success: false,
-        message: `Chain configuration not found for ${chain}. Supported chains: sepolia, base-sepolia, bsc-testnet`,
+        message: `Chain configuration not found for ${chain}. Supported chains: sepolia, base-sepolia, bsc-testnet, hedera-testnet, unichain-sepolia`,
       };
     }
     
