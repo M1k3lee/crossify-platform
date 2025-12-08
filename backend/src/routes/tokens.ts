@@ -2095,18 +2095,16 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     const slope = parseFloat(token.slope || '0');
     
     // Calculate expected price using global supply (what price should be if synced)
-    // basePrice and slope are stored in wei (1e18), so we need to convert globalSupplyValue to wei first
-    const globalSupplyWei = globalSupplyValue * Math.pow(10, 18);
-    const expectedPriceWei = basePrice + (slope * globalSupplyWei);
-    const expectedPrice = expectedPriceWei / Math.pow(10, 18);
+    // basePrice and slope are stored as decimal numbers in the database (e.g., 0.0001 for 0.0001 ETH)
+    // NOT in wei - they're already in their decimal form
+    // Price formula: price = basePrice + (slope * globalSupply)
+    const expectedPrice = basePrice + (slope * globalSupplyValue);
     const expectedPriceUSD = expectedPrice * 3000; // Convert to USD (assuming ETH = $3000)
     
     console.log(`💰 Price calculation for token ${id}:`);
-    console.log(`   Base Price (wei): ${basePrice}`);
-    console.log(`   Slope (wei per token): ${slope}`);
+    console.log(`   Base Price (ETH): ${basePrice}`);
+    console.log(`   Slope (ETH per token): ${slope}`);
     console.log(`   Global Supply: ${globalSupplyValue} tokens`);
-    console.log(`   Global Supply (wei): ${globalSupplyWei}`);
-    console.log(`   Expected Price (wei): ${expectedPriceWei}`);
     console.log(`   Expected Price (ETH): ${expectedPrice}`);
     console.log(`   Expected Price (USD): $${expectedPriceUSD}`);
     
@@ -2264,7 +2262,8 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       } else {
         console.warn(`⚠️ Invalid price USD for ${dep.chain}: ${priceUSD}, using fallback`);
         // Fallback: use a minimal price based on base price if actual calculation failed
-        const fallbackPrice = (basePrice / Math.pow(10, 18)) * 3000;
+        // basePrice is already in decimal format (ETH), not wei, so just multiply by ETH price
+        const fallbackPrice = basePrice * 3000;
         const validFallback = fallbackPrice > 0 ? fallbackPrice : 0.0001;
         prices[dep.chain] = validFallback;
         prices[chainLower] = validFallback;
