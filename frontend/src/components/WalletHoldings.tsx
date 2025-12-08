@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { ethers, BrowserProvider } from 'ethers';
 import { Wallet, TrendingUp, TrendingDown, ArrowUpRight, Loader2, ChevronDown, ChevronUp, Globe } from 'lucide-react';
@@ -53,6 +53,8 @@ export default function WalletHoldings({
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const hasLoadedRef = useRef(false);
+  const lastDeploymentChainsRef = useRef<string>('');
 
   // Get RPC URL for the chain
   const getRpcUrl = (chainName: string): string => {
@@ -190,51 +192,99 @@ export default function WalletHoldings({
     }
   };
 
+  // Memoize deployments to prevent unnecessary re-renders
+  const evmDeployments = useMemo(() => {
+    if (!deployments || deployments.length === 0) return [];
+    return deployments.filter(
+      (dep) => dep.chain && !dep.chain.toLowerCase().includes('solana')
+    );
+  }, [deployments]);
+
+  // Create stable chain list for dependency tracking
+  const deploymentChains = useMemo(() => {
+    return evmDeployments.map(dep => dep.chain).sort().join(',');
+  }, [evmDeployments]);
+
   // Fetch balances for all chains in parallel
   useEffect(() => {
-    const fetchAllBalances = async () => {
-      if (!isConnected || !address || !deployments || deployments.length === 0) {
+    if (!isConnected || !address || evmDeployments.length === 0) {
+      if (evmDeployments.length === 0) {
+        // Only clear if we truly have no deployments
         setChainBalances({});
-        return;
       }
+      return;
+    }
 
-      // Filter out Solana (not EVM compatible)
-      const evmDeployments = deployments.filter(
-        (dep) => dep.chain && !dep.chain.toLowerCase().includes('solana')
-      );
+    // Check if deployments actually changed
+    const deploymentsChanged = lastDeploymentChainsRef.current !== deploymentChains;
+    if (!deploymentsChanged && hasLoadedRef.current) {
+      // Deployments haven't changed, skip reset - this is just a refresh
+      // We'll still run the interval refresh
+    } else {
+      // Deployments changed or first load
+      lastDeploymentChainsRef.current = deploymentChains;
+      if (!hasLoadedRef.current) {
+        setIsInitialLoading(true);
+      }
+    }
 
-      // Initialize loading state for all chains
-      const initialBalances: Record<string, ChainBalance> = {};
-      evmDeployments.forEach((dep) => {
-        initialBalances[dep.chain] = {
-          chain: dep.chain,
-          balance: '0',
-          sellableValue: null,
-          loading: true,
-          error: null,
-        };
-      });
-      setChainBalances(initialBalances);
+    const fetchAllBalances = async (isRefresh = false) => {
+      // Only update loading state if it's not a refresh (preserve existing balances)
+      if (!isRefresh) {
+        setChainBalances((prev) => {
+          const updated: Record<string, ChainBalance> = { ...prev };
+          // Initialize loading state only for chains we don't have data for yet
+          evmDeployments.forEach((dep) => {
+            if (!updated[dep.chain]) {
+              // New chain, initialize
+              updated[dep.chain] = {
+                chain: dep.chain,
+                balance: '0',
+                sellableValue: null,
+                loading: true,
+                error: null,
+              };
+            } else {
+              // Existing chain - preserve balance, just mark as loading for refresh
+              updated[dep.chain] = {
+                ...updated[dep.chain],
+                loading: true, // Mark as loading but keep existing balance
+              };
+            }
+          });
+          // Remove chains that are no longer in deployments
+          Object.keys(updated).forEach((chain) => {
+            if (!evmDeployments.find((dep) => dep.chain === chain)) {
+              delete updated[chain];
+            }
+          });
+          return updated;
+        });
+      }
 
       // Fetch all balances in parallel
       const balancePromises = evmDeployments.map((dep) => fetchChainBalance(dep));
       const balances = await Promise.all(balancePromises);
 
-      // Update state with results
-      const balancesMap: Record<string, ChainBalance> = {};
-      balances.forEach((balance) => {
-        balancesMap[balance.chain] = balance;
+      // Update state with results, preserving existing balances for chains not in this fetch
+      setChainBalances((prev) => {
+        const updated = { ...prev };
+        balances.forEach((balance) => {
+          updated[balance.chain] = balance;
+        });
+        return updated;
       });
-      setChainBalances(balancesMap);
       setIsInitialLoading(false);
+      hasLoadedRef.current = true;
     };
 
-    setIsInitialLoading(true);
-    fetchAllBalances();
-    // Refresh balances every 5 seconds
-    const interval = setInterval(fetchAllBalances, 5000);
+    fetchAllBalances(!hasLoadedRef.current);
+    // Refresh balances every 5 seconds - only refresh, don't reset
+    const interval = setInterval(() => {
+      fetchAllBalances(true);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [isConnected, address, deployments, tokenId]);
+  }, [isConnected, address, deploymentChains, tokenId, evmDeployments]);
 
   // Fetch user transactions across all chains
   useEffect(() => {
@@ -282,19 +332,23 @@ export default function WalletHoldings({
     return () => clearInterval(interval);
   }, [isConnected, address, tokenId, deployments]);
 
-  // Calculate totals across all chains
+  // Calculate totals across all chains - ignore loading state, use actual balance values
   const totals = useMemo(() => {
     let totalBalance = 0;
     let totalValue = 0;
     let hasAnyBalance = false;
 
     Object.values(chainBalances).forEach((chainBalance) => {
+      // Only count balances that are not in error state and have actual data
+      if (chainBalance.error) return;
+      
       const balance = parseFloat(chainBalance.balance);
-      totalBalance += balance;
+      // Use the balance even if loading is true (preserve previous value)
+      totalBalance += isNaN(balance) ? 0 : balance;
       
       if (chainBalance.sellableValue !== null) {
         totalValue += chainBalance.sellableValue;
-      } else {
+      } else if (!isNaN(balance)) {
         totalValue += balance * currentPrice;
       }
       
