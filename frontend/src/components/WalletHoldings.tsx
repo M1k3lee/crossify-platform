@@ -45,13 +45,20 @@ export default function WalletHoldings({
     const chainLower = chainName.toLowerCase().trim();
     
     // Use publicnode.com RPCs to avoid CORS issues
+    // Handle Unichain Sepolia testnet (most specific first)
+    if (chainLower === 'unichain-sepolia' || (chainLower.includes('unichain') && chainLower.includes('sepolia'))) {
+      return 'https://sepolia.unichain.org';
+    }
     if (chainLower === 'base-sepolia' || (chainLower.includes('base') && chainLower.includes('sepolia'))) {
       return 'https://base-sepolia-rpc.publicnode.com';
     }
     if (chainLower === 'bsc-testnet' || (chainLower.includes('bsc') && chainLower.includes('testnet'))) {
       return 'https://bsc-testnet.publicnode.com';
     }
-    if (chainLower === 'sepolia' || chainLower.includes('sepolia')) {
+    if (chainLower === 'hedera-testnet' || chainLower.includes('hedera')) {
+      return 'https://testnet.hashio.io/api';
+    }
+    if (chainLower === 'sepolia' || (chainLower.includes('sepolia') && !chainLower.includes('base') && !chainLower.includes('unichain'))) {
       return 'https://ethereum-sepolia-rpc.publicnode.com';
     }
     if (chainLower === 'base') {
@@ -62,6 +69,9 @@ export default function WalletHoldings({
     }
     if (chainLower === 'ethereum' || chainLower === 'eth') {
       return 'https://ethereum-sepolia-rpc.publicnode.com';
+    }
+    if (chainLower.includes('unichain')) {
+      return 'https://sepolia.unichain.org';
     }
     return 'https://base-sepolia-rpc.publicnode.com';
   };

@@ -45,6 +45,8 @@ export default function BuyWidget({
   const [priceEstimate, setPriceEstimate] = useState<number | null>(null);
   const [tokensEstimate, setTokensEstimate] = useState<number | null>(null);
   const [isValidAddress, setIsValidAddress] = useState(false);
+  const [tokenBalance, setTokenBalance] = useState<string>('0');
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   // Allow overriding RPC URLs via VITE_*_RPC_URL env vars (e.g. VITE_BSC_TESTNET_RPC_URL)
   const getEnvRpcUrl = (keys: string[]): { url: string; source: string } | null => {
@@ -256,6 +258,41 @@ export default function BuyWidget({
 
     validate();
   }, [curveAddress, chain]);
+
+  // Fetch token balance when sell tab is active and wallet is connected
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (tab !== 'sell' || !isConnected || !address || !tokenAddress || !isValidAddress) {
+        setTokenBalance('0');
+        return;
+      }
+
+      try {
+        setBalanceLoading(true);
+        const rpcUrl = getRpcUrlForChain(chain);
+        const ethersProvider = new ethers.JsonRpcProvider(rpcUrl);
+        
+        const tokenABI = ['function balanceOf(address account) external view returns (uint256)'];
+        const tokenContract = new ethers.Contract(tokenAddress, tokenABI, ethersProvider);
+        
+        const balanceWei = await tokenContract.balanceOf(address);
+        const balanceFormatted = ethers.formatUnits(balanceWei, 18);
+        setTokenBalance(balanceFormatted);
+      } catch (error: any) {
+        console.error('Error fetching token balance:', error);
+        setTokenBalance('0');
+      } finally {
+        setBalanceLoading(false);
+      }
+    };
+
+    fetchBalance();
+    // Refresh balance every 5 seconds when on sell tab
+    const interval = tab === 'sell' ? setInterval(fetchBalance, 5000) : null;
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [tab, isConnected, address, tokenAddress, chain, isValidAddress]);
 
   // Calculate price estimate when amount changes
   useEffect(() => {
@@ -2393,9 +2430,36 @@ export default function BuyWidget({
       {/* Amount Input */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            {tab === 'buy' ? `Amount to Buy (${tokenSymbol})` : `Amount to Sell (${tokenSymbol})`}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-300">
+              {tab === 'buy' ? `Amount to Buy (${tokenSymbol})` : `Amount to Sell (${tokenSymbol})`}
+            </label>
+            {tab === 'sell' && isConnected && address && (
+              <div className="flex items-center gap-2">
+                {balanceLoading ? (
+                  <span className="text-xs text-gray-500">Loading...</span>
+                ) : (
+                  <>
+                    <span className="text-xs text-gray-400">Available:</span>
+                    <span className="text-xs font-semibold text-primary-400">
+                      {parseFloat(tokenBalance).toLocaleString(undefined, {
+                        maximumFractionDigits: 4,
+                      })}{' '}
+                      {tokenSymbol}
+                    </span>
+                    {parseFloat(tokenBalance) > 0 && (
+                      <button
+                        onClick={() => setAmount(tokenBalance)}
+                        className="text-xs px-2 py-1 bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded border border-primary-500/30 transition"
+                      >
+                        Max
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <div className="relative">
             <input
               type="number"
@@ -2404,6 +2468,7 @@ export default function BuyWidget({
               placeholder="0.0"
               step="0.1"
               min="0"
+              max={tab === 'sell' ? tokenBalance : undefined}
               className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-xl text-white text-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             {amount && parseFloat(amount) > 0 && (
@@ -2417,6 +2482,9 @@ export default function BuyWidget({
               </div>
             )}
           </div>
+          {tab === 'sell' && parseFloat(amount) > 0 && parseFloat(tokenBalance) > 0 && parseFloat(amount) > parseFloat(tokenBalance) && (
+            <p className="mt-1 text-xs text-red-400">Amount exceeds available balance</p>
+          )}
         </div>
 
         {/* Estimate Display */}
