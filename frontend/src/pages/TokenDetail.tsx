@@ -1468,42 +1468,42 @@ export default function TokenDetail() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-            <p className="text-sm text-gray-400 mb-2">Total Liquidity</p>
-            <p className="text-2xl font-bold text-white">${(totalLiquidity / 1e6).toFixed(2)}M</p>
-            <div className="flex items-center gap-1 mt-2 text-sm">
+        <div className="grid grid-cols-4 gap-2 md:gap-4 mb-6">
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
+            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Total Liquidity</p>
+            <p className="text-lg md:text-2xl font-bold text-white leading-tight">${(totalLiquidity / 1e6).toFixed(2)}M</p>
+            <div className="flex items-center gap-0.5 md:gap-1 mt-1 md:mt-2">
               {liquidityChange24h >= 0 ? (
-                <TrendingUp className="w-4 h-4 text-green-400" />
+                <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-green-400" />
               ) : (
-                <TrendingDown className="w-4 h-4 text-red-400" />
+                <TrendingDown className="w-3 h-3 md:w-4 md:h-4 text-red-400" />
               )}
-              <span className={liquidityChange24h >= 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className={`text-xs md:text-sm ${liquidityChange24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {liquidityChange24h >= 0 ? '+' : ''}{liquidityChange24h.toFixed(1)}% 24h
               </span>
             </div>
           </div>
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-            <p className="text-sm text-gray-400 mb-2">Active Chains</p>
-            <p className="text-2xl font-bold text-white">{deployments?.length || 0}</p>
-            <p className="text-sm text-gray-500 mt-2">Blockchains</p>
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
+            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Active Chains</p>
+            <p className="text-lg md:text-2xl font-bold text-white leading-tight">{deployments?.length || 0}</p>
+            <p className="text-xs md:text-sm text-gray-500 mt-1 md:mt-2">Blockchains</p>
           </div>
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-            <p className="text-sm text-gray-400 mb-2">Total Volume</p>
-            <p className="text-2xl font-bold text-white">
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
+            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Total Volume</p>
+            <p className="text-lg md:text-2xl font-bold text-white leading-tight">
               ${(deployments?.reduce((sum: number, d: any) => sum + ((d?.marketCap || 0) * 0.1), 0) / 1e3 || 0).toFixed(1)}K
             </p>
-            <p className="text-sm text-gray-500 mt-2">24h</p>
+            <p className="text-xs md:text-sm text-gray-500 mt-1 md:mt-2">24h</p>
           </div>
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50">
-            <p className="text-sm text-gray-400 mb-2">Price Variance</p>
-            <p className="text-2xl font-bold text-white">
+          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
+            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Price Variance</p>
+            <p className="text-lg md:text-2xl font-bold text-white leading-tight">
               {priceSync?.variance ? `${priceSync.variance.toFixed(2)}%` : '0.00%'}
             </p>
             {priceSync?.variance && priceSync.variance > 0.5 && (
-              <div className="flex items-center gap-1 mt-2 text-sm text-yellow-400">
-                <AlertCircle className="w-4 h-4" />
-                <span>Variance detected</span>
+              <div className="flex items-center gap-0.5 md:gap-1 mt-1 md:mt-2">
+                <AlertCircle className="w-3 h-3 md:w-4 md:h-4 text-yellow-400" />
+                <span className="text-xs md:text-sm text-yellow-400">Variance detected</span>
               </div>
             )}
           </div>
@@ -1631,15 +1631,25 @@ export default function TokenDetail() {
                 tokenSymbol={tokenSymbol}
                 currentPrice={priceSync?.prices?.[selectedChain.toLowerCase()] || selectedDeployment.marketCap / 1000000 || 0.001}
                 onSuccess={() => {
-                  // Invalidate queries to refresh data without full page reload
+                  // Immediately invalidate price-history to update chart right away
+                  queryClient.invalidateQueries({ 
+                    predicate: (query) => 
+                      query.queryKey[0] === 'price-history' && query.queryKey[1] === id 
+                  });
+                  
+                  // Invalidate other queries after a short delay to allow transaction to be recorded in DB
                   setTimeout(() => {
                     queryClient.invalidateQueries({ queryKey: ['token-status', id] });
                     queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
                     queryClient.invalidateQueries({ queryKey: ['token-transactions', id] });
                     queryClient.invalidateQueries({ queryKey: ['price-sync', id] });
-                    queryClient.invalidateQueries({ queryKey: ['price-history', id] }); // Refresh chart
+                    // Refetch price-history again after DB has the transaction
+                    queryClient.invalidateQueries({ 
+                      predicate: (query) => 
+                        query.queryKey[0] === 'price-history' && query.queryKey[1] === id 
+                    });
                     queryClient.invalidateQueries({ queryKey: ['audit-logs', id] });
-                  }, 2000);
+                  }, 1000);
                 }}
               />
             </div>
@@ -2504,14 +2514,25 @@ export default function TokenDetail() {
           tokenSymbol={status.token?.symbol || 'TOKEN'}
           currentPrice={priceSync?.prices?.[liquidityModal.chain.toLowerCase()] || 0.001}
           onSuccess={() => {
-            // Invalidate queries to refresh data without full page reload
+            // Immediately invalidate price-history to update chart right away
+            queryClient.invalidateQueries({ 
+              predicate: (query) => 
+                query.queryKey[0] === 'price-history' && query.queryKey[1] === id 
+            });
+            
+            // Invalidate other queries after a short delay to allow transaction to be recorded in DB
             setTimeout(() => {
               queryClient.invalidateQueries({ queryKey: ['token-status', id] });
               queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
               queryClient.invalidateQueries({ queryKey: ['token-transactions', id] });
               queryClient.invalidateQueries({ queryKey: ['price-sync', id] });
+              // Refetch price-history again after DB has the transaction
+              queryClient.invalidateQueries({ 
+                predicate: (query) => 
+                  query.queryKey[0] === 'price-history' && query.queryKey[1] === id 
+              });
               queryClient.invalidateQueries({ queryKey: ['audit-logs', id] });
-            }, 2000);
+            }, 1000);
           }}
         />
         )}
