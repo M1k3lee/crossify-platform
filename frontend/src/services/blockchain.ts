@@ -938,6 +938,8 @@ export async function deployTokenOnEVM(
     ethereum: ethers.parseUnits('20', 'gwei'), // Sepolia: 20 Gwei
     bsc: ethers.parseUnits('3', 'gwei'), // BSC Testnet: 3 Gwei
     base: ethers.parseUnits('1', 'gwei'), // Base Sepolia: 1 Gwei
+    unichain: ethers.parseUnits('0.001', 'gwei'), // Unichain Sepolia: Very low (0.001 Gwei) - testnet
+    hedera: ethers.parseUnits('1', 'gwei'), // Hedera Testnet: 1 Gwei
   };
   
   let feeData;
@@ -1005,12 +1007,14 @@ export async function deployTokenOnEVM(
     console.log(`📋 Function selector: ${functionData.slice(0, 10)}`);
     
     // Use the gas estimate we got (or default if estimation failed)
+    // For Unichain, use a lower gas limit since it's optimized for Uniswap v4
     // Increase gas limit by 10% to account for variations (reduced buffer since we're using generous defaults)
-    // Cap at 8M to prevent excessive gas usage
+    // Cap at 8M to prevent excessive gas usage (lower for Unichain)
     let adjustedGasLimit: bigint | undefined;
     if (gasEstimate) {
       const bufferGasLimit = (gasEstimate * BigInt(110)) / BigInt(100);
-      const maxGasLimit = BigInt(8_000_000);
+      // Unichain is optimized, so use lower max gas limit
+      const maxGasLimit = chain === 'unichain' ? BigInt(4_000_000) : BigInt(8_000_000);
       adjustedGasLimit = bufferGasLimit > maxGasLimit ? maxGasLimit : bufferGasLimit;
       txOptions.gasLimit = adjustedGasLimit;
       console.log(`⛽ Adjusted gas limit: ${adjustedGasLimit.toString()} (10% buffer added, max ${maxGasLimit.toString()})`);
