@@ -1,6 +1,7 @@
 /**
  * Simple Node.js migration script for Railway
  * This can be deployed as a one-time Railway service
+ * Version: 2.0 - Updated with comprehensive debugging
  */
 
 const { Pool } = require('pg');
