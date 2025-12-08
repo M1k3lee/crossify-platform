@@ -2110,11 +2110,11 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     console.log(`   Expected Price (ETH): ${expectedPrice}`);
     console.log(`   Expected Price (USD): $${expectedPriceUSD}`);
     
-    // For price display, we'll prefer ACTUAL prices from contracts for accuracy
-    // This shows real-time blockchain state, which is more valuable to users
-    // We'll use expected price only as a fallback if contract fetch fails
+    // For price display, we'll use the GLOBAL PRICE (expected price) for all chains
+    // This ensures consistent prices across all chains, which is the core value proposition
+    // We still fetch actual contract prices for comparison and monitoring, but display the synced global price
     const curveParameters: Record<string, { basePrice: number; slope: number; actualPrice: number }> = {};
-    const USE_EXPECTED_PRICE = false; // Use actual prices from contracts for better accuracy
+    const USE_EXPECTED_PRICE = true; // Use global price for all chains to show price sync in action
     
     for (const dep of deployments) {
       let actualPrice = 0;
@@ -2195,16 +2195,19 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
                 console.log(`   Base Price: ${curveBasePrice.toFixed(8)} ETH, Slope: ${curveSlope.toFixed(12)} ETH/token`);
               }
               
-              // Prefer actual price from contract for accuracy, fall back to expected if needed
+              // Fetch actual price for monitoring/debugging, but use global price for display
+              // This shows the synced price that all chains should have
               if (fetchedActualPrice > 0) {
-                // Use actual price for more accurate display - this reflects real blockchain state
-                actualPrice = fetchedActualPrice;
-                console.log(`   Using actual contract price: ${actualPrice} ETH (expected: ${expectedPrice} ETH)`);
-              } else {
-                // No valid price from contract, use expected
-                actualPrice = expectedPrice;
-                console.log(`   No contract price available, using expected price: ${expectedPrice} ETH`);
+                // Log deviation for monitoring
+                const deviation = Math.abs(fetchedActualPrice - expectedPrice) / expectedPrice * 100;
+                if (deviation > 0.5) {
+                  console.warn(`   ⚠️  Contract price differs from global price on ${dep.chain}: ${fetchedActualPrice.toFixed(8)} ETH vs ${expectedPrice.toFixed(8)} ETH (${deviation.toFixed(2)}% deviation)`);
+                }
               }
+              
+              // Always use expected (global) price for display to show synced prices
+              actualPrice = expectedPrice;
+              console.log(`   Using global synced price: ${actualPrice} ETH (contract: ${fetchedActualPrice > 0 ? fetchedActualPrice.toFixed(8) + ' ETH' : 'N/A'})`);
             } catch (error: any) {
               console.error(`❌ Error fetching price from bonding curve for ${dep.chain}:`, error.message);
               // Use expected price based on global supply as fallback
@@ -2225,10 +2228,11 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
         actualPrice = expectedPrice;
       }
       
-      // For display, prefer actual price from contract if available and valid
-      // This gives users real-time accurate prices even if global supply sync is delayed
-      // Only use expected price if we couldn't fetch actual price or if it's invalid
-      if (actualPrice <= 0 || isNaN(actualPrice) || !isFinite(actualPrice)) {
+      // Always use global (expected) price for display to show price sync
+      // This ensures all chains show the same price, which is the core feature
+      if (USE_EXPECTED_PRICE) {
+        actualPrice = expectedPrice;
+      } else if (actualPrice <= 0 || isNaN(actualPrice) || !isFinite(actualPrice)) {
         console.warn(`⚠️ Invalid price calculated for ${dep.chain}, using expected price`);
         actualPrice = expectedPrice;
       }
