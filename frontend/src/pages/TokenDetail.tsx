@@ -1898,7 +1898,7 @@ export default function TokenDetail() {
                           border: `1px solid ${chainColor}40`,
                         }}
                       >
-                        Trade on {CHAIN_NAMES[dep.chain] || dep.chain}
+                        Trade on {chainDisplayName}
                       </Link>
                     )}
                   </div>
