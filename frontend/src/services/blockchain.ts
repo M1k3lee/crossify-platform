@@ -557,7 +557,7 @@ export function getHederaWalletRecommendation(): {
   };
 }
 
-export async function switchNetwork(chain: 'ethereum' | 'bsc' | 'base' | 'hedera'): Promise<void> {
+export async function switchNetwork(chain: 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain'): Promise<void> {
   checkEVMWallet();
   const provider = getPreferredEVMProvider();
   const config = CHAIN_CONFIGS[chain];
@@ -599,7 +599,7 @@ export async function switchNetwork(chain: 'ethereum' | 'bsc' | 'base' | 'hedera
 }
 
 export async function deployTokenOnEVM(
-  chain: 'ethereum' | 'bsc' | 'base' | 'hedera',
+  chain: 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain',
   config: DeploymentConfig
 ): Promise<{ tokenAddress: string; curveAddress: string; txHash: string }> {
   console.log(`🚀 Starting deployment to ${chain}...`);

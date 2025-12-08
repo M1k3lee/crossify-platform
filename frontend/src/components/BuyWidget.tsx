@@ -730,7 +730,7 @@ export default function BuyWidget({
       // Map chain name to chain ID (handle testnet variants)
       // chainLower already declared above
       let expectedChainIdHex: string;
-      let switchChainName: 'ethereum' | 'bsc' | 'base' | 'hedera';
+      let switchChainName: 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain';
       
       if (chainLower.includes('bsc') || chainLower === 'bsc-testnet') {
         expectedChainIdHex = '0x61'; // BSC Testnet
@@ -744,6 +744,9 @@ export default function BuyWidget({
       } else if (chainLower.includes('hedera') || chainLower === 'hedera-testnet') {
         expectedChainIdHex = '0x128'; // Hedera Testnet (296)
         switchChainName = 'hedera';
+      } else if (chainLower.includes('unichain')) {
+        expectedChainIdHex = '0x515'; // Unichain Sepolia Testnet (1301)
+        switchChainName = 'unichain';
       } else {
         // Default to Base Sepolia
         expectedChainIdHex = '0x14A34';

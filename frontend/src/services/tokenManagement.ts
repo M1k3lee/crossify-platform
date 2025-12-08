@@ -64,6 +64,7 @@ export async function mintTokens(params: MintParams): Promise<{ txHash: string; 
       ethereum: '0xaa36a7', // Sepolia
       bsc: '0x61', // BSC Testnet
       base: '0x14a34', // Base Sepolia
+      unichain: '0x515', // Unichain Sepolia Testnet
     };
     const expectedChainId = expectedChainIds[chain];
     
@@ -172,6 +173,7 @@ export async function burnTokens(params: BurnParams): Promise<{ txHash: string }
       ethereum: '0xaa36a7', // Sepolia
       bsc: '0x61', // BSC Testnet
       base: '0x14a34', // Base Sepolia
+      unichain: '0x515', // Unichain Sepolia Testnet
     };
     const expectedChainId = expectedChainIds[chain];
     

@@ -77,7 +77,7 @@ export default function AddLiquidityModal({
       // Check current network first
       const ethereumProvider = getPreferredEVMProvider();
       const currentChainIdHex = await ethereumProvider.request({ method: 'eth_chainId' }) as string;
-      const expectedChainIdHex = chain === 'ethereum' ? '0xAA36A7' : chain === 'bsc' ? '0x61' : '0x14A34';
+      const expectedChainIdHex = chain === 'ethereum' ? '0xAA36A7' : chain === 'bsc' ? '0x61' : chain === 'base' ? '0x14A34' : chain === 'unichain' ? '0x515' : '0x14A34';
       
       // Normalize chain IDs (convert to lowercase and compare as integers)
       const currentChainId = parseInt(currentChainIdHex.toLowerCase(), 16);
@@ -88,7 +88,7 @@ export default function AddLiquidityModal({
       // Only switch if we're on a different network
       if (currentChainId !== expectedChainId) {
         console.log(`🔄 Switching to ${chain} network before buy...`);
-        await switchNetwork(chain as 'ethereum' | 'bsc' | 'base');
+        await switchNetwork(chain as 'ethereum' | 'bsc' | 'base' | 'unichain');
         
         // Wait a moment for network switch to complete
         await new Promise(resolve => setTimeout(resolve, 1500));

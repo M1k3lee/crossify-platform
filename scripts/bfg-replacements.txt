@@ -1,0 +1,25 @@
+# BFG Repo-Cleaner replacements file
+# Format: old==>new
+# This replaces secrets with redacted versions throughout Git history
+
+# Cloudinary secrets
+156865466263218==>YOUR_CLOUDINARY_API_KEY
+hmMhdSWPV0GZKMnIgQ0EmdBW9uU==>YOUR_CLOUDINARY_API_SECRET
+dgfmot6eo==>YOUR_CLOUDINARY_CLOUD_NAME
+
+# Database passwords
+@@Mixmaster@20==>YOUR_PASSWORD
+
+# Private keys
+8f27a9a489e7fcdce400e7b385c3796842b38d09e24783495246e496d7cc784c==>YOUR_HEDERA_PRIVATE_KEY
+fe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee==>YOUR_PRIVATE_KEY
+0xfe34316bfc0d64e2470214427bffae181c99b1cbacaa61d206c3a8bf182c22ee==>YOUR_PRIVATE_KEY
+b25f128af2a36a5434e92eb95d5d29cb78181746752c96dbfcf25ebd36a558ec==>YOUR_ETHEREUM_PRIVATE_KEY
+
+# WalletConnect
+38a3f6702a1aafea9420aa8a4a58bb26==>YOUR_WALLETCONNECT_PROJECT_ID
+
+# Account IDs
+0.0.7271342==>YOUR_HEDERA_ACCOUNT_ID
+0.0.7277191==>YOUR_HEDERA_HCS_TOPIC_ID
+
