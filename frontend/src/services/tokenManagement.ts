@@ -20,20 +20,20 @@ interface MintParams {
   tokenAddress: string;
   to: string;
   amount: string;
-  chain: 'ethereum' | 'bsc' | 'base';
+  chain: 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain';
   platformFeePercent?: number; // Percentage of tokens to send as platform fee (e.g., 0.1 = 0.1%)
 }
 
 interface BurnParams {
   tokenAddress: string;
   amount: string;
-  chain: 'ethereum' | 'bsc' | 'base';
+  chain: 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain';
 }
 
 interface PauseParams {
   tokenAddress: string;
   paused: boolean;
-  chain: 'ethereum' | 'bsc' | 'base';
+  chain: 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain';
 }
 
 /**
@@ -269,7 +269,7 @@ interface UpdateFeesParams {
   bondingCurveAddress: string;
   buyFeePercent: number;
   sellFeePercent: number;
-  chain: 'ethereum' | 'bsc' | 'base';
+  chain: 'ethereum' | 'bsc' | 'base' | 'hedera' | 'unichain';
 }
 
 /**
