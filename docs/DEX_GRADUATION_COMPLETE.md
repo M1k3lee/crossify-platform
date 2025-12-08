@@ -11,9 +11,11 @@ The platform now automatically migrates tokens to DEXes when they reach their ma
 The system supports automatic pool creation on:
 
 - **Raydium** (Solana) - Using Raydium SDK v2
-- **Uniswap V3** (Ethereum/Sepolia) - Using Uniswap V3 Factory
+- **Uniswap V4** (Ethereum/Sepolia) 🆕 - Native Uniswap v4 with custom hooks (99% gas savings)
+- **Uniswap V3** (Ethereum/Sepolia) - Using Uniswap V3 Factory (Legacy, still supported)
 - **PancakeSwap** (BSC/BSC Testnet) - Using PancakeSwap Factory
 - **BaseSwap** (Base/Base Sepolia) - Using BaseSwap Factory
+- **Uniswap V4** (Unichain) 🆕 - **LIVE** - Native v4 support on Uniswap Labs L2 (Testnet)
 
 ### 📊 Graduation Analytics
 

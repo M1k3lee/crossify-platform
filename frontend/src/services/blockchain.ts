@@ -482,6 +482,15 @@ const CHAIN_CONFIGS = {
     rpcUrls: ['https://testnet.hashio.io/api'],
     blockExplorerUrls: ['https://hashscan.io/testnet'],
   },
+  // Unichain - Uniswap Labs L2 (Native Uniswap v4 support)
+  // Testnet: Chain ID 1301, Mainnet: Chain ID 130
+  unichain: {
+    chainId: '0x515', // 1301 in hex (Unichain Sepolia Testnet)
+    chainName: 'Unichain Sepolia',
+    nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+    rpcUrls: ['https://sepolia.unichain.org'],
+    blockExplorerUrls: ['https://sepolia.uniscan.xyz'],
+  },
 };
 
 // Testnet Factory Addresses (must be deployed first)
@@ -490,6 +499,7 @@ const FACTORY_ADDRESSES: Record<string, string> = {
   bsc: import.meta.env.VITE_BSC_FACTORY || '',
   base: import.meta.env.VITE_BASE_FACTORY || '',
   hedera: import.meta.env.VITE_HEDERA_FACTORY || '',
+  unichain: import.meta.env.VITE_UNICHAIN_FACTORY || '', // Placeholder - deploy when Unichain launches
 };
 
 // Debug: Log factory addresses at build time (will show in console)

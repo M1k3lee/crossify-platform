@@ -117,3 +117,6 @@ The pitch deck includes detailed visual data, architecture diagrams, Hedera inte
 
 **Note:** The platform is currently on testnets. All transactions use testnet tokens and have no real-world value. This allows for safe, comprehensive testing of all features including Hedera integration.
 
+
+
+

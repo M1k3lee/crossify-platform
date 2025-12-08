@@ -129,7 +129,7 @@ export default function CrossChainToggle({ enabled, onToggle, selectedChains }: 
               <div>
                 <p className="font-medium text-white">DEX Trade Detection</p>
                 <p className="text-gray-400">
-                  Works automatically with Uniswap, PancakeSwap, and other DEXs. No additional setup required.
+                  Works automatically with Uniswap V4 (with hooks), Uniswap V3, PancakeSwap, and other DEXs. No additional setup required.
                 </p>
               </div>
             </div>

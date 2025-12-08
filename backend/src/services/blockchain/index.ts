@@ -4,6 +4,7 @@ import { BSCService } from './bsc';
 import { BaseService } from './base';
 import { SolanaService } from './solana';
 import { HederaService } from './hedera';
+import { UnichainService } from './unichain';
 
 export interface BlockchainService {
   deployToken(params: {
@@ -56,6 +57,8 @@ export function getBlockchainService(chain: string): BlockchainService {
       return new SolanaService();
     case 'hedera':
       return new HederaService();
+    case 'unichain':
+      return new UnichainService();
     default:
       throw new Error(`Unsupported chain: ${chain}`);
   }

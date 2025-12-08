@@ -11,13 +11,13 @@ const getApiBase = (): string => {
     return base.endsWith('/api') ? base : `${base}/api`;
   }
   
-  // In production, we need to use the full Railway URL
+  // In production, we need to use the full backend URL
   // IMPORTANT: This should be set via VITE_API_BASE in Vercel environment variables
-  // Get the URL from Railway: passionate-spirit project → crossify-platform service → Settings → Domains
+  // Cloud Run URL: https://crossify-backend-88917802850.europe-west1.run.app
   if (import.meta.env.PROD) {
     // Fallback - but this should be set via VITE_API_BASE in Vercel
     console.warn('⚠️ VITE_API_BASE not set in production! Using fallback URL. Please set it in Vercel environment variables.');
-    return 'https://crossify-platform-production.up.railway.app/api';
+    return 'https://crossify-backend-88917802850.europe-west1.run.app/api';
   }
   
   // Development: use localhost

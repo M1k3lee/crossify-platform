@@ -3,9 +3,13 @@
  * 
  * Handles automatic DEX pool creation for multiple DEXes:
  * - Raydium (Solana)
- * - Uniswap V3 (Ethereum)
+ * - Uniswap V3 (Ethereum) - Legacy, still supported
+ * - Uniswap V4 (Ethereum) - New, with hooks support
  * - PancakeSwap (BSC)
  * - BaseSwap (Base)
+ * 
+ * Uniswap v4 is opt-in via USE_UNISWAP_V4 environment variable.
+ * V3 continues to work as fallback.
  */
 
 import { dbGet } from '../db/adapter';
@@ -20,6 +24,23 @@ interface DEXPoolResult {
 }
 
 /**
+ * Check if Uniswap v4 is enabled
+ */
+export function isUniswapV4Enabled(): boolean {
+  return process.env.USE_UNISWAP_V4 === 'true';
+}
+
+/**
+ * Check if Uniswap v4 is available for a chain
+ */
+export function isUniswapV4Available(chain: string): boolean {
+  const chainLower = chain.toLowerCase();
+  // V4 is available on Ethereum mainnet/testnets and Unichain (native v4 support)
+  return ((chainLower.includes('ethereum') || chainLower.includes('sepolia')) && isUniswapV4Enabled()) 
+      || chainLower.includes('unichain');
+}
+
+/**
  * Get the appropriate DEX name for a chain
  */
 export function getDEXNameForChain(chain: string): string {
@@ -27,8 +48,11 @@ export function getDEXNameForChain(chain: string): string {
   
   if (chainLower.includes('solana')) {
     return 'raydium';
+  } else if (chainLower.includes('unichain')) {
+    return 'uniswap-v4'; // Unichain has native v4 support
   } else if (chainLower.includes('ethereum') || chainLower.includes('sepolia')) {
-    return 'uniswap-v3';
+    // Return v4 if enabled, otherwise v3
+    return isUniswapV4Available(chain) ? 'uniswap-v4' : 'uniswap-v3';
   } else if (chainLower.includes('bsc') || chainLower.includes('binance')) {
     return 'pancakeswap';
   } else if (chainLower.includes('base')) {
@@ -72,11 +96,11 @@ export async function createDEXPool(
 
   // Validate chain support
   if (!isChainSupportedForGraduation(chain)) {
-    return {
-      success: false,
-      error: `DEX integration not supported for chain: ${chain}. Supported chains: Solana, Ethereum, BSC, Base`,
-      dexName: 'unknown',
-    };
+      return {
+        success: false,
+        error: `DEX integration not supported for chain: ${chain}. Supported chains: Solana, Ethereum, BSC, Base, Unichain`,
+        dexName: 'unknown',
+      };
   }
 
   try {
@@ -87,8 +111,26 @@ export async function createDEXPool(
     
     if (chainLower.includes('solana')) {
       result = await createRaydiumPool(tokenAddress, reserveAmount, tokenAmount);
-    } else if (chainLower.includes('ethereum') || chainLower.includes('sepolia')) {
+  } else if (chainLower.includes('unichain')) {
+    // Unichain has native Uniswap v4 support
+    try {
+      result = await createUniswapV4Pool(tokenAddress, reserveAmount, tokenAmount, chain, tokenId);
+    } catch (v4Error: any) {
+      console.error('Uniswap v4 pool creation failed on Unichain:', v4Error.message);
+      throw v4Error; // Don't fallback on Unichain - v4 should always work
+    }
+  } else if (chainLower.includes('ethereum') || chainLower.includes('sepolia')) {
+    // Try v4 first if enabled, fallback to v3
+    if (isUniswapV4Available(chain)) {
+      try {
+        result = await createUniswapV4Pool(tokenAddress, reserveAmount, tokenAmount, chain, tokenId);
+      } catch (v4Error: any) {
+        console.warn('Uniswap v4 pool creation failed, falling back to v3:', v4Error.message);
+        result = await createUniswapV3Pool(tokenAddress, reserveAmount, tokenAmount, chain);
+      }
+    } else {
       result = await createUniswapV3Pool(tokenAddress, reserveAmount, tokenAmount, chain);
+    }
     } else if (chainLower.includes('bsc') || chainLower.includes('binance')) {
       result = await createPancakeSwapPool(tokenAddress, reserveAmount, tokenAmount, chain);
     } else if (chainLower.includes('base')) {
@@ -247,7 +289,117 @@ async function createRaydiumPool(
 }
 
 /**
- * Create Uniswap V3 pool (Ethereum)
+ * Create Uniswap V4 pool (Ethereum) with Crossify hook
+ * NOTE: This will be fully implemented when Uniswap v4 launches on mainnet
+ */
+async function createUniswapV4Pool(
+  tokenAddress: string,
+  reserveAmount: string,
+  tokenAmount: string,
+  chain: string,
+  tokenId: string
+): Promise<DEXPoolResult> {
+  try {
+    const { ethers } = await import('ethers');
+    
+    // Get RPC URL and private key
+    const rpcUrl = chain.includes('sepolia') 
+      ? process.env.ETHEREUM_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
+      : process.env.ETHEREUM_MAINNET_RPC_URL || '';
+    
+    if (!rpcUrl) {
+      return {
+        success: false,
+        error: 'Ethereum RPC URL not configured',
+        dexName: 'uniswap-v4',
+      };
+    }
+
+    const privateKey = process.env.ETHEREUM_PRIVATE_KEY;
+    if (!privateKey) {
+      return {
+        success: false,
+        error: 'ETHEREUM_PRIVATE_KEY not configured',
+        dexName: 'uniswap-v4',
+      };
+    }
+
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const wallet = new ethers.Wallet(privateKey, provider);
+    
+    // TODO: Update these addresses when Uniswap v4 launches
+    // Uniswap v4 PoolManager address (placeholder - will be updated)
+    const poolManagerAddress = chain.includes('sepolia')
+      ? process.env.UNISWAP_V4_POOL_MANAGER_SEPOLIA || '0x0000000000000000000000000000000000000000'
+      : process.env.UNISWAP_V4_POOL_MANAGER_MAINNET || '0x0000000000000000000000000000000000000000';
+    
+    // Crossify hook address (will be deployed separately)
+    const hookAddress = chain.includes('sepolia')
+      ? process.env.CROSSIFY_V4_HOOK_SEPOLIA || '0x0000000000000000000000000000000000000000'
+      : process.env.CROSSIFY_V4_HOOK_MAINNET || '0x0000000000000000000000000000000000000000';
+    
+    if (poolManagerAddress === '0x0000000000000000000000000000000000000000') {
+      return {
+        success: false,
+        error: 'Uniswap v4 PoolManager address not configured. V4 may not be deployed yet.',
+        dexName: 'uniswap-v4',
+      };
+    }
+    
+    if (hookAddress === '0x0000000000000000000000000000000000000000') {
+      return {
+        success: false,
+        error: 'Crossify v4 Hook address not configured. Please deploy hook first.',
+        dexName: 'uniswap-v4',
+      };
+    }
+    
+    // TODO: Implement actual v4 pool creation when SDK is available
+    // For now, return a placeholder that indicates v4 is not yet available
+    // This allows the code to be ready but gracefully falls back to v3
+    
+    console.log('⚠️  Uniswap v4 pool creation not yet implemented - v4 SDK not available');
+    console.log('   Falling back to Uniswap v3...');
+    
+    throw new Error('Uniswap v4 SDK not yet available - use v3 for now');
+    
+    // When v4 SDK is available, implementation will look like:
+    /*
+    const poolKey = {
+      currency0: tokenAddress,
+      currency1: Currency.ETHER, // Native ETH
+      fee: 3000, // 0.3%
+      tickSpacing: 60,
+      hooks: hookAddress
+    };
+    
+    const sqrtPriceX96 = calculateSqrtPrice(reserveAmount, tokenAmount);
+    await poolManager.initialize(poolKey, sqrtPriceX96);
+    
+    // Link hook to bonding curve
+    const hook = new ethers.Contract(hookAddress, hookABI, wallet);
+    await hook.linkPoolToBondingCurve(poolAddress, bondingCurveAddress);
+    
+    return {
+      success: true,
+      poolAddress: calculatePoolAddress(poolKey),
+      txHash: receipt.hash,
+      liquidity: (BigInt(reserveAmount) + BigInt(tokenAmount)).toString(),
+      dexName: 'uniswap-v4',
+    };
+    */
+  } catch (error: any) {
+    console.error('Error creating Uniswap V4 pool:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to create Uniswap V4 pool',
+      dexName: 'uniswap-v4',
+    };
+  }
+}
+
+/**
+ * Create Uniswap V3 pool (Ethereum) - Legacy, still supported
  */
 async function createUniswapV3Pool(
   tokenAddress: string,

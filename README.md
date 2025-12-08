@@ -1,16 +1,17 @@
 # Crossify.io - Multichain Token Launch Platform
 
-A complete multichain token launch platform that lets users create and launch tokens across Ethereum, BSC, Solana (SPL), Base, and Hedera with bonding curve sales and automatic graduation to DEX.
+A complete multichain token launch platform that lets users create and launch tokens across Ethereum, BSC, Solana (SPL), Base, Hedera, and **Unichain** with bonding curve sales and automatic graduation to DEX.
 
 ## Features
 
-- 🚀 **Multichain Deployment**: Deploy tokens on Ethereum, BSC, Solana, Base, and Hedera
+- 🚀 **Multichain Deployment**: Deploy tokens on Ethereum, BSC, Solana, Base, Hedera, and **Unichain** (Native Uniswap v4) 🆕
 - ⚡ **Hedera Integration**: Ultra-fast (3-5s finality) and ultra-cheap (~$0.0001/tx) token launches
 - 📝 **Immutable Audit Logs**: Powered by Hedera Consensus Service (HCS) for enterprise-grade audit trails
 - 📁 **Decentralized Storage**: Token metadata stored on Hedera File Service (HFS) - permanent, immutable, ultra-low cost
 - 📈 **Bonding Curve Sales**: Auto-pricing with capped graduation threshold
 - 🎓 **Automatic DEX Graduation**: ✅ **Fully Implemented** - Automatic migration to DEX when market cap threshold is reached
-  - **Multi-DEX Support**: Raydium (Solana), Uniswap V3 (Ethereum), PancakeSwap (BSC), BaseSwap (Base)
+  - **Multi-DEX Support**: Raydium (Solana), **Uniswap V4 (Ethereum & Unichain)** 🆕, Uniswap V3 (Ethereum - Legacy), PancakeSwap (BSC), BaseSwap (Base)
+  - **Uniswap V4 Features**: Custom hooks, dynamic fees, native ETH support, 99% gas savings on pool creation
   - **Epic Celebrations**: Confetti animations and celebration modals
   - **Progress Tracking**: Real-time progress bars and analytics
 - 🌉 **Cross-chain Bridge**: ✅ **Fully Deployed** - Shared/synchronized liquidity pools with automatic rebalancing
@@ -75,6 +76,8 @@ crossify-platform/
 
 ### System Documentation
 
+- **Uniswap v4 Integration**: `docs/UNISWAP_V4_INTEGRATION.md` - Complete Uniswap v4 integration guide 🆕
+- **Unichain Integration**: `docs/UNICHAIN_INTEGRATION.md` - Unichain (Uniswap Labs L2) integration guide 🆕
 - **DEX Graduation System**: `docs/DEX_GRADUATION_COMPLETE.md` - Complete graduation system guide
 - **Graduation Implementation**: `docs/GRADUATION_IMPLEMENTATION_SUMMARY.md` - Implementation details
 - **Cross-Chain Liquidity Bridge**: `docs/LIQUIDITY_BRIDGE_IMPLEMENTATION.md` - Complete bridge system guide

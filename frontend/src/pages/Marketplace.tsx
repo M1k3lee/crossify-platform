@@ -231,7 +231,7 @@ export default function Marketplace() {
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-300">Chains</label>
                 <div className="flex flex-wrap gap-2">
-                  {['ethereum', 'bsc', 'base', 'solana', 'hedera'].map((chain) => (
+                  {['ethereum', 'bsc', 'base', 'solana', 'hedera', 'unichain'].map((chain) => (
                     <label
                       key={chain}
                       className={`flex items-center px-3 py-1.5 rounded cursor-pointer transition ${

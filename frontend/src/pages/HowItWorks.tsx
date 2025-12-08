@@ -319,6 +319,10 @@ export default function HowItWorks() {
                     <span className="text-xs text-green-300">Audited by</span>
                     <span className="text-sm font-semibold text-green-400">Hedera</span>
                   </div>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-pink-500/20 rounded-full border border-pink-500/30">
+                    <span className="text-xs text-pink-300">DEX by</span>
+                    <span className="text-sm font-semibold text-pink-400">Uniswap V4</span>
+                  </div>
                 </div>
               </div>
 

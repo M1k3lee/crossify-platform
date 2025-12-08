@@ -33,6 +33,8 @@ function getTestnetChainName(chain: string): string {
       return 'solana'; // Solana doesn't have a separate testnet name in our system
     case 'hedera':
       return 'hedera-testnet'; // Hedera testnet
+    case 'unichain':
+      return 'unichain-sepolia'; // Unichain Sepolia Testnet
     default:
       return chain; // Return as-is if unknown
   }
@@ -615,13 +617,14 @@ export default function Builder() {
               console.error(`❌ Deployment error for ${chain}:`, deployError);
               
               if (deployError.message?.includes('Factory contract') || deployError.message?.includes('factory') || deployError.message?.includes('Factory address not configured')) {
-                const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : chain === 'hedera' ? 'Hedera Testnet' : 'Base Sepolia';
+                const chainName = chain === 'ethereum' ? 'Sepolia' : chain === 'bsc' ? 'BSC Testnet' : chain === 'hedera' ? 'Hedera Testnet' : chain === 'unichain' ? 'Unichain Sepolia' : 'Base Sepolia';
                 const envVarName = chain === 'ethereum' ? 'VITE_ETH_FACTORY' : `VITE_${chain.toUpperCase()}_FACTORY`;
                 const correctAddresses = {
                   ethereum: '0x8eF1A74d477448630282EFC130ac9D17f495Bca4',
                   bsc: '0xFF8c690B5b65905da20D8de87Cd6298c223a40B6',
                   base: '0x170EE984fBcfd01599312EaA1AD4D35Ad5e66f58',
                   hedera: '0x1f1f75d84CB2Ff86ffe2b8Fb3eb0d2e94438433D',
+                  unichain: 'TBD', // Will be deployed
                 };
                 
                 toast.error(
@@ -1317,8 +1320,8 @@ export default function Builder() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white mb-6">Select Chains</h2>
               
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {['ethereum', 'bsc', 'base', 'solana', 'hedera'].map((chain) => (
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                {['ethereum', 'bsc', 'base', 'solana', 'hedera', 'unichain'].map((chain) => (
                   <button
                     key={chain}
                     type="button"
@@ -1352,11 +1355,15 @@ export default function Builder() {
                          chain === 'bsc' ? '◉' : 
                          chain === 'solana' ? '◎' : 
                          chain === 'hedera' ? '⚡' : 
+                         chain === 'unichain' ? '🦄' :
                          '⬡'}
                       </div>
                       <div className="text-sm font-medium text-white capitalize">{chain}</div>
                       {chain === 'hedera' && (
                         <div className="text-xs text-green-400 mt-1">⚡ Fast & Cheap</div>
+                      )}
+                      {chain === 'unichain' && (
+                        <div className="text-xs text-pink-400 mt-1">🦄 V4 Native</div>
                       )}
                       {formData.chains.includes(chain) && (
                         <Check className="w-5 h-5 mx-auto mt-2 text-primary-400" />

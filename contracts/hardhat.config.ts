@@ -55,6 +55,18 @@ const config: HardhatUserConfig = {
       chainId: 295,
       // Let Hedera determine gas price automatically
     },
+    // Unichain - Uniswap Labs L2 (Native Uniswap v4 support)
+    // Testnet: Chain ID 1301, Mainnet: Chain ID 130
+    unichainTestnet: {
+      url: process.env.UNICHAIN_TESTNET_RPC_URL || "https://sepolia.unichain.org",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
+      chainId: 1301, // Unichain Sepolia Testnet
+    },
+    unichain: {
+      url: process.env.UNICHAIN_RPC_URL || process.env.UNICHAIN_MAINNET_RPC_URL || "https://mainnet.unichain.org",
+      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
+      chainId: 130, // Unichain Mainnet
+    },
   },
   etherscan: {
     apiKey: {

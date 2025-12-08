@@ -105,8 +105,10 @@ export default function GraduationCelebration({
       return `https://raydium.io/liquidity/?ammId=${dexPoolAddress}`;
     }
     
-    // Uniswap links
+    // Uniswap links (V3 and V4)
     if (dexName.toLowerCase().includes('uniswap')) {
+      // V4 uses different URL structure, but for now use same as V3
+      // When v4 launches, we can differentiate: dexName.includes('v4')
       return `https://app.uniswap.org/#/pool/${dexPoolAddress}`;
     }
     

@@ -16,7 +16,7 @@ export default function Home() {
     },
     {
       name: 'Select Blockchains',
-      text: 'Choose which blockchains to deploy on: Ethereum, BSC, Base, Solana, or Hedera.',
+      text: 'Choose which blockchains to deploy on: Ethereum, BSC, Base, Solana, Hedera, or Unichain.',
     },
     {
       name: 'Deploy Your Token',
@@ -27,7 +27,7 @@ export default function Home() {
   const faqs = [
     {
       question: 'How do I launch a token on multiple blockchains?',
-      answer: 'Crossify allows you to launch your token simultaneously on Ethereum, BSC, Base, Solana, and Hedera with one click. Simply configure your token settings and select the blockchains you want to deploy on.',
+      answer: 'Crossify allows you to launch your token simultaneously on Ethereum, BSC, Base, Solana, Hedera, and Unichain with one click. Simply configure your token settings and select the blockchains you want to deploy on.',
     },
     {
       question: 'What is cross-chain price synchronization?',
@@ -43,7 +43,7 @@ export default function Home() {
     },
     {
       question: 'Which blockchains does Crossify support?',
-      answer: 'Crossify currently supports Ethereum, Binance Smart Chain (BSC), Base, Solana, and Hedera. Hedera offers ultra-fast transactions (3-5 second finality) and extremely low fees (~$0.0001 per transaction). More blockchains will be added in the future.',
+      answer: 'Crossify currently supports Ethereum, Binance Smart Chain (BSC), Base, Solana, Hedera, and Unichain. Hedera offers ultra-fast transactions (3-5 second finality) and extremely low fees (~$0.0001 per transaction). Unichain provides native Uniswap v4 support with ultra-low fees (~95% lower than Ethereum). More blockchains will be added in the future.',
     },
   ];
 
@@ -216,6 +216,9 @@ export default function Home() {
                     <div className="px-2 py-1 bg-green-500/20 border border-green-500/50 rounded-full">
                       <span className="text-green-400 text-xs font-semibold">Audited by Hedera</span>
                     </div>
+                    <div className="px-2 py-1 bg-pink-500/20 border border-pink-500/50 rounded-full">
+                      <span className="text-pink-400 text-xs font-semibold">Uniswap V4 Ready</span>
+                    </div>
                   </div>
                 </div>
 
@@ -226,7 +229,7 @@ export default function Home() {
                   <h3 className="text-xl font-semibold text-white mb-2">DEX Integration</h3>
                   <p className="text-gray-400 text-sm">
                     Automatic detection of DEX trades triggers cross-chain sync. 
-                    Works seamlessly with Uniswap, PancakeSwap, and more.
+                    Works seamlessly with Uniswap V4 (with custom hooks), Uniswap V3, PancakeSwap, and more.
                   </p>
                 </div>
 
@@ -254,7 +257,7 @@ export default function Home() {
             {
               icon: Network,
               title: 'Launch on All Chains',
-              description: 'Deploy simultaneously on Ethereum, BSC, Base, Solana, and Hedera with one click. No need for separate deployments.',
+              description: 'Deploy simultaneously on Ethereum, BSC, Base, Solana, Hedera, and Unichain with one click. No need for separate deployments.',
               gradient: 'from-primary-500 to-blue-600',
             },
             {
@@ -311,7 +314,7 @@ export default function Home() {
               {
                 step: '01',
                 title: 'Launch on Multiple Chains',
-                description: 'Deploy your token simultaneously on Ethereum, BSC, Base, Solana, and Hedera. All chains are live instantly.',
+                description: 'Deploy your token simultaneously on Ethereum, BSC, Base, Solana, Hedera, and Unichain. All chains are live instantly.',
                 icon: Rocket,
               },
               {
@@ -411,7 +414,7 @@ export default function Home() {
               {
                 icon: Network,
                 title: 'Multi-DEX Support',
-                description: 'Automatic deployment to Raydium (Solana), Uniswap V3 (Ethereum), PancakeSwap (BSC), and BaseSwap (Base) upon graduation.',
+                description: 'Automatic deployment to Raydium (Solana), Uniswap V4 (Ethereum & Unichain), Uniswap V3 (Ethereum), PancakeSwap (BSC), and BaseSwap (Base) upon graduation.',
                 gradient: 'from-red-500 to-pink-600',
                 badge: '4+ DEXes',
               },
@@ -528,6 +531,24 @@ export default function Home() {
                 </div>
                 <span className="text-sm font-semibold text-gray-300">Supra Oracle</span>
                 <span className="text-xs text-gray-500">Price Verification</span>
+              </div>
+              
+              {/* Uniswap V4 Logo Placeholder */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-24 h-24 bg-gradient-to-br from-pink-500/20 to-rose-500/20 rounded-xl flex items-center justify-center border border-pink-500/30">
+                  <Network className="w-12 h-12 text-pink-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-300">Uniswap V4</span>
+                <span className="text-xs text-gray-500">DEX with Hooks</span>
+              </div>
+              
+              {/* Unichain Logo Placeholder */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-24 h-24 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl flex items-center justify-center border border-purple-500/30">
+                  <Network className="w-12 h-12 text-purple-400" />
+                </div>
+                <span className="text-sm font-semibold text-gray-300">Unichain</span>
+                <span className="text-xs text-gray-500">Native V4 L2</span>
               </div>
             </div>
             <p className="text-center text-gray-400 text-sm mt-6">

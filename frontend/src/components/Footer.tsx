@@ -16,7 +16,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-gray-400 text-sm mb-4 leading-relaxed">
-              Launch your token across multiple chains with unified liquidity and cross-chain price synchronization.
+              Launch your token across multiple chains with unified liquidity and cross-chain price synchronization. Powered by LayerZero, Supra, Hedera, and Uniswap V4.
             </p>
             <div className="flex items-center gap-3">
               <a

@@ -68,3 +68,6 @@ Write-Host "4. Monitor split history via: GET $ApiUrl/api/presale/$PresaleId/spl
 
 
 
+
+
+
