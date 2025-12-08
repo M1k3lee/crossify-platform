@@ -52,18 +52,21 @@ async function migrate() {
     throw new Error('CLOUD_SQL_DATABASE_URL not set');
   }
 
-  // Cloud SQL requires SSL - add SSL parameters if not already in URL
+  // Cloud SQL requires SSL but allows self-signed certs
+  // Use sslmode=no-verify to skip certificate verification
   let cloudSqlConnectionString = cloudSqlUrl;
   if (!cloudSqlUrl.includes('sslmode=')) {
-    // Add SSL mode to connection string
+    // Add SSL mode to connection string - no-verify skips cert validation
     const separator = cloudSqlUrl.includes('?') ? '&' : '?';
-    cloudSqlConnectionString = `${cloudSqlUrl}${separator}sslmode=require`;
+    cloudSqlConnectionString = `${cloudSqlUrl}${separator}sslmode=no-verify`;
   }
+  
+  console.log('🔐 Using SSL connection (no-verify mode for Cloud SQL)');
   
   const cloudSqlPool = new Pool({ 
     connectionString: cloudSqlConnectionString,
     ssl: {
-      rejectUnauthorized: false // Cloud SQL uses self-signed certs
+      rejectUnauthorized: false // Don't verify certificate (Cloud SQL uses self-signed)
     }
   });
 
