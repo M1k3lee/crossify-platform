@@ -583,28 +583,72 @@ export default function TokenDetail() {
     }
   }, [metadata?.bannerUrl, metadata?.bannerImageIpfs, customization?.bannerImageIpfs, token?.bannerImageIpfs, getImageUrl]);
 
-  // Get logo URL from multiple sources
+  // Get logo URL from multiple sources - comprehensive check
   const logoUrl = useMemo(() => {
     try {
-      // Priority: metadata logoUrl (if full URL) > metadata logoIpfs > token logo_ipfs
+      // Priority order:
+      // 1. metadata.logoUrl (if full URL)
+      // 2. metadata.logoIpfs (from metadata endpoint)
+      // 3. token.logoIpfs (from status endpoint)
+      // 4. status.token.logoIpfs (alternative field name)
+      // 5. token.logo_url (snake_case variant)
+      
       if (metadata?.logoUrl && metadata.logoUrl.startsWith('http')) {
-        // Full URL from metadata
+        console.log('✅ Using metadata.logoUrl:', metadata.logoUrl);
         return metadata.logoUrl;
       }
+      
       if (metadata?.logoIpfs) {
-        // Filename from metadata - construct URL
-        return getImageUrl(metadata.logoIpfs);
+        const url = getImageUrl(metadata.logoIpfs);
+        if (url) {
+          console.log('✅ Using metadata.logoIpfs:', url);
+          return url;
+        }
       }
-      // Check token directly (status endpoint returns logoIpfs in camelCase)
+      
+      // Check token object from status endpoint
       if (token?.logoIpfs) {
-        return getImageUrl(token.logoIpfs);
+        const url = getImageUrl(token.logoIpfs);
+        if (url) {
+          console.log('✅ Using token.logoIpfs:', url);
+          return url;
+        }
       }
+      
+      // Check status.token (alternative structure)
+      if (status?.token?.logoIpfs) {
+        const url = getImageUrl(status.token.logoIpfs);
+        if (url) {
+          console.log('✅ Using status.token.logoIpfs:', url);
+          return url;
+        }
+      }
+      
+      // Check snake_case variant
+      if (token?.logo_url) {
+        const url = typeof token.logo_url === 'string' && token.logo_url.startsWith('http')
+          ? token.logo_url
+          : getImageUrl(token.logo_url);
+        if (url) {
+          console.log('✅ Using token.logo_url:', url);
+          return url;
+        }
+      }
+      
+      console.log('⚠️ No logo found. Checked:', {
+        metadataLogoUrl: metadata?.logoUrl,
+        metadataLogoIpfs: metadata?.logoIpfs,
+        tokenLogoIpfs: token?.logoIpfs,
+        statusTokenLogoIpfs: status?.token?.logoIpfs,
+        tokenLogoUrl: token?.logo_url,
+      });
+      
       return null;
     } catch (e) {
       console.error('Error constructing logo URL:', e);
       return null;
     }
-  }, [metadata?.logoUrl, metadata?.logoIpfs, token, getImageUrl]);
+  }, [metadata?.logoUrl, metadata?.logoIpfs, token, status?.token, getImageUrl]);
   
   // Check if current user is the token creator (after token is loaded)
   const isCreator = useMemo(() => {
@@ -1030,70 +1074,161 @@ export default function TokenDetail() {
           </div>
         </div>
 
-        {/* Token Header Card - Simplified when banner is present */}
-        <div className="bg-gradient-to-r from-gray-800/90 to-gray-800/70 backdrop-blur-sm rounded-2xl p-8 mb-6 border border-gray-700/50">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-6 flex-1">
-              {/* Logo - Always show, but smaller/positioned when banner exists */}
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={tokenName}
-                  className={`${bannerUrl ? 'w-16 h-16' : 'w-20 h-20'} rounded-full border-2 border-gray-600 shadow-lg`}
-                  onError={(e) => {
-                    console.error('Error loading logo:', logoUrl);
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                <div 
-                  className={`${bannerUrl ? 'w-16 h-16' : 'w-20 h-20'} rounded-full flex items-center justify-center ${bannerUrl ? 'text-2xl' : 'text-3xl'} font-bold border-2 border-gray-600 shadow-lg`}
-                  style={{ 
-                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)` 
-                  }}
-                >
-                  {tokenSymbol?.charAt(0) || 'T'}
-                </div>
-              )}
-              {!bannerUrl && (
-                <div>
-                  <h1 className="text-4xl font-bold text-white mb-2">{tokenName}</h1>
-                  <p className="text-xl text-gray-400">{tokenSymbol}</p>
-                </div>
-              )}
+        {/* Token Header Card - Redesigned compact layout */}
+        <div className="bg-gradient-to-r from-gray-800/90 to-gray-800/70 backdrop-blur-sm rounded-2xl p-4 md:p-6 mb-6 border border-gray-700/50">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
+            {/* Left: Logo with edit option */}
+            <div className="relative group flex-shrink-0">
+              <div className="relative">
+                {logoUrl ? (
+                  <>
+                    <img
+                      src={logoUrl}
+                      alt={tokenName}
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-gray-600 shadow-lg object-cover"
+                      onError={(e) => {
+                        console.error('Error loading logo:', logoUrl);
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        // Show fallback
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) {
+                          fallback.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    {/* Fallback letter - shown when image fails */}
+                    <div 
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-2xl md:text-3xl font-bold border-2 border-gray-600 shadow-lg absolute inset-0 hidden"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)` 
+                      }}
+                    >
+                      {tokenSymbol?.charAt(0) || 'T'}
+                    </div>
+                  </>
+                ) : (
+                  <div 
+                    className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-2xl md:text-3xl font-bold border-2 border-gray-600 shadow-lg"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)` 
+                    }}
+                  >
+                    {tokenSymbol?.charAt(0) || 'T'}
+                  </div>
+                )}
+                {/* Edit overlay for creators */}
+                {isCreator && !isEditing && (
+                  <label className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer z-10">
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file && id) {
+                          try {
+                            const filename = await uploadLogo(file);
+                            if (filename) {
+                              // Save logo immediately
+                              await axios.put(`${API_BASE}/tokens/${id}/metadata`, {
+                                logoIpfs: filename,
+                              });
+                              // Refresh data
+                              queryClient.invalidateQueries({ queryKey: ['token-metadata', id] });
+                              queryClient.invalidateQueries({ queryKey: ['token-status', id] });
+                              toast.success('Logo updated successfully!');
+                            }
+                          } catch (error: any) {
+                            console.error('Failed to save logo:', error);
+                            toast.error('Failed to save logo update');
+                          }
+                        }
+                      }}
+                    />
+                    <Edit2 className="w-5 h-5 text-white" />
+                  </label>
+                )}
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-400 mb-1">Total Market Cap</p>
+
+            {/* Middle: Stats widgets - inline between logo and market cap */}
+            <div className="flex-1 grid grid-cols-4 gap-2 md:gap-3 min-w-0">
+              <div className="bg-gray-800/60 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-gray-700/50">
+                <p className="text-xs text-gray-400 mb-0.5 md:mb-1 truncate">Total Liquidity</p>
+                <p className="text-sm md:text-base font-bold text-white leading-tight truncate">${(totalLiquidity / 1e6).toFixed(2)}M</p>
+                <div className="flex items-center gap-0.5 mt-0.5">
+                  {liquidityChange24h >= 0 ? (
+                    <TrendingUp className="w-2.5 h-2.5 md:w-3 md:h-3 text-green-400 flex-shrink-0" />
+                  ) : (
+                    <TrendingDown className="w-2.5 h-2.5 md:w-3 md:h-3 text-red-400 flex-shrink-0" />
+                  )}
+                  <span className={`text-xs ${liquidityChange24h >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
+                    {liquidityChange24h >= 0 ? '+' : ''}{liquidityChange24h.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              <div className="bg-gray-800/60 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-gray-700/50">
+                <p className="text-xs text-gray-400 mb-0.5 md:mb-1 truncate">Active Chains</p>
+                <p className="text-sm md:text-base font-bold text-white leading-tight">{deployments?.length || 0}</p>
+                <p className="text-xs text-gray-500 mt-0.5 truncate">Blockchains</p>
+              </div>
+              <div className="bg-gray-800/60 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-gray-700/50">
+                <p className="text-xs text-gray-400 mb-0.5 md:mb-1 truncate">Total Volume</p>
+                <p className="text-sm md:text-base font-bold text-white leading-tight truncate">
+                  ${(deployments?.reduce((sum: number, d: any) => sum + ((d?.marketCap || 0) * 0.1), 0) / 1e3 || 0).toFixed(1)}K
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">24h</p>
+              </div>
+              <div className="bg-gray-800/60 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-gray-700/50">
+                <p className="text-xs text-gray-400 mb-0.5 md:mb-1 truncate">Price Variance</p>
+                <p className="text-sm md:text-base font-bold text-white leading-tight truncate">
+                  {priceSync?.variance ? `${priceSync.variance.toFixed(2)}%` : '0.00%'}
+                </p>
+                {priceSync?.variance && priceSync.variance > 0.5 && (
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    <AlertCircle className="w-2.5 h-2.5 md:w-3 md:h-3 text-yellow-400 flex-shrink-0" />
+                    <span className="text-xs text-yellow-400 truncate">Alert</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Total Market Cap and Status */}
+            <div className="flex-shrink-0 text-left md:text-right">
+              <p className="text-xs md:text-sm text-gray-400 mb-1">Total Market Cap</p>
               <p 
-                className="text-4xl font-bold mb-2"
+                className="text-2xl md:text-4xl font-bold mb-2"
                 style={{ color: primaryColor }}
               >
                 ${(totalMarketCap / 1e6).toFixed(2)}M
               </p>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap justify-start md:justify-end">
                 {token?.verified && (
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm border border-blue-500/30">
-                    <CheckCircle className="w-4 h-4" />
-                    Verified
+                  <div className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs md:text-sm border border-blue-500/30">
+                    <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />
+                    <span>Verified</span>
                   </div>
                 )}
                 {allGraduated ? (
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
-                    <CheckCircle className="w-4 h-4" />
-                    Fully Graduated
+                  <div className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs md:text-sm">
+                    <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden md:inline">Fully Graduated</span>
+                    <span className="md:hidden">Graduated</span>
                   </div>
                 ) : someGraduated ? (
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
-                    <Zap className="w-4 h-4" />
-                    Partially Graduated
+                  <div className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs md:text-sm">
+                    <Zap className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden md:inline">Partially Graduated</span>
+                    <span className="md:hidden">Partial</span>
                   </div>
                 ) : (
                   <div 
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm text-white"
+                    className="inline-flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 rounded-full text-xs md:text-sm text-white"
                     style={{ backgroundColor: `${primaryColor}40` }}
                   >
-                    <Zap className="w-4 h-4" />
-                    Active on Curve
+                    <Zap className="w-3 h-3 md:w-4 md:h-4" />
+                    <span>On Curve</span>
                   </div>
                 )}
               </div>
@@ -1473,47 +1608,6 @@ export default function TokenDetail() {
           )}
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-4 gap-2 md:gap-4 mb-6">
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
-            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Total Liquidity</p>
-            <p className="text-lg md:text-2xl font-bold text-white leading-tight">${(totalLiquidity / 1e6).toFixed(2)}M</p>
-            <div className="flex items-center gap-0.5 md:gap-1 mt-1 md:mt-2">
-              {liquidityChange24h >= 0 ? (
-                <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-green-400" />
-              ) : (
-                <TrendingDown className="w-3 h-3 md:w-4 md:h-4 text-red-400" />
-              )}
-              <span className={`text-xs md:text-sm ${liquidityChange24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {liquidityChange24h >= 0 ? '+' : ''}{liquidityChange24h.toFixed(1)}% 24h
-              </span>
-            </div>
-          </div>
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
-            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Active Chains</p>
-            <p className="text-lg md:text-2xl font-bold text-white leading-tight">{deployments?.length || 0}</p>
-            <p className="text-xs md:text-sm text-gray-500 mt-1 md:mt-2">Blockchains</p>
-          </div>
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
-            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Total Volume</p>
-            <p className="text-lg md:text-2xl font-bold text-white leading-tight">
-              ${(deployments?.reduce((sum: number, d: any) => sum + ((d?.marketCap || 0) * 0.1), 0) / 1e3 || 0).toFixed(1)}K
-            </p>
-            <p className="text-xs md:text-sm text-gray-500 mt-1 md:mt-2">24h</p>
-          </div>
-          <div className="bg-gray-800/80 backdrop-blur-sm rounded-lg md:rounded-xl p-2.5 md:p-6 border border-gray-700/50">
-            <p className="text-xs md:text-sm text-gray-400 mb-1 md:mb-2">Price Variance</p>
-            <p className="text-lg md:text-2xl font-bold text-white leading-tight">
-              {priceSync?.variance ? `${priceSync.variance.toFixed(2)}%` : '0.00%'}
-            </p>
-            {priceSync?.variance && priceSync.variance > 0.5 && (
-              <div className="flex items-center gap-0.5 md:gap-1 mt-1 md:mt-2">
-                <AlertCircle className="w-3 h-3 md:w-4 md:h-4 text-yellow-400" />
-                <span className="text-xs md:text-sm text-yellow-400">Variance detected</span>
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* Wallet Holdings Section - Show if wallet is connected */}
         {selectedDeployment && selectedDeployment.tokenAddress && (
