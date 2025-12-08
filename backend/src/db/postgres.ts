@@ -12,13 +12,21 @@ export function initializePostgreSQL(): Pool {
     return pool;
   }
 
-  const connectionString = process.env.DATABASE_URL;
+  let connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL environment variable is required for PostgreSQL');
   }
 
+  // For Cloud SQL, ensure sslmode=no-verify is in the connection string
+  // This prevents SSL certificate verification errors
+  if (process.env.NODE_ENV === 'production' && !connectionString.includes('sslmode=')) {
+    const separator = connectionString.includes('?') ? '&' : '?';
+    connectionString = `${connectionString}${separator}sslmode=no-verify`;
+    console.log('🔐 Added sslmode=no-verify to connection string for Cloud SQL');
+  }
+
   console.log('🔌 Initializing PostgreSQL connection pool...');
-  console.log('📋 Connection string format:', connectionString.substring(0, 20) + '...');
+  console.log('📋 Connection string format:', connectionString.substring(0, 50) + '...');
 
   pool = new Pool({
     connectionString,
