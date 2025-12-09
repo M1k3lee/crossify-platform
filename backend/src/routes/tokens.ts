@@ -3150,36 +3150,132 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     
     try {
       // Get transaction statistics
+      // Note: Prices are now stored in USD for new transactions, but may be in native token for old ones
+      // We'll convert prices to USD when calculating volume
       txStats = await dbAll(`
         SELECT 
           type,
+          chain,
           COUNT(*) as count,
           SUM(CAST(amount AS REAL)) as total_amount,
           AVG(CAST(price AS REAL)) as avg_price,
           SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as total_volume
         FROM transactions
         WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
-        GROUP BY type
+        GROUP BY type, chain
       `, params) as any[];
+      
+      // Convert prices to USD if they appear to be in native token format
+      // Prices < 0.01 are likely in native token (ETH/BNB)
+      txStats = txStats.map((stat: any) => {
+        let volumeUSD = parseFloat(stat.total_volume || '0');
+        let avgPriceUSD = parseFloat(stat.avg_price || '0');
+        
+        // If price seems to be in native token (< 0.01), convert to USD
+        if (avgPriceUSD > 0 && avgPriceUSD < 0.01) {
+          const chainLower = (stat.chain || '').toLowerCase();
+          const nativeTokenPriceUSD = chainLower.includes('bsc') || chainLower.includes('binance') 
+            ? 600  // BNB price ~$600
+            : 3000; // ETH price ~$3000
+          
+          // Convert volume and avg price to USD
+          volumeUSD = volumeUSD * nativeTokenPriceUSD;
+          avgPriceUSD = avgPriceUSD * nativeTokenPriceUSD;
+          
+          console.log(`📊 Converted ${stat.type} stats from native token to USD for chain ${stat.chain}: volume=${volumeUSD}, avgPrice=${avgPriceUSD}`);
+        }
+        
+        return {
+          ...stat,
+          total_volume: volumeUSD.toString(),
+          avg_price: avgPriceUSD.toString(),
+        };
+      });
+      
+      // Re-aggregate by type (since we grouped by type and chain, now combine chains)
+      const aggregatedStats: Record<string, any> = {};
+      txStats.forEach((stat: any) => {
+        if (!aggregatedStats[stat.type]) {
+          aggregatedStats[stat.type] = {
+            type: stat.type,
+            count: 0,
+            total_amount: 0,
+            avg_price: 0,
+            total_volume: 0,
+          };
+        }
+        aggregatedStats[stat.type].count += parseInt(stat.count || '0');
+        aggregatedStats[stat.type].total_amount += parseFloat(stat.total_amount || '0');
+        aggregatedStats[stat.type].total_volume += parseFloat(stat.total_volume || '0');
+      });
+      
+      // Recalculate average price from aggregated data
+      Object.values(aggregatedStats).forEach((stat: any) => {
+        if (stat.count > 0) {
+          stat.avg_price = stat.total_volume / stat.total_amount;
+        }
+      });
+      
+      txStats = Object.values(aggregatedStats);
+      
+      console.log(`📊 Analytics: Aggregated ${txStats.length} transaction type stats for token ${id}`);
     } catch (error: any) {
       console.warn('Error fetching transaction stats (table may not exist):', error.message);
       // Return empty stats if table doesn't exist
     }
     
     try {
-      // Get volume by day
-      // Use CAST(created_at AS DATE) for better PostgreSQL compatibility
+      // Get volume by day with chain info for price conversion
       volumeByDay = await dbAll(`
         SELECT 
           CAST(created_at AS DATE) as date,
           type,
+          chain,
           COUNT(*) as count,
           SUM(CAST(amount AS REAL) * CAST(price AS REAL)) as volume
         FROM transactions
         WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
-        GROUP BY CAST(created_at AS DATE), type
+        GROUP BY CAST(created_at AS DATE), type, chain
         ORDER BY date DESC
       `, params) as any[];
+      
+      // Convert volumes to USD if prices are in native token
+      volumeByDay = volumeByDay.map((day: any) => {
+        let volumeUSD = parseFloat(day.volume || '0');
+        const avgPriceForDay = volumeUSD / (parseFloat(day.count || '1') * parseFloat(day.amount || '1'));
+        
+        // If price seems to be in native token, convert volume
+        if (avgPriceForDay > 0 && avgPriceForDay < 0.01) {
+          const chainLower = (day.chain || '').toLowerCase();
+          const nativeTokenPriceUSD = chainLower.includes('bsc') || chainLower.includes('binance') 
+            ? 600  // BNB price ~$600
+            : 3000; // ETH price ~$3000
+          volumeUSD = volumeUSD * nativeTokenPriceUSD;
+        }
+        
+        return {
+          ...day,
+          volume: volumeUSD,
+        };
+      });
+      
+      // Re-aggregate by date and type (combine chains)
+      const aggregatedByDay: Record<string, any> = {};
+      volumeByDay.forEach((day: any) => {
+        const key = `${day.date}_${day.type}`;
+        if (!aggregatedByDay[key]) {
+          aggregatedByDay[key] = {
+            date: day.date,
+            type: day.type,
+            count: 0,
+            volume: 0,
+          };
+        }
+        aggregatedByDay[key].count += parseInt(day.count || '0');
+        aggregatedByDay[key].volume += parseFloat(day.volume || '0');
+      });
+      
+      volumeByDay = Object.values(aggregatedByDay);
     } catch (error: any) {
       console.warn('Error fetching volume by day:', error.message);
     }
@@ -3206,14 +3302,53 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
     const totalVolume = txStats.reduce((sum: number, s: any) => sum + (parseFloat(s.total_volume || '0') || 0), 0);
     
     try {
-      // Get price change (first vs last transaction)
+      // Get price change (first vs last transaction) with chain info for conversion
       priceChange = await dbAll(`
         SELECT 
-          (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at DESC LIMIT 1) as last_price,
-          (SELECT price FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at ASC LIMIT 1) as first_price
+          (SELECT price, chain FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at DESC LIMIT 1) as last_price_data,
+          (SELECT price, chain FROM transactions WHERE token_id = ? AND status = 'confirmed' ${dateFilter} ORDER BY created_at ASC LIMIT 1) as first_price_data
       `, [...params, ...params]) as any[];
+      
+      // Also get prices directly for easier processing
+      const firstTx = await dbGet(`
+        SELECT price, chain FROM transactions 
+        WHERE token_id = ? AND status = 'confirmed' ${dateFilter} 
+        ORDER BY created_at ASC LIMIT 1
+      `, params) as any;
+      
+      const lastTx = await dbGet(`
+        SELECT price, chain FROM transactions 
+        WHERE token_id = ? AND status = 'confirmed' ${dateFilter} 
+        ORDER BY created_at DESC LIMIT 1
+      `, params) as any;
+      
+      // Convert prices to USD if needed
+      const convertPriceToUSD = (price: number, chain: string): number => {
+        if (price < 0.01 && price > 0) {
+          const chainLower = chain.toLowerCase();
+          const nativeTokenPriceUSD = chainLower.includes('bsc') || chainLower.includes('binance') 
+            ? 600  // BNB price ~$600
+            : 3000; // ETH price ~$3000
+          return price * nativeTokenPriceUSD;
+        }
+        return price;
+      };
+      
+      const firstPriceUSD = firstTx ? convertPriceToUSD(parseFloat(firstTx.price || '0'), firstTx.chain || '') : 0;
+      const lastPriceUSD = lastTx ? convertPriceToUSD(parseFloat(lastTx.price || '0'), lastTx.chain || '') : 0;
+      const priceChangePercent = firstPriceUSD > 0 ? ((lastPriceUSD - firstPriceUSD) / firstPriceUSD) * 100 : 0;
+      
+      // Update priceChange array for response
+      priceChange = [{
+        first_price: firstPriceUSD,
+        last_price: lastPriceUSD,
+      }];
     } catch (error: any) {
       console.warn('Error fetching price change:', error.message);
+      priceChange = [{
+        first_price: 0,
+        last_price: 0,
+      }];
     }
     
     const firstPrice = parseFloat(priceChange[0]?.first_price || '0') || 0;

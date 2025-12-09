@@ -26,6 +26,11 @@ router.get('/', async (req: Request, res: Response) => {
       params.push(type);
     }
     
+    // Get total count before applying limit
+    const countQuery = query.replace(/SELECT \*/, 'SELECT COUNT(*) as total');
+    const countResult = await dbGet(countQuery.replace(' ORDER BY created_at DESC LIMIT ? OFFSET ?', ''), params.slice(0, -2)) as any;
+    const totalCount = countResult?.total || 0;
+    
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit as string), parseInt(offset as string));
     
@@ -45,7 +50,7 @@ router.get('/', async (req: Request, res: Response) => {
         status: tx.status,
         createdAt: tx.created_at,
       })),
-      count: transactions.length,
+      count: parseInt(totalCount) || 0, // Return actual total count, not limited result length
     });
   } catch (error) {
     console.error('Error fetching transactions:', error);
