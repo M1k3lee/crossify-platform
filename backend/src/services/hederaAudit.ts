@@ -81,8 +81,14 @@ export class HederaAuditService {
       }
 
       // Initialize Hedera client
-      const isMainnet = process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true';
+      // Support both HEDERA_MAINNET and HEDERA_NETWORK for flexibility
+      const hederaNetwork = process.env.HEDERA_NETWORK?.toLowerCase();
+      const isMainnet = (process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true') ||
+                        hederaNetwork === 'mainnet';
+      const isTestnet = hederaNetwork === 'testnet' || !isMainnet;
       this.client = isMainnet ? Client.forMainnet() : Client.forTestnet();
+      
+      console.log(`🌐 Hedera network: ${isMainnet ? 'Mainnet' : 'Testnet'}${hederaNetwork ? ` (from HEDERA_NETWORK=${hederaNetwork})` : ''}`);
       
       // Parse private key - Hedera SDK supports multiple formats
       // Use fromStringED25519() for hex-encoded strings (recommended by SDK)
