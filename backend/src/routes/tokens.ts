@@ -1566,13 +1566,35 @@ router.get('/:id/price-history', async (req: Request, res: Response) => {
     // Group transactions by time interval and calculate OHLC
     const buckets: Map<number, { open: number; high: number; low: number; close: number; volume: number }> = new Map();
     
+    // Helper to detect and convert native token prices to USD
+    const convertPriceToUSD = (price: number, chain: string): number => {
+      // If price is very small (< 0.01), it's likely in native token format (ETH/BNB)
+      // Native token prices are typically 0.0001 - 0.1 range
+      // USD prices should be in reasonable range (0.0001 - 1000+)
+      if (price < 0.01 && price > 0) {
+        const chainLower = chain.toLowerCase();
+        const nativeTokenPriceUSD = chainLower.includes('bsc') || chainLower.includes('binance') 
+          ? 600  // BNB price ~$600
+          : 3000; // ETH price ~$3000 (for Ethereum, Base, Hedera, Unichain)
+        
+        const priceUSD = price * nativeTokenPriceUSD;
+        console.log(`📊 Converted price from native token to USD: ${price} → $${priceUSD.toFixed(6)} (chain: ${chain})`);
+        return priceUSD;
+      }
+      // Price is already in USD or reasonable range
+      return price;
+    };
+    
     transactions.forEach(tx => {
       // Parse price - handle both number and string
-      const price = typeof tx.price === 'number' ? tx.price : parseFloat(tx.price || '0');
+      let price = typeof tx.price === 'number' ? tx.price : parseFloat(tx.price || '0');
       if (isNaN(price) || price <= 0) {
         console.warn(`⚠️ Skipping transaction with invalid price: ${tx.price}`);
         return;
       }
+      
+      // Convert native token price to USD if needed
+      price = convertPriceToUSD(price, tx.chain || '');
       
       // Parse timestamp - handle both SQLite (ISO string) and PostgreSQL (Date object or string)
       let txTime: number;
