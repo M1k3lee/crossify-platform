@@ -90,15 +90,19 @@ export class HederaAuditService {
         console.log(`🔍 [HCS] privateKeyStr length: ${privateKeyStr ? privateKeyStr.length : 0}`);
       }
 
+      console.log(`🔍 [HCS] About to check if credentials exist...`);
+      console.log(`🔍 [HCS] accountId truthy: ${!!accountId}`);
+      console.log(`🔍 [HCS] privateKeyStr truthy: ${!!privateKeyStr}`);
+      
       if (!accountId || !privateKeyStr) {
         console.warn("⚠️  [HCS] Hedera credentials not configured. HCS audit logging disabled.");
         console.warn("⚠️  [HCS] Set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY to enable.");
+        console.log(`🔍 [HCS] Returning early due to missing credentials`);
         return;
       }
       
-      console.log(`🔍 [HCS] Both credentials present, continuing...`);
-
-      console.log(`🔍 [HCS] Credentials check passed, initializing client...`);
+      console.log(`🔍 [HCS] ✓ Both credentials present, continuing...`);
+      console.log(`🔍 [HCS] ✓ Credentials check passed, initializing client...`);
 
       // Initialize Hedera client
       // Support both HEDERA_MAINNET and HEDERA_NETWORK for flexibility
