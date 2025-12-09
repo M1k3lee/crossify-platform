@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import { router as tokensRouter } from './routes/tokens';
 import { router as poolsRouter } from './routes/pools';
+import { router as protocolRouter } from './routes/protocol';
 import { router as transactionsRouter } from './routes/transactions';
 import { router as uploadRouter } from './routes/upload';
 import { router as contactRouter } from './routes/contact';
@@ -111,6 +112,7 @@ app.use('/api/', limiter);
 // Routes
 app.use('/api/tokens', tokensRouter);
 app.use('/api/pools', poolsRouter);
+app.use('/api/protocol', protocolRouter);
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/contact', contactRouter);
