@@ -83,15 +83,27 @@ export class HederaAuditService {
         return;
       }
 
+      console.log(`🔍 [HCS] Credentials check passed, initializing client...`);
+
       // Initialize Hedera client
       // Support both HEDERA_MAINNET and HEDERA_NETWORK for flexibility
       const hederaNetwork = process.env.HEDERA_NETWORK?.toLowerCase();
+      console.log(`🔍 [HCS] HEDERA_NETWORK env var: ${process.env.HEDERA_NETWORK || 'not set'}`);
+      console.log(`🔍 [HCS] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+      console.log(`🔍 [HCS] HEDERA_MAINNET: ${process.env.HEDERA_MAINNET || 'not set'}`);
+      
       const isMainnet = (process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true') ||
                         hederaNetwork === 'mainnet';
       const isTestnet = hederaNetwork === 'testnet' || !isMainnet;
-      this.client = isMainnet ? Client.forMainnet() : Client.forTestnet();
       
-      console.log(`🌐 Hedera network: ${isMainnet ? 'Mainnet' : 'Testnet'}${hederaNetwork ? ` (from HEDERA_NETWORK=${hederaNetwork})` : ''}`);
+      console.log(`🔍 [HCS] isMainnet = ${isMainnet}, isTestnet = ${isTestnet}`);
+      
+      this.client = isMainnet ? Client.forMainnet() : Client.forTestnet();
+      console.log(`🔍 [HCS] Client created: ${this.client ? 'success' : 'failed'}`);
+      
+      console.log(`🌐 [HCS] Hedera network: ${isMainnet ? 'Mainnet' : 'Testnet'}${hederaNetwork ? ` (from HEDERA_NETWORK=${hederaNetwork})` : ''}`);
+      
+      console.log(`🔍 [HCS] Starting private key parsing...`);
       
       // Parse private key - Hedera SDK supports multiple formats
       // Use fromStringED25519() for hex-encoded strings (recommended by SDK)
