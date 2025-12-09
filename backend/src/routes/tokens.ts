@@ -2095,18 +2095,18 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
     const slope = parseFloat(token.slope || '0');
     
     // Calculate expected price using global supply (what price should be if synced)
-    // basePrice and slope are stored as decimal numbers in the database (e.g., 0.0001 for 0.0001 ETH)
-    // NOT in wei - they're already in their decimal form
-    // Price formula: price = basePrice + (slope * globalSupply)
-    const expectedPrice = basePrice + (slope * globalSupplyValue);
-    const expectedPriceUSD = expectedPrice * 3000; // Convert to USD (assuming ETH = $3000)
+    // CRITICAL: basePrice and slope are stored in USD in the database (user enters USD values)
+    // The frontend converts USD to ETH when deploying contracts, but database stores original USD values
+    // Price formula: priceUSD = basePriceUSD + (slopeUSD * globalSupply)
+    const expectedPriceUSD = basePrice + (slope * globalSupplyValue);
+    const expectedPrice = expectedPriceUSD / 3000; // Convert USD to ETH for contract comparison (assuming ETH = $3000)
     
     console.log(`💰 Price calculation for token ${id}:`);
-    console.log(`   Base Price (ETH): ${basePrice}`);
-    console.log(`   Slope (ETH per token): ${slope}`);
+    console.log(`   Base Price (USD): $${basePrice}`);
+    console.log(`   Slope (USD per token): $${slope}`);
     console.log(`   Global Supply: ${globalSupplyValue} tokens`);
-    console.log(`   Expected Price (ETH): ${expectedPrice}`);
     console.log(`   Expected Price (USD): $${expectedPriceUSD}`);
+    console.log(`   Expected Price (ETH): ${expectedPrice}`);
     
     // For price display, we'll use the GLOBAL PRICE (expected price) for all chains
     // This ensures consistent prices across all chains, which is the core value proposition
@@ -2203,9 +2203,11 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
                 }
               }
               
-              // Always use expected (global) price for display to show synced prices
+              // Store expected price in ETH for contract comparison
+              // But we'll use expectedPriceUSD directly for display since basePrice/slope are in USD
               actualPrice = expectedPrice;
-              console.log(`   Using global synced price: ${actualPrice} ETH (contract: ${fetchedActualPrice > 0 ? fetchedActualPrice.toFixed(8) + ' ETH' : 'N/A'})`);
+              const fetchedPriceUSD = fetchedActualPrice > 0 ? fetchedActualPrice * 3000 : 0;
+              console.log(`   Using global synced price: $${expectedPriceUSD.toFixed(6)} USD (contract: ${fetchedPriceUSD > 0 ? '$' + fetchedPriceUSD.toFixed(6) + ' USD' : 'N/A'})`);
             } catch (error: any) {
               console.error(`❌ Error fetching price from bonding curve for ${dep.chain}:`, error.message);
               // Use expected price based on global supply as fallback
@@ -2228,15 +2230,20 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
       
       // Always use global (expected) price for display to show price sync
       // This ensures all chains show the same price, which is the core feature
+      // Since basePrice and slope are stored in USD, expectedPriceUSD is already in USD
+      let priceUSD: number;
       if (USE_EXPECTED_PRICE) {
-        actualPrice = expectedPrice;
-      } else if (actualPrice <= 0 || isNaN(actualPrice) || !isFinite(actualPrice)) {
-        console.warn(`⚠️ Invalid price calculated for ${dep.chain}, using expected price`);
-        actualPrice = expectedPrice;
+        // Use the calculated USD price directly
+        priceUSD = expectedPriceUSD;
+      } else {
+        // Fallback: convert actualPrice (in ETH) to USD
+        if (actualPrice <= 0 || isNaN(actualPrice) || !isFinite(actualPrice)) {
+          console.warn(`⚠️ Invalid price calculated for ${dep.chain}, using expected price`);
+          priceUSD = expectedPriceUSD;
+        } else {
+          priceUSD = actualPrice * 3000; // Convert ETH to USD (assuming ETH = $3000)
+        }
       }
-      
-      // Convert to USD (assuming ETH = $3000)
-      const priceUSD = actualPrice * 3000;
       
       // Store price using both exact chain name and normalized lowercase for better matching
       // Frontend might use different chain name formats, so we provide both
@@ -2261,10 +2268,8 @@ router.get('/:id/price-sync', async (req: Request, res: Response) => {
         console.log(`✅ Set price for ${dep.chain} (normalized: ${normalizedChain}): $${priceUSD.toFixed(6)}`);
       } else {
         console.warn(`⚠️ Invalid price USD for ${dep.chain}: ${priceUSD}, using fallback`);
-        // Fallback: use a minimal price based on base price if actual calculation failed
-        // basePrice is already in decimal format (ETH), not wei, so just multiply by ETH price
-        const fallbackPrice = basePrice * 3000;
-        const validFallback = fallbackPrice > 0 ? fallbackPrice : 0.0001;
+        // Fallback: use base price directly since it's already in USD
+        const validFallback = basePrice > 0 ? basePrice : 0.0001;
         prices[dep.chain] = validFallback;
         prices[chainLower] = validFallback;
         prices[normalizedChain] = validFallback;
