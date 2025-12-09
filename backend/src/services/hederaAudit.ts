@@ -155,13 +155,17 @@ export class HederaAuditService {
             privateKey = PrivateKey.fromBytes(privateKeyBytes);
             console.log('✅ Parsed Hedera private key from 64-byte keypair (extracted first 32 bytes)');
           }
+        } else if (privateKeyHex.length === 40) {
+          // 40 hex chars = 20 bytes (might be incomplete or Ethereum-style address)
+          // This is likely an error - Hedera keys need 32 bytes
+          throw new Error(`Invalid private key length: ${privateKeyHex.length} hex chars (${privateKeyHex.length / 2} bytes). Hedera private keys must be 64 hex chars (32 bytes) or 128 hex chars (64 bytes for keypair). Your key appears incomplete or in wrong format.`);
         } else {
           // Try parsing as string (DER format or other)
           try {
             privateKey = PrivateKey.fromString(privateKeyStr);
-            console.log('✅ Parsed Hedera private key as string');
+            console.log('✅ Parsed Hedera private key as DER string format');
           } catch (stringError) {
-            throw new Error(`Invalid private key length: ${privateKeyHex.length} hex chars. Expected 64 (32 bytes) or 128 (64 bytes). Also tried DER format but failed: ${stringError instanceof Error ? stringError.message : stringError}`);
+            throw new Error(`Invalid private key length: ${privateKeyHex.length} hex chars. Expected 64 (32 bytes) or 128 (64 bytes). Also tried DER format but failed: ${stringError instanceof Error ? stringError.message : stringError}. Current length: ${privateKeyHex.length} hex characters.`);
           }
         }
       } catch (parseError) {
