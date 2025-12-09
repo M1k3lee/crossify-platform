@@ -3336,7 +3336,6 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
       
       const firstPriceUSD = firstTx ? convertPriceToUSD(parseFloat(firstTx.price || '0'), firstTx.chain || '') : 0;
       const lastPriceUSD = lastTx ? convertPriceToUSD(parseFloat(lastTx.price || '0'), lastTx.chain || '') : 0;
-      const priceChangePercent = firstPriceUSD > 0 ? ((lastPriceUSD - firstPriceUSD) / firstPriceUSD) * 100 : 0;
       
       // Update priceChange array for response
       priceChange = [{
