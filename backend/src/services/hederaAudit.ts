@@ -271,11 +271,27 @@ export class HederaAuditService {
       }
 
       this.initialized = true;
-      console.log("✅ Hedera Audit Service initialized (Powered by Hedera)");
+      console.log("✅ [HCS] Hedera Audit Service initialized (Powered by Hedera)");
+      console.log(`✅ [HCS] Topic ID: ${this.topicId ? this.topicId.toString() : 'null'}`);
+      console.log(`✅ [HCS] Client: ${this.client ? 'initialized' : 'null'}`);
     } catch (error) {
-      console.error("❌ Error initializing Hedera Audit Service:", error);
-      console.error("   Audit logging will be disabled");
+      console.error("❌ [HCS] Error initializing Hedera Audit Service:", error);
+      if (error instanceof Error) {
+        console.error(`❌ [HCS] Error name: ${error.name}`);
+        console.error(`❌ [HCS] Error message: ${error.message}`);
+        if (error.stack) {
+          console.error(`❌ [HCS] Stack trace:\n${error.stack}`);
+        }
+        if ((error as any).cause) {
+          console.error(`❌ [HCS] Error cause:`, (error as any).cause);
+        }
+      } else {
+        console.error(`❌ [HCS] Unknown error type:`, typeof error, error);
+      }
+      console.error("❌ [HCS] Audit logging will be disabled");
       // Don't throw - allow system to continue without audit logging
+    } finally {
+      console.log(`🔍 [HCS] initialize() method ending. this.initialized = ${this.initialized}`);
     }
   }
 
