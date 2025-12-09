@@ -1167,36 +1167,57 @@ router.get('/:id/audit-logs', async (req: Request, res: Response) => {
         ? deployments.filter(d => d.chain === chain).map(d => d.token_address)
         : deployments.map(d => d.token_address);
 
-      // Query audit logs for each token address
-      const allLogs: any[] = [];
-      
+      // Query ALL audit logs from the topic (don't filter by tokenAddress initially)
+      // This ensures we get PRICE_SYNC messages and other messages that might have empty tokenAddress
       console.log(`📡 [Audit Logs] Querying audit logs for token ${id}`);
       console.log(`📡 [Audit Logs] Found ${tokenAddresses.length} token addresses: ${tokenAddresses.join(', ')}`);
+      console.log(`📡 [Audit Logs] Querying ALL messages from topic (will filter after)`);
       
-      for (const tokenAddress of tokenAddresses) {
-        if (!tokenAddress) {
-          console.warn(`⚠️  [Audit Logs] Skipping empty token address`);
-          continue;
+      // Query ALL messages without tokenAddress filter - we'll filter after parsing
+      const allMessages = await auditService.queryAuditLogs(
+        undefined, // No tokenAddress filter - get all messages
+        undefined, // startTimestamp
+        undefined, // endTimestamp
+        parseInt(limit as string) * 2 // Get more messages to account for filtering
+      );
+      
+      console.log(`📡 [Audit Logs] Retrieved ${allMessages.length} total messages from topic`);
+      
+      // Now filter messages that match this token's addresses (or are PRICE_SYNC which apply to all)
+      const allLogs: any[] = [];
+      const normalizedTokenAddresses = tokenAddresses.map(addr => (addr || '').toLowerCase().trim()).filter(Boolean);
+      
+      for (const log of allMessages) {
+        const logTokenAddress = (log.tokenAddress || '').toLowerCase().trim();
+        
+        // Include the log if:
+        // 1. It matches one of this token's addresses, OR
+        // 2. It's a PRICE_SYNC message (applies to all tokens), OR
+        // 3. It has no tokenAddress (legacy/global messages)
+        if (log.type === 'PRICE_SYNC' || 
+            !logTokenAddress || 
+            normalizedTokenAddresses.includes(logTokenAddress)) {
+          
+          // Find which chain this log belongs to (if we can match by address)
+          const deployment = deployments.find(d => 
+            d.token_address && d.token_address.toLowerCase().trim() === logTokenAddress
+          );
+          
+          if (deployment) {
+            log.chain = deployment.chain;
+          } else if (log.sourceChain) {
+            // For PRICE_SYNC, use sourceChain
+            log.chain = log.sourceChain;
+          }
+          
+          allLogs.push(log);
+          console.log(`✅ [Audit Logs] Included log: type=${log.type}, tokenAddress=${logTokenAddress || 'none'}, chain=${log.chain || 'unknown'}`);
+        } else {
+          console.log(`⏭️  [Audit Logs] Skipped log: type=${log.type}, tokenAddress=${logTokenAddress} (not matching token addresses)`);
         }
-        
-        console.log(`📡 [Audit Logs] Querying logs for token address: ${tokenAddress}`);
-        const logs = await auditService.queryAuditLogs(
-          tokenAddress,
-          undefined, // startTimestamp
-          undefined, // endTimestamp
-          parseInt(limit as string)
-        );
-        
-        console.log(`📡 [Audit Logs] Retrieved ${logs.length} logs for address ${tokenAddress}`);
-        
-        // Add chain info to each log
-        const deployment = deployments.find(d => d.token_address === tokenAddress);
-        logs.forEach((log: any) => {
-          log.chain = deployment?.chain || 'unknown';
-        });
-        
-        allLogs.push(...logs);
       }
+      
+      console.log(`📡 [Audit Logs] Filtered to ${allLogs.length} relevant logs for token ${id}`);
       
       console.log(`📡 [Audit Logs] Total logs collected: ${allLogs.length}`);
 

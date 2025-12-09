@@ -497,13 +497,16 @@ export class HederaAuditService {
           console.log(`📡 [HCS] Parsed message ${message.sequence_number}: type=${logData.type}, tokenAddress=${logData.tokenAddress || 'none'}`);
 
           // Filter by token address if provided (normalize both to lowercase for comparison)
-          if (tokenAddress) {
+          // NOTE: If tokenAddress is undefined, we return ALL messages (no filtering)
+          if (tokenAddress !== undefined) {
             const logTokenAddress = (logData.tokenAddress || '').toLowerCase().trim();
             const filterTokenAddress = tokenAddress.toLowerCase().trim();
             
             console.log(`📡 [HCS] Comparing: "${logTokenAddress}" vs "${filterTokenAddress}"`);
             
-            if (logTokenAddress !== filterTokenAddress) {
+            // Only filter out if addresses don't match AND log has a tokenAddress
+            // This allows PRICE_SYNC with empty tokenAddress to pass through when tokenAddress filter is provided
+            if (logTokenAddress && logTokenAddress !== filterTokenAddress) {
               console.log(`📡 [HCS] Skipping message ${message.sequence_number} - token address mismatch`);
               continue; // Skip messages not for this token
             }
