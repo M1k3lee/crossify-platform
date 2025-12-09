@@ -3240,12 +3240,33 @@ router.get('/:id/analytics', async (req: Request, res: Response) => {
       `, params) as any[];
       
       // Convert volumes to USD if prices are in native token
+      // First, get sample prices per day to detect native token format
+      const samplePrices = await dbAll(`
+        SELECT 
+          CAST(created_at AS DATE) as date,
+          type,
+          chain,
+          AVG(CAST(price AS REAL)) as avg_price
+        FROM transactions
+        WHERE token_id = ? AND status = 'confirmed' ${dateFilter}
+        GROUP BY CAST(created_at AS DATE), type, chain
+      `, params) as any[];
+      
+      // Create a map for quick lookup
+      const priceMap = new Map<string, number>();
+      samplePrices.forEach((p: any) => {
+        const key = `${p.date}_${p.type}_${p.chain}`;
+        priceMap.set(key, parseFloat(p.avg_price || '0'));
+      });
+      
+      // Convert volumes to USD based on detected price format
       volumeByDay = volumeByDay.map((day: any) => {
         let volumeUSD = parseFloat(day.volume || '0');
-        const avgPriceForDay = volumeUSD / (parseFloat(day.count || '1') * parseFloat(day.amount || '1'));
+        const key = `${day.date}_${day.type}_${day.chain}`;
+        const avgPrice = priceMap.get(key) || 0;
         
-        // If price seems to be in native token, convert volume
-        if (avgPriceForDay > 0 && avgPriceForDay < 0.01) {
+        // If price seems to be in native token (< 0.01), convert volume
+        if (avgPrice > 0 && avgPrice < 0.01) {
           const chainLower = (day.chain || '').toLowerCase();
           const nativeTokenPriceUSD = chainLower.includes('bsc') || chainLower.includes('binance') 
             ? 600  // BNB price ~$600
