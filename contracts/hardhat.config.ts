@@ -67,6 +67,16 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
       chainId: 130, // Unichain Mainnet
     },
+    optimism: {
+      url: process.env.OPTIMISM_RPC_URL || process.env.OP_MAINNET_RPC_URL || "https://mainnet.optimism.io",
+      accounts: process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.trim() !== '' ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
+      chainId: 10, // Optimism Mainnet
+    },
+    optimismSepolia: {
+      url: process.env.OPTIMISM_SEPOLIA_RPC_URL || process.env.OP_SEPOLIA_RPC_URL || "https://sepolia.optimism.io",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY.trim().replace(/^0x/, '')] : [],
+      chainId: 11155420, // Optimism Sepolia Testnet
+    },
   },
   etherscan: {
     apiKey: {
@@ -75,6 +85,8 @@ const config: HardhatUserConfig = {
       baseSepolia: process.env.BASESCAN_API_KEY || "",
       base: process.env.BASESCAN_API_KEY || "",
       mainnet: process.env.ETHERSCAN_API_KEY || "",
+      optimism: process.env.OPTIMISTIC_ETHERSCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
+      optimismSepolia: process.env.OPTIMISTIC_ETHERSCAN_API_KEY || process.env.ETHERSCAN_API_KEY || "",
     },
     customChains: [
       {
@@ -83,6 +95,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.basescan.org/api",
           browserURL: "https://basescan.org"
+        }
+      },
+      {
+        network: "optimism",
+        chainId: 10,
+        urls: {
+          apiURL: "https://api-optimistic.etherscan.io/api",
+          browserURL: "https://optimistic.etherscan.io"
+        }
+      },
+      {
+        network: "optimismSepolia",
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          browserURL: "https://sepolia-optimistic.etherscan.io"
         }
       }
     ]
