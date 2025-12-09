@@ -198,16 +198,23 @@ async function start() {
 
     // Initialize Hedera Audit Service (HCS) for immutable audit logging
     try {
-      console.log('🔍 Attempting to initialize Hedera Audit Service...');
+      console.log('🔍 [HCS] Attempting to initialize Hedera Audit Service...');
+      console.log('🔍 [HCS] Checking environment variables...');
+      console.log(`🔍 [HCS] HEDERA_ACCOUNT_ID: ${process.env.HEDERA_ACCOUNT_ID ? '✅ Set (' + process.env.HEDERA_ACCOUNT_ID + ')' : '❌ Not set'}`);
+      console.log(`🔍 [HCS] HEDERA_PRIVATE_KEY: ${process.env.HEDERA_PRIVATE_KEY ? '✅ Set (' + (process.env.HEDERA_PRIVATE_KEY.length) + ' chars)' : '❌ Not set'}`);
+      console.log(`🔍 [HCS] HEDERA_HCS_TOPIC_ID: ${process.env.HEDERA_HCS_TOPIC_ID ? '✅ Set (' + process.env.HEDERA_HCS_TOPIC_ID + ')' : '⚠️  Not set (will auto-create if needed)'}`);
+      
       const { initializeHederaAudit } = await import('./services/hederaAudit');
+      console.log('🔍 [HCS] Module imported, calling initializeHederaAudit()...');
       await initializeHederaAudit();
+      console.log('🔍 [HCS] initializeHederaAudit() completed');
       // Note: initializeHederaAudit() logs its own success/failure messages
     } catch (error) {
-      console.error('❌ Error importing or initializing Hedera Audit Service:', error instanceof Error ? error.message : String(error));
+      console.error('❌ [HCS] Error importing or initializing Hedera Audit Service:', error instanceof Error ? error.message : String(error));
       if (error instanceof Error && error.stack) {
-        console.error('Stack trace:', error.stack);
+        console.error('❌ [HCS] Stack trace:', error.stack);
       }
-      console.log('ℹ️  Continuing without Hedera HCS - audit logging will be disabled');
+      console.log('ℹ️  [HCS] Continuing without Hedera HCS - audit logging will be disabled');
     }
 
     // Initialize Hedera File Service (HFS) for decentralized metadata storage
