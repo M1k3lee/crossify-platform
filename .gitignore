@@ -73,3 +73,8 @@ credentials/
 
 # OS
 Thumbs.db
+
+# Documentation - ignore .md files in root except README.md
+# Allow docs/ folder and other subdirectories
+/*.md
+!README.md
