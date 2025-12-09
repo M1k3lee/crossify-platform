@@ -237,9 +237,30 @@ export class HederaAuditService {
           console.warn(`   Topic creation requires ~0.01 HBAR. Consider funding the account.`);
         }
       } catch (verifyError: any) {
-        console.error('❌ Failed to verify private key with account:', verifyError.message);
-        if (verifyError.message?.includes('INVALID_SIGNATURE') || verifyError.message?.includes('INVALID_ACCOUNT_ID')) {
-          throw new Error(`Private key does not match account ${accountId}. Please verify the private key in HashPack and ensure it's for account ${accountId}. Error: ${verifyError.message}`);
+        console.error('❌ [HCS] Failed to verify private key with account:', verifyError.message);
+        console.error('❌ [HCS] Error name:', verifyError.name);
+        console.error('❌ [HCS] Full error:', JSON.stringify(verifyError, Object.getOwnPropertyNames(verifyError)));
+        
+        // Extract public key from private key for debugging
+        try {
+          const publicKeyFromPrivate = privateKey.publicKey;
+          console.error('❌ [HCS] Public key derived from private key:', publicKeyFromPrivate.toString());
+        } catch (pubKeyError) {
+          console.error('❌ [HCS] Could not extract public key from private key:', pubKeyError);
+        }
+        
+        if (verifyError.message?.includes('INVALID_SIGNATURE') || 
+            verifyError.message?.includes('INVALID_ACCOUNT_ID') ||
+            verifyError.message?.includes('does not match')) {
+          const errorMsg = `Private key does not match account ${accountId}. Please verify the private key in HashPack and ensure it's for account ${accountId}. Error: ${verifyError.message}`;
+          console.error('❌ [HCS]', errorMsg);
+          console.error('❌ [HCS] To fix this:');
+          console.error('   1. Open HashPack wallet');
+          console.error(`   2. Ensure you are using account ${accountId}`);
+          console.error('   3. Export the private key for that specific account');
+          console.error('   4. Make sure the private key is the full key (64 hex chars without 0x prefix, or DER format)');
+          console.error('   5. Verify the key format matches what HashPack exports');
+          throw new Error(errorMsg);
         }
         throw verifyError;
       }
