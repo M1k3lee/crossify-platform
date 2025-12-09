@@ -241,11 +241,16 @@ export class HederaAuditService {
       }
 
       // Get or create HCS topic
+      console.log(`🔍 [HCS] Checking for existing topic ID...`);
       const topicIdEnv = process.env.HEDERA_HCS_TOPIC_ID;
+      console.log(`🔍 [HCS] Topic ID from env: ${topicIdEnv || 'not set'}`);
+      
       if (topicIdEnv) {
+        console.log(`🔍 [HCS] Using existing topic ID: ${topicIdEnv}`);
         this.topicId = TopicId.fromString(topicIdEnv);
-        console.log(`✅ Using existing HCS topic: ${this.topicId.toString()}`);
+        console.log(`✅ [HCS] Using existing HCS topic: ${this.topicId.toString()}`);
       } else {
+        console.log(`🔍 [HCS] No topic ID in env, will create new topic...`);
         // Create new topic (one-time setup)
         console.log("📝 Creating new HCS topic for audit logs...");
         const topicCreateTx = new TopicCreateTransaction()
