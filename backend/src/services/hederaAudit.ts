@@ -75,19 +75,23 @@ export class HederaAuditService {
 
       console.log(`🔍 [HCS] Checking Hedera credentials...`);
       
-      try {
-        const accountStatus = accountId ? `✅ Set (${accountId})` : '❌ Not set';
-        console.log(`🔍 [HCS] HEDERA_ACCOUNT_ID: ${accountStatus}`);
-        
-        const keyLength = privateKeyStr ? privateKeyStr.length : 0;
-        const keyPreview = privateKeyStr ? privateKeyStr.substring(0, Math.min(10, privateKeyStr.length)) : '';
-        const keyStatus = privateKeyStr ? `✅ Set (${keyLength} chars, first 10: ${keyPreview}...)` : '❌ Not set';
-        console.log(`🔍 [HCS] HEDERA_PRIVATE_KEY: ${keyStatus}`);
-      } catch (logError) {
-        console.error(`❌ [HCS] Error logging credential status:`, logError);
-        console.log(`🔍 [HCS] accountId exists: ${!!accountId}`);
-        console.log(`🔍 [HCS] privateKeyStr exists: ${!!privateKeyStr}`);
-        console.log(`🔍 [HCS] privateKeyStr length: ${privateKeyStr ? privateKeyStr.length : 0}`);
+      // Log credential status with simpler, safer logging
+      if (accountId) {
+        console.log(`🔍 [HCS] HEDERA_ACCOUNT_ID: ✅ Set`);
+        console.log(`🔍 [HCS] Account ID value: ${accountId}`);
+      } else {
+        console.log(`🔍 [HCS] HEDERA_ACCOUNT_ID: ❌ Not set`);
+      }
+      
+      if (privateKeyStr) {
+        console.log(`🔍 [HCS] HEDERA_PRIVATE_KEY: ✅ Set`);
+        console.log(`🔍 [HCS] Private key length: ${privateKeyStr.length} chars`);
+        if (privateKeyStr.length > 0) {
+          const preview = privateKeyStr.substring(0, Math.min(10, privateKeyStr.length));
+          console.log(`🔍 [HCS] Private key preview: ${preview}...`);
+        }
+      } else {
+        console.log(`🔍 [HCS] HEDERA_PRIVATE_KEY: ❌ Not set`);
       }
 
       console.log(`🔍 [HCS] About to check if credentials exist...`);
