@@ -1970,7 +1970,7 @@ export default function BuyWidget({
       
       // Convert native token price to USD
       // Approximate prices: ETH ~$3000, BNB ~$600, Base uses ETH pricing
-      const getNativeTokenPriceUSD = (chain: string): number => {
+      const getNativeTokenPriceUSDForBuy = (chain: string): number => {
         const chainLower = chain.toLowerCase();
         if (chainLower.includes('bsc') || chainLower.includes('binance')) {
           return 600; // BNB price ~$600
@@ -1979,8 +1979,8 @@ export default function BuyWidget({
         return 3000; // ETH price ~$3000
       };
       
-      const nativeTokenPriceUSD = getNativeTokenPriceUSD(chain);
-      const pricePerTokenUSD = pricePerTokenNative * nativeTokenPriceUSD;
+      const buyNativeTokenPriceUSD = getNativeTokenPriceUSDForBuy(chain);
+      const pricePerTokenUSD = pricePerTokenNative * buyNativeTokenPriceUSD;
       
       // Record transaction in backend for chart display (store USD price)
       try {
@@ -2208,7 +2208,7 @@ export default function BuyWidget({
         const pricePerTokenNative = parseFloat(ethers.formatEther(currentPriceWei));
         
         // Convert native token price to USD
-        const getNativeTokenPriceUSD = (chain: string): number => {
+        const getNativeTokenPriceUSDForSell = (chain: string): number => {
           const chainLower = chain.toLowerCase();
           if (chainLower.includes('bsc') || chainLower.includes('binance')) {
             return 600; // BNB price ~$600
@@ -2217,8 +2217,8 @@ export default function BuyWidget({
           return 3000; // ETH price ~$3000
         };
         
-        const nativeTokenPriceUSD = getNativeTokenPriceUSD(chain);
-        pricePerTokenUSD = pricePerTokenNative * nativeTokenPriceUSD;
+        const sellNativeTokenPriceUSD = getNativeTokenPriceUSDForSell(chain);
+        pricePerTokenUSD = pricePerTokenNative * sellNativeTokenPriceUSD;
       } catch (err) {
         console.warn('Could not get current price from contract for sell transaction, using prop value (USD)');
         // currentPrice prop should already be in USD, so use it as-is
@@ -2252,7 +2252,7 @@ export default function BuyWidget({
         tokenSymbol,
         chain: chain.toLowerCase(),
         amount: amount,
-        value: (pricePerToken * parseFloat(amount)).toFixed(6),
+        value: (pricePerTokenUSD * parseFloat(amount)).toFixed(6),
       });
       
       setAmount('');
