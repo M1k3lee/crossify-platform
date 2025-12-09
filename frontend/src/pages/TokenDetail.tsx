@@ -20,6 +20,7 @@ import GraduationProgress from '../components/GraduationProgress';
 import GraduationCelebration from '../components/GraduationCelebration';
 import GraduationConfetti from '../components/GraduationConfetti';
 import AuditTrailWidget from '../components/AuditTrailWidget';
+import CrossChainVisualization from '../components/CrossChainVisualization';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import SEO, { generateTokenSchema } from '../components/SEO';
@@ -2241,6 +2242,12 @@ export default function TokenDetail() {
             </div>
           </div>
         )}
+
+        {/* Cross-Chain Visualization */}
+        <CrossChainVisualization 
+          tokenId={id || ''} 
+          deployments={deployments || []} 
+        />
 
         {/* Immutable Audit Trail */}
         <AuditTrailWidget tokenId={id || ''} chain={selectedChain as string} />

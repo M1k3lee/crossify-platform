@@ -12,7 +12,8 @@ import {
   TrendingDown,
   Clock,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import { API_BASE } from '../config/api';
 
@@ -31,6 +32,7 @@ interface AuditLog {
   newGlobalSupply?: string;
   txHash?: string;
   layerZeroTxHash?: string;
+  supraTxHash?: string;
   ccipTxHash?: string;
   userAddress?: string;
   timestamp?: string;
@@ -282,6 +284,15 @@ export default function AuditTrailWidget({ tokenId, chain }: AuditTrailWidgetPro
                             <p className="text-sm text-white font-medium">{formatAmount(log.newGlobalSupply)}</p>
                           </div>
                         </div>
+                        {log.supraTxHash && (
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
+                              <Zap className="w-3 h-3 text-purple-400" />
+                              Supra TX Hash
+                            </p>
+                            <p className="text-sm text-purple-400 font-mono break-all">{log.supraTxHash}</p>
+                          </div>
+                        )}
                         {log.layerZeroTxHash && (
                           <div>
                             <p className="text-xs text-gray-400 mb-1">LayerZero TX Hash</p>

@@ -31,6 +31,7 @@ export interface PriceSyncEvent {
   newGlobalSupply: string;
   timestamp: number;
   layerZeroTxHash?: string;
+  supraTxHash?: string;
   ccipTxHash?: string;
 }
 
