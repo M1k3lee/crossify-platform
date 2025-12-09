@@ -28,6 +28,7 @@ interface CrossChainMessage {
   timestamp: string;
   latency?: number;
   verified?: boolean;
+  hashscanUrl?: string;
 }
 
 interface CrossChainVisualizationProps {
@@ -227,7 +228,9 @@ export default function CrossChainVisualization({
                         {message.protocol}
                       </span>
                       {message.verified && (
-                        <Shield className="w-4 h-4 text-green-400" title="Verified on Hedera HCS" />
+                        <div title="Verified on Hedera HCS">
+                          <Shield className="w-4 h-4 text-green-400" />
+                        </div>
                       )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-400">

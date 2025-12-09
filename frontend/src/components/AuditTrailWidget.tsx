@@ -51,9 +51,8 @@ interface AuditTrailWidgetProps {
 
 export default function AuditTrailWidget({ tokenId, chain }: AuditTrailWidgetProps) {
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(7); // Show 7 messages initially
   
-  // Force rebuild - all TypeScript errors fixed
-
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['audit-logs', tokenId, chain],
     queryFn: async () => {
@@ -178,8 +177,9 @@ export default function AuditTrailWidget({ tokenId, chain }: AuditTrailWidgetPro
           <span className="ml-2 text-gray-400">No audit logs yet</span>
         </div>
       ) : (
-        <div className="space-y-3">
-          {auditLogs.map((log, index) => (
+        <div>
+          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
+            {auditLogs.slice(0, visibleCount).map((log, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 10 }}
@@ -358,7 +358,20 @@ export default function AuditTrailWidget({ tokenId, chain }: AuditTrailWidgetPro
                 </motion.div>
               )}
             </motion.div>
-          ))}
+            ))}
+          </div>
+          
+          {auditLogs.length > visibleCount && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => setVisibleCount(prev => Math.min(prev + 7, auditLogs.length))}
+                className="px-4 py-2 bg-gray-700/50 hover:bg-gray-700 rounded-lg text-sm text-white font-medium transition flex items-center gap-2"
+              >
+                Load More ({auditLogs.length - visibleCount} remaining)
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
