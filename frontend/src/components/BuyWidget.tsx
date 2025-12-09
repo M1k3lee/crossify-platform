@@ -1964,10 +1964,25 @@ export default function BuyWidget({
         throw waitError;
       }
       
-      // Calculate price per token from the transaction (use priceEstimateWei, not totalCostWei which includes fees)
-      const pricePerToken = parseFloat(ethers.formatEther(priceEstimateWei)) / parseFloat(amount);
+      // Calculate price per token in USD for chart
+      // priceEstimateWei is total cost in native token (ETH/BNB), divide by amount to get per token
+      const pricePerTokenNative = parseFloat(ethers.formatEther(priceEstimateWei)) / parseFloat(amount);
       
-      // Record transaction in backend for chart display
+      // Convert native token price to USD
+      // Approximate prices: ETH ~$3000, BNB ~$600, Base uses ETH pricing
+      const getNativeTokenPriceUSD = (chain: string): number => {
+        const chainLower = chain.toLowerCase();
+        if (chainLower.includes('bsc') || chainLower.includes('binance')) {
+          return 600; // BNB price ~$600
+        }
+        // Ethereum, Base, Hedera, Unichain and others use ETH pricing
+        return 3000; // ETH price ~$3000
+      };
+      
+      const nativeTokenPriceUSD = getNativeTokenPriceUSD(chain);
+      const pricePerTokenUSD = pricePerTokenNative * nativeTokenPriceUSD;
+      
+      // Record transaction in backend for chart display (store USD price)
       try {
         await axios.post(`${API_BASE}/transactions`, {
           tokenId,
@@ -1977,10 +1992,10 @@ export default function BuyWidget({
           fromAddress: address,
           toAddress: curveAddress,
           amount: amount,
-          price: pricePerToken,
+          price: pricePerTokenUSD, // Store USD price for chart
           status: 'confirmed',
         });
-        console.log('✅ Transaction recorded for chart');
+        console.log(`✅ Transaction recorded for chart (price: $${pricePerTokenUSD.toFixed(6)} USD)`);
       } catch (recordError) {
         console.warn('⚠️ Failed to record transaction (non-critical):', recordError);
         // Don't fail the buy if recording fails
