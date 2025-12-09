@@ -58,25 +58,28 @@ export class HederaAuditService {
    * Powered by Hedera Consensus Service
    */
   async initialize(): Promise<void> {
+    console.log("🔍 [HCS] initialize() method called");
+    console.log(`🔍 [HCS] this.initialized = ${this.initialized}`);
+    
     if (this.initialized) {
-      console.log("ℹ️  Hedera Audit Service already initialized");
+      console.log("ℹ️  [HCS] Hedera Audit Service already initialized - skipping");
       return;
     }
 
-    console.log("🔍 Initializing Hedera Audit Service (HCS)...");
+    console.log("🔍 [HCS] Initializing Hedera Audit Service (HCS)...");
     
     try {
       // Get Hedera account credentials from environment
       const accountId = process.env.HEDERA_ACCOUNT_ID;
       const privateKeyStr = process.env.HEDERA_PRIVATE_KEY;
 
-      console.log(`🔍 Checking Hedera credentials...`);
-      console.log(`   HEDERA_ACCOUNT_ID: ${accountId ? '✅ Set' : '❌ Not set'}`);
-      console.log(`   HEDERA_PRIVATE_KEY: ${privateKeyStr ? '✅ Set' : '❌ Not set'}`);
+      console.log(`🔍 [HCS] Checking Hedera credentials...`);
+      console.log(`🔍 [HCS] HEDERA_ACCOUNT_ID: ${accountId ? '✅ Set (' + accountId + ')' : '❌ Not set'}`);
+      console.log(`🔍 [HCS] HEDERA_PRIVATE_KEY: ${privateKeyStr ? '✅ Set (' + privateKeyStr.length + ' chars, first 10: ' + privateKeyStr.substring(0, 10) + '...)' : '❌ Not set'}`);
 
       if (!accountId || !privateKeyStr) {
-        console.warn("⚠️  Hedera credentials not configured. HCS audit logging disabled.");
-        console.warn("   Set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY to enable.");
+        console.warn("⚠️  [HCS] Hedera credentials not configured. HCS audit logging disabled.");
+        console.warn("⚠️  [HCS] Set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY to enable.");
         return;
       }
 
