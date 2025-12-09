@@ -433,6 +433,20 @@ export class HederaAuditService {
     const base = isMainnet ? 'https://hashscan.io' : 'https://hashscan.io/testnet';
     return `${base}/topic/${topicId}?sequence=${sequenceNumber}`;
   }
+
+  /**
+   * Get the current HCS topic ID (if initialized)
+   */
+  getTopicId(): string | null {
+    return this.topicId ? this.topicId.toString() : null;
+  }
+
+  /**
+   * Check if the service is initialized and ready
+   */
+  isInitialized(): boolean {
+    return this.initialized && this.topicId !== null;
+  }
 }
 
 // Singleton instance

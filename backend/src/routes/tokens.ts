@@ -1142,6 +1142,25 @@ router.get('/:id/audit-logs', async (req: Request, res: Response) => {
       const { getHederaAuditService } = await import('../services/hederaAudit');
       const auditService = getHederaAuditService();
 
+      // Check if Hedera credentials are configured
+      const hasAccountId = !!process.env.HEDERA_ACCOUNT_ID;
+      const hasPrivateKey = !!process.env.HEDERA_PRIVATE_KEY;
+      
+      if (!hasAccountId || !hasPrivateKey) {
+        console.warn('⚠️  Hedera HCS not configured - missing environment variables');
+        console.warn(`   HEDERA_ACCOUNT_ID: ${hasAccountId ? '✅ Set' : '❌ Not set'}`);
+        console.warn(`   HEDERA_PRIVATE_KEY: ${hasPrivateKey ? '✅ Set' : '❌ Not set'}`);
+        return res.json({
+          auditLogs: [],
+          message: 'Hedera HCS not configured. Please set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY environment variables.',
+          hcsConfigured: false,
+          missingVariables: {
+            HEDERA_ACCOUNT_ID: !hasAccountId,
+            HEDERA_PRIVATE_KEY: !hasPrivateKey,
+          },
+        });
+      }
+
       // If chain is specified, only query for that chain's token address
       // Otherwise, query for all token addresses
       const tokenAddresses = chain 
@@ -1180,20 +1199,36 @@ router.get('/:id/audit-logs', async (req: Request, res: Response) => {
       // Limit results
       const limitedLogs = allLogs.slice(0, parseInt(limit as string));
 
+      // Get topic ID from service (it may have been auto-created) or environment
+      const topicId = auditService.getTopicId() || process.env.HEDERA_HCS_TOPIC_ID || null;
+
       return res.json({
         auditLogs: limitedLogs,
         total: allLogs.length,
         hcsConfigured: true,
-        topicId: process.env.HEDERA_HCS_TOPIC_ID || null,
+        topicId: topicId,
       });
     } catch (hcsError: any) {
-      // HCS might not be configured - return empty but indicate it's available
-      console.warn('HCS audit logs not available:', hcsError.message);
+      // HCS might not be configured or there was an error
+      console.error('❌ Error querying HCS audit logs:', hcsError.message);
+      if (hcsError.stack) {
+        console.error('Stack trace:', hcsError.stack);
+      }
+      
+      const hasAccountId = !!process.env.HEDERA_ACCOUNT_ID;
+      const hasPrivateKey = !!process.env.HEDERA_PRIVATE_KEY;
+      
       return res.json({
         auditLogs: [],
-        message: 'Hedera HCS not configured or unavailable',
+        message: hasAccountId && hasPrivateKey 
+          ? `Hedera HCS query failed: ${hcsError.message}. Please check if the service is initialized and the topic ID is correct.`
+          : 'Hedera HCS not configured. Please set HEDERA_ACCOUNT_ID and HEDERA_PRIVATE_KEY environment variables.',
         hcsConfigured: false,
         error: hcsError.message,
+        missingVariables: {
+          HEDERA_ACCOUNT_ID: !hasAccountId,
+          HEDERA_PRIVATE_KEY: !hasPrivateKey,
+        },
       });
     }
   } catch (error: any) {
