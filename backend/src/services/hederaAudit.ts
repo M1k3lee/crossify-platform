@@ -440,10 +440,15 @@ export class HederaAuditService {
     }
 
     try {
-      const isMainnet = process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true';
+      // Use same network detection logic as initialization
+      const hederaNetwork = process.env.HEDERA_NETWORK?.toLowerCase();
+      const isMainnet = (process.env.NODE_ENV === 'production' && process.env.HEDERA_MAINNET === 'true') ||
+                        hederaNetwork === 'mainnet';
       const mirrorNodeBase = isMainnet 
         ? 'https://mainnet-public.mirrornode.hedera.com'
         : 'https://testnet.mirrornode.hedera.com';
+      
+      console.log(`📡 [HCS] Querying Mirror Node: ${mirrorNodeBase} (network: ${isMainnet ? 'mainnet' : 'testnet'})`);
       
       const topicIdStr = this.topicId.toString();
       
@@ -463,15 +468,21 @@ export class HederaAuditService {
       // Query Mirror Node API for topic messages
       const url = `${mirrorNodeBase}/api/v1/topics/${topicIdStr}/messages?${params.toString()}`;
       
-      console.log(`📡 Querying HCS topic messages: ${url}`);
+      console.log(`📡 [HCS] Querying HCS topic messages: ${url}`);
+      console.log(`📡 [HCS] Topic ID: ${topicIdStr}, Token filter: ${tokenAddress || 'none'}, Limit: ${limit}`);
       
       const response = await fetch(url);
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ [HCS] Mirror Node API error: ${response.status} ${response.statusText}`);
+        console.error(`❌ [HCS] Error response: ${errorText}`);
         throw new Error(`Mirror Node API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json() as { messages?: any[] };
       const messages = data.messages || [];
+      
+      console.log(`📡 [HCS] Received ${messages.length} total messages from Mirror Node API`);
 
       // Parse and filter messages
       const auditLogs: any[] = [];
@@ -482,13 +493,18 @@ export class HederaAuditService {
           const messageBytes = Buffer.from(message.message, 'base64');
           const messageText = messageBytes.toString('utf-8');
           const logData = JSON.parse(messageText);
+          
+          console.log(`📡 [HCS] Parsed message ${message.sequence_number}: type=${logData.type}, tokenAddress=${logData.tokenAddress || 'none'}`);
 
           // Filter by token address if provided (normalize both to lowercase for comparison)
           if (tokenAddress) {
             const logTokenAddress = (logData.tokenAddress || '').toLowerCase().trim();
             const filterTokenAddress = tokenAddress.toLowerCase().trim();
             
+            console.log(`📡 [HCS] Comparing: "${logTokenAddress}" vs "${filterTokenAddress}"`);
+            
             if (logTokenAddress !== filterTokenAddress) {
+              console.log(`📡 [HCS] Skipping message ${message.sequence_number} - token address mismatch`);
               continue; // Skip messages not for this token
             }
           }
@@ -501,13 +517,15 @@ export class HederaAuditService {
             hcsTopicId: topicIdStr,
             hashscanUrl: this.getHashScanUrl(message.sequence_number, topicIdStr),
           });
+          
+          console.log(`✅ [HCS] Added audit log: ${logData.type} for token ${logData.tokenAddress}`);
         } catch (parseError) {
-          console.warn(`⚠️  Failed to parse HCS message ${message.sequence_number}:`, parseError);
+          console.warn(`⚠️  [HCS] Failed to parse HCS message ${message.sequence_number}:`, parseError);
           // Continue with other messages
         }
       }
 
-      console.log(`✅ Retrieved ${auditLogs.length} audit logs from HCS`);
+      console.log(`✅ [HCS] Retrieved ${auditLogs.length} audit logs from HCS (filtered from ${messages.length} total messages)`);
       return auditLogs;
     } catch (error) {
       console.error("❌ Error querying HCS audit logs:", error);

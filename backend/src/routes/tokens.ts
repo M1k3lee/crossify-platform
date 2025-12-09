@@ -1170,15 +1170,24 @@ router.get('/:id/audit-logs', async (req: Request, res: Response) => {
       // Query audit logs for each token address
       const allLogs: any[] = [];
       
+      console.log(`📡 [Audit Logs] Querying audit logs for token ${id}`);
+      console.log(`📡 [Audit Logs] Found ${tokenAddresses.length} token addresses: ${tokenAddresses.join(', ')}`);
+      
       for (const tokenAddress of tokenAddresses) {
-        if (!tokenAddress) continue;
+        if (!tokenAddress) {
+          console.warn(`⚠️  [Audit Logs] Skipping empty token address`);
+          continue;
+        }
         
+        console.log(`📡 [Audit Logs] Querying logs for token address: ${tokenAddress}`);
         const logs = await auditService.queryAuditLogs(
           tokenAddress,
           undefined, // startTimestamp
           undefined, // endTimestamp
           parseInt(limit as string)
         );
+        
+        console.log(`📡 [Audit Logs] Retrieved ${logs.length} logs for address ${tokenAddress}`);
         
         // Add chain info to each log
         const deployment = deployments.find(d => d.token_address === tokenAddress);
@@ -1188,6 +1197,8 @@ router.get('/:id/audit-logs', async (req: Request, res: Response) => {
         
         allLogs.push(...logs);
       }
+      
+      console.log(`📡 [Audit Logs] Total logs collected: ${allLogs.length}`);
 
       // Sort by timestamp (most recent first)
       allLogs.sort((a, b) => {
@@ -1201,6 +1212,8 @@ router.get('/:id/audit-logs', async (req: Request, res: Response) => {
 
       // Get topic ID from service (it may have been auto-created) or environment
       const topicId = auditService.getTopicId() || process.env.HEDERA_HCS_TOPIC_ID || null;
+      
+      console.log(`📡 [Audit Logs] Returning ${limitedLogs.length} logs (from ${allLogs.length} total), topicId: ${topicId}`);
 
       return res.json({
         auditLogs: limitedLogs,
