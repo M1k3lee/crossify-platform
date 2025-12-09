@@ -2200,16 +2200,31 @@ export default function BuyWidget({
       
       const receipt = await tx.wait();
       
-      // Get price per token from contract for sell transaction (use RPC provider for read)
-      let pricePerToken = currentPrice;
+      // Get price per token in USD for sell transaction
+      // currentPrice prop is already in USD, but verify with contract if possible
+      let pricePerTokenUSD = currentPrice;
       try {
         const currentPriceWei = await curveContractRead.getCurrentPrice();
-        pricePerToken = parseFloat(ethers.formatEther(currentPriceWei));
+        const pricePerTokenNative = parseFloat(ethers.formatEther(currentPriceWei));
+        
+        // Convert native token price to USD
+        const getNativeTokenPriceUSD = (chain: string): number => {
+          const chainLower = chain.toLowerCase();
+          if (chainLower.includes('bsc') || chainLower.includes('binance')) {
+            return 600; // BNB price ~$600
+          }
+          // Ethereum, Base, Hedera, Unichain and others use ETH pricing
+          return 3000; // ETH price ~$3000
+        };
+        
+        const nativeTokenPriceUSD = getNativeTokenPriceUSD(chain);
+        pricePerTokenUSD = pricePerTokenNative * nativeTokenPriceUSD;
       } catch (err) {
-        console.warn('Could not get current price for sell transaction, using prop value');
+        console.warn('Could not get current price from contract for sell transaction, using prop value (USD)');
+        // currentPrice prop should already be in USD, so use it as-is
       }
       
-      // Record transaction in backend for chart display
+      // Record transaction in backend for chart display (store USD price)
       try {
         await axios.post(`${API_BASE}/transactions`, {
           tokenId,
@@ -2219,7 +2234,7 @@ export default function BuyWidget({
           fromAddress: address,
           toAddress: curveAddress,
           amount: amount,
-          price: pricePerToken,
+          price: pricePerTokenUSD, // Store USD price for chart
           status: 'confirmed',
         });
         console.log('✅ Transaction recorded for chart');
